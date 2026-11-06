@@ -2331,6 +2331,7 @@ Sets and their defining relations may throughout be modified on null sets.
 
 \begin{lemma}[Integration along a vertex]\label{rig:degree-integration}
 \lean{Auto.rig_degree_integration,Auto.rig_degree_integration_bounds,Auto.rig_degree_integration_total,Auto.rig_degree_integration_null}
+\leanok
 For every nonnegative measurable function $g$ on $\R^2$,
 \[
  \int_E g(\pi_jp)\dd\mu(p)
@@ -2349,6 +2350,7 @@ and taking $g$ to be the indicator of a null set gives the last assertion.
 
 \begin{lemma}[Extraction of a positive-degree core]\label{rig:prune}
 \lean{Auto.rig_prune}
+\leanok
 If $\mu(E)>0$, then for every
 \[
  0<c<\frac{\mu(E)}{\sum_{j=0}^2|X_j|}
@@ -2388,7 +2390,7 @@ $d_{j,F}(z)=\lim_m d_{j,E^{(m)}}(z)\ge c$.
 \end{proof}
 
 \begin{definition}[The scalar incidence operator]\label{rig:def-kernel}
-\lean{Auto.HE,Auto.incidenceOp,Auto.kernelSpace}
+\lean{Auto.HE,Auto.incidenceOp,Auto.incidenceOp_ae,Auto.kernelSpace}
 On a core $(E;X_0,X_1,X_2)$ let
 \[
  \mathcal H_E=\bigoplus_{j=0}^2L^2(X_j;\R),\qquad
@@ -2403,6 +2405,7 @@ a function on all of $\R^2$.
 
 \begin{lemma}[Finite-dimensionality and a distance estimate]\label{rig:kernel-gap}
 \lean{Auto.rig_kernel_gap_finiteDimensional,Auto.rig_kernel_gap}
+\leanok
 For every core $E$, the space $K_E$ is finite dimensional. There is
 $C_E<\infty$ such that
 \[
@@ -2450,6 +2453,7 @@ and intertwines the incidence operators, so it preserves this estimate.
 
 \begin{lemma}[Uniform integrability of kernel elements]\label{rig:kernel-ui}
 \lean{Auto.rig_kernel_ui}
+\leanok
 There is a nondecreasing function $\omega:[0,\infty)\to[0,\infty)$,
 depending only on $M$, with $\omega(s)\to0$ as $s\downarrow0$, such that
 the following holds. On any core $G$ of degree $t>0$, if $f\in K_G$,
@@ -2480,6 +2484,7 @@ The last sum is bounded by $\sqrt2\norm f_{\mathcal H_G}$.
 
 \begin{lemma}[Stability under removal of a small set]\label{rig:kernel-stability}
 \lean{Auto.rig_kernel_stability}
+\leanok
 Fix a core $(E;X_0,X_1,X_2)$ of degree $c$ and a number $t>0$.
 There is $\eta_0>0$ such that, whenever
 $(F;Y_0,Y_1,Y_2)$ is a core of degree $t$, with

@@ -60,34 +60,314 @@ structure IsCore (α β : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ²
 
 /-! ### Integration along a vertex (`rig:degree-integration`) -/
 
+/-- Auxiliary: measurability of `(z, θ) ↦ (z - L_j u_θ, θ)`. -/
+theorem aux_ker_measurable_unshear (α β : ℝ) (j : Fin 3) :
+    Measurable (fun p : ℝ² × Ang => (p.1 - Lv α β j (u p.2), p.2)) :=
+  (measurable_fst.sub ((Lv α β j).continuous.measurable.comp
+    (aux_lw_u_meas.comp measurable_snd))).prodMk measurable_snd
+
+/-- Auxiliary: measurability of the vertex projection `π_j`. -/
+theorem aux_ker_measurable_proj (α β : ℝ) (j : Fin 3) : Measurable (proj α β j) :=
+  measurable_fst.add ((Lv α β j).continuous.measurable.comp (aux_lw_u_meas.comp measurable_snd))
+
+/-- Auxiliary: for measurable `E`, the degree is the `σ`-measure of the fibre
+`{θ | (z - L_j u_θ, θ) ∈ E}` (`rig:degree-integration`, `Auto.rig_degree_integration`). -/
+theorem aux_degree_eq (α β : ℝ) (j : Fin 3) (E : Set (ℝ² × Ang)) (hE : MeasurableSet E)
+    (z : ℝ²) : ENNReal.ofReal (degree α β j E z) = σ {θ | (z - Lv α β j (u θ), θ) ∈ E} := by
+  have hS : MeasurableSet {θ | (z - Lv α β j (u θ), θ) ∈ E} :=
+    measurable_prodMk_left ((aux_ker_measurable_unshear α β j) hE)
+  have e : (fun θ => E.indicator (fun _ => (1 : ℝ)) (z - Lv α β j (u θ), θ)) =
+      {θ | (z - Lv α β j (u θ), θ) ∈ E}.indicator 1 := by
+    funext θ; by_cases h : (z - Lv α β j (u θ), θ) ∈ E <;> simp [h]
+  rw [degree, e, integral_indicator_one hS, measureReal_def, ENNReal.ofReal_toReal
+    (measure_ne_top _ _)]
+
+/-- Auxiliary: measurability of the degree (`rig:degree-integration`). -/
+theorem aux_degree_measurable (α β : ℝ) (j : Fin 3) (E : Set (ℝ² × Ang)) (hE : MeasurableSet E) :
+    Measurable (degree α β j E) := by
+  have h := measurable_measure_prodMk_left (ν := σ) ((aux_ker_measurable_unshear α β j) hE)
+  have e : degree α β j E = fun z => (σ (Prod.mk z ⁻¹'
+      ((fun p : ℝ² × Ang => (p.1 - Lv α β j (u p.2), p.2)) ⁻¹' E))).toReal := by
+    funext z
+    change degree α β j E z = (σ {θ | (z - Lv α β j (u θ), θ) ∈ E}).toReal
+    rw [← aux_degree_eq α β j E hE z, ENNReal.toReal_ofReal]
+    exact integral_nonneg fun θ => indicator_nonneg (fun _ _ => zero_le_one) _
+  rw [e]; exact h.ennreal_toReal
+
 /-- **Lemma `rig:degree-integration`** (integration formula).  For every nonnegative measurable
 function $g$ on $\mathbb R^2$,
 $$\int_E g(\pi_jp)\,d\mu(p)=\int_{\mathbb R^2}g(z)\,d_{j,E}(z)\,dz.$$ -/
 theorem rig_degree_integration (α β : ℝ) (j : Fin 3) (E : Set (ℝ² × Ang)) (hE : MeasurableSet E)
     (g : ℝ² → ℝ≥0∞) (hg : Measurable g) :
     ∫⁻ p in E, g (proj α β j p) ∂μinc = ∫⁻ z, g z * ENNReal.ofReal (degree α β j E z) := by
-  sorry
+  have hmp := lem_geometry_measurePreserving α β j
+  set G : ℝ² × Ang → ℝ≥0∞ := fun q => g q.1 *
+    E.indicator 1 (q.1 - Lv α β j (u q.2), q.2) with hG
+  have hGm : Measurable G :=
+    (hg.comp measurable_fst).mul ((measurable_one.indicator hE).comp
+      (aux_ker_measurable_unshear α β j))
+  have h1 : ∫⁻ p in E, g (proj α β j p) ∂μinc = ∫⁻ p, G (proj α β j p, p.2) ∂μinc := by
+    rw [← lintegral_indicator hE]
+    congr 1; funext p
+    simp only [hG, proj, add_sub_cancel_right]
+    by_cases hp : p ∈ E
+    · simp [hp]
+    · simp [hp]
+  rw [h1, hmp.lintegral_comp hGm, μinc, lintegral_prod _ hGm.aemeasurable]
+  congr 1; funext z
+  simp only [hG]
+  have hmz : Measurable (fun θ : Ang => E.indicator (1 : ℝ² × Ang → ℝ≥0∞)
+      (z - Lv α β j (u θ), θ)) :=
+    (measurable_one.indicator hE).comp ((aux_ker_measurable_unshear α β j).comp
+      measurable_prodMk_left)
+  rw [lintegral_const_mul (g z) hmz, aux_degree_eq α β j E hE z]
+  congr 1
+  have hS : MeasurableSet {θ | (z - Lv α β j (u θ), θ) ∈ E} :=
+    measurable_prodMk_left ((aux_ker_measurable_unshear α β j) hE)
+  rw [← lintegral_indicator_one hS]
+  congr 1
 
 /-- **Lemma `rig:degree-integration`** (bounds).  $0\le d_{j,E}\le 1$. -/
 theorem rig_degree_integration_bounds (α β : ℝ) (j : Fin 3) (E : Set (ℝ² × Ang))
     (hE : MeasurableSet E) (z : ℝ²) :
     0 ≤ degree α β j E z ∧ degree α β j E z ≤ 1 := by
-  sorry
+  have h0 : 0 ≤ degree α β j E z :=
+    integral_nonneg fun θ => indicator_nonneg (fun _ _ => zero_le_one) _
+  refine ⟨h0, ?_⟩
+  have h := aux_degree_eq α β j E hE z
+  have h1 : σ {θ | (z - Lv α β j (u θ), θ) ∈ E} ≤ 1 := prob_le_one
+  rw [← h, ← ENNReal.ofReal_one, ENNReal.ofReal_le_ofReal_iff zero_le_one] at h1
+  exact h1
 
 /-- **Lemma `rig:degree-integration`** (total degree).  $\int d_{j,E}=\mu(E)$. -/
 theorem rig_degree_integration_total (α β : ℝ) (j : Fin 3) (E : Set (ℝ² × Ang))
     (hE : MeasurableSet E) :
     ∫⁻ z, ENNReal.ofReal (degree α β j E z) = μinc E := by
-  sorry
+  have h := rig_degree_integration α β j E hE (fun _ => 1) measurable_const
+  simp only [one_mul, lintegral_const, one_mul, Measure.restrict_apply_univ] at h
+  exact h.symm
 
 /-- **Lemma `rig:degree-integration`** (null sets).  Pullback by $\pi_j$ sends planar null sets
 to $\mu$-null sets (of $E$). -/
 theorem rig_degree_integration_null (α β : ℝ) (j : Fin 3) (E : Set (ℝ² × Ang))
     (hE : MeasurableSet E) (N : Set ℝ²) (hN : volume N = 0) :
     μinc (E ∩ proj α β j ⁻¹' N) = 0 := by
-  sorry
+  obtain ⟨N', hNN', hN'm, hN'0⟩ := exists_measurable_superset_of_null hN
+  apply measure_mono_null (inter_subset_inter_right _ (preimage_mono hNN'))
+  have h := rig_degree_integration α β j E hE (N'.indicator 1) (measurable_one.indicator hN'm)
+  have e : ∫⁻ p in E, N'.indicator 1 (proj α β j p) ∂μinc = μinc (E ∩ proj α β j ⁻¹' N') := by
+    have e1 : (fun p => N'.indicator (1 : ℝ² → ℝ≥0∞) (proj α β j p)) =
+        (proj α β j ⁻¹' N').indicator 1 := by
+      funext p; by_cases hp : proj α β j p ∈ N' <;> simp [hp]
+    rw [e1, lintegral_indicator_one ((aux_ker_measurable_proj α β j) hN'm),
+      Measure.restrict_apply ((aux_ker_measurable_proj α β j) hN'm), inter_comm]
+  rw [← e, h]
+  refine le_antisymm ?_ bot_le
+  calc ∫⁻ z, N'.indicator 1 z * ENNReal.ofReal (degree α β j E z)
+      ≤ ∫⁻ z, N'.indicator 1 z := lintegral_mono fun z => by
+        by_cases hz : z ∈ N'
+        · simp only [indicator_of_mem hz, Pi.one_apply, one_mul]
+          rw [← ENNReal.ofReal_one]
+          exact ENNReal.ofReal_le_ofReal (rig_degree_integration_bounds α β j E hE z).2
+        · simp [hz]
+    _ = 0 := by rw [lintegral_indicator_one hN'm, hN'0]
 
 /-! ### Extraction of a positive-degree core (`rig:prune`) -/
+
+/-- Auxiliary: `∫_B d_{j,E} = μ(E ∩ π_j⁻¹ B)` for measurable `E`, `B`
+(`rig:degree-integration` with `g = 1_B`; used for `Auto.rig_prune`). -/
+theorem aux_degree_setLIntegral (α β : ℝ) (j : Fin 3) (E : Set (ℝ² × Ang)) (hE : MeasurableSet E)
+    (B : Set ℝ²) (hB : MeasurableSet B) :
+    ∫⁻ z in B, ENNReal.ofReal (degree α β j E z) = μinc (E ∩ proj α β j ⁻¹' B) := by
+  have h := rig_degree_integration α β j E hE (B.indicator 1) (measurable_one.indicator hB)
+  have e1 : (fun p => B.indicator (1 : ℝ² → ℝ≥0∞) (proj α β j p)) =
+      (proj α β j ⁻¹' B).indicator 1 := by
+    funext p; by_cases hp : proj α β j p ∈ B <;> simp [hp]
+  rw [e1, lintegral_indicator_one ((aux_ker_measurable_proj α β j) hB),
+    Measure.restrict_apply ((aux_ker_measurable_proj α β j) hB), inter_comm] at h
+  rw [h, ← lintegral_indicator hB]
+  congr 1; funext z
+  by_cases hz : z ∈ B <;> simp [hz]
+
+/-- Auxiliary: one deletion step of the proof of `rig:prune` at threshold `c`: keep the vertices
+`z ∈ X_j^{(m)}` with `d_{j,E^{(m)}}(z) ≥ c` and the configurations all of whose vertices are kept.
+Used for `Auto.rig_prune`. -/
+def aux_pruneStep (α β c : ℝ) (XE : (Fin 3 → Set ℝ²) × Set (ℝ² × Ang)) :
+    (Fin 3 → Set ℝ²) × Set (ℝ² × Ang) :=
+  (fun j => {z ∈ XE.1 j | c ≤ degree α β j XE.2 z},
+    XE.2 ∩ ⋂ j, proj α β j ⁻¹' {z ∈ XE.1 j | c ≤ degree α β j XE.2 z})
+
+/-- Auxiliary: the `m`-th stage `(X^{(m)}, E^{(m)})` of the deletion process (proof of
+`rig:prune`, `Auto.rig_prune`). -/
+abbrev aux_pruneSeq (α β c : ℝ) (X : Fin 3 → Set ℝ²) (E : Set (ℝ² × Ang)) (n : ℕ) :
+    (Fin 3 → Set ℝ²) × Set (ℝ² × Ang) :=
+  (aux_pruneStep α β c)^[n] (X, E)
+
+/-- Auxiliary: recursion of the deletion process (`Auto.rig_prune`). -/
+theorem aux_pruneSeq_succ (α β c : ℝ) (X : Fin 3 → Set ℝ²) (E : Set (ℝ² × Ang)) (n : ℕ) :
+    aux_pruneSeq α β c X E (n + 1) = aux_pruneStep α β c (aux_pruneSeq α β c X E n) :=
+  Function.iterate_succ_apply' _ _ _
+
+/-- Auxiliary: measurability of the stages of the deletion process (`Auto.rig_prune`). -/
+theorem aux_pruneSeq_measurable (α β c : ℝ) (X : Fin 3 → Set ℝ²) (E : Set (ℝ² × Ang))
+    (hX : ∀ j, MeasurableSet (X j)) (hE : MeasurableSet E) (n : ℕ) :
+    (∀ j, MeasurableSet ((aux_pruneSeq α β c X E n).1 j)) ∧
+      MeasurableSet (aux_pruneSeq α β c X E n).2 := by
+  induction n with
+  | zero => exact ⟨hX, hE⟩
+  | succ n ih =>
+    rw [aux_pruneSeq_succ]
+    have hB : ∀ j, MeasurableSet {z ∈ (aux_pruneSeq α β c X E n).1 j |
+        c ≤ degree α β j (aux_pruneSeq α β c X E n).2 z} := fun j =>
+      (ih.1 j).inter (measurableSet_le measurable_const (aux_degree_measurable _ _ _ _ ih.2))
+    exact ⟨hB, ih.2.inter (MeasurableSet.iInter fun j => (aux_ker_measurable_proj α β j) (hB j))⟩
+
+/-- Auxiliary: the vertex sets decrease (`Auto.rig_prune`). -/
+theorem aux_pruneSeq_fst_succ_subset (α β c : ℝ) (X : Fin 3 → Set ℝ²) (E : Set (ℝ² × Ang))
+    (n : ℕ) (j : Fin 3) :
+    (aux_pruneSeq α β c X E (n + 1)).1 j ⊆ (aux_pruneSeq α β c X E n).1 j := by
+  rw [aux_pruneSeq_succ]; exact sep_subset _ _
+
+/-- Auxiliary: the configuration sets decrease (`Auto.rig_prune`). -/
+theorem aux_pruneSeq_snd_succ_subset (α β c : ℝ) (X : Fin 3 → Set ℝ²) (E : Set (ℝ² × Ang))
+    (n : ℕ) : (aux_pruneSeq α β c X E (n + 1)).2 ⊆ (aux_pruneSeq α β c X E n).2 := by
+  rw [aux_pruneSeq_succ]; exact inter_subset_left
+
+/-- Auxiliary: antitonicity of the vertex sets (`Auto.rig_prune`). -/
+theorem aux_pruneSeq_fst_anti (α β c : ℝ) (X : Fin 3 → Set ℝ²) (E : Set (ℝ² × Ang)) (j : Fin 3)
+    {m n : ℕ} (hmn : m ≤ n) :
+    (aux_pruneSeq α β c X E n).1 j ⊆ (aux_pruneSeq α β c X E m).1 j :=
+  (antitone_nat_of_succ_le (f := fun n => (aux_pruneSeq α β c X E n).1 j)
+    (fun n => aux_pruneSeq_fst_succ_subset α β c X E n j)) hmn
+
+/-- Auxiliary: antitonicity of the configuration sets (`Auto.rig_prune`). -/
+theorem aux_pruneSeq_snd_anti (α β c : ℝ) (X : Fin 3 → Set ℝ²) (E : Set (ℝ² × Ang))
+    {m n : ℕ} (hmn : m ≤ n) : (aux_pruneSeq α β c X E n).2 ⊆ (aux_pruneSeq α β c X E m).2 :=
+  (antitone_nat_of_succ_le (f := fun n => (aux_pruneSeq α β c X E n).2)
+    (fun n => aux_pruneSeq_snd_succ_subset α β c X E n)) hmn
+
+/-- Auxiliary: after a step, every configuration projects into the new vertex sets
+(`Auto.rig_prune`). -/
+theorem aux_pruneSeq_proj (α β c : ℝ) (X : Fin 3 → Set ℝ²) (E : Set (ℝ² × Ang)) (n : ℕ)
+    (j : Fin 3) :
+    (aux_pruneSeq α β c X E (n + 1)).2 ⊆ proj α β j ⁻¹' (aux_pruneSeq α β c X E (n + 1)).1 j := by
+  rw [aux_pruneSeq_succ]
+  intro p hp
+  exact mem_iInter.1 hp.2 j
+
+/-- Auxiliary: surviving vertices had degree at least `c` at the previous stage
+(`Auto.rig_prune`). -/
+theorem aux_pruneSeq_degree (α β c : ℝ) (X : Fin 3 → Set ℝ²) (E : Set (ℝ² × Ang)) (n : ℕ)
+    (j : Fin 3) (z : ℝ²) (hz : z ∈ (aux_pruneSeq α β c X E (n + 1)).1 j) :
+    c ≤ degree α β j (aux_pruneSeq α β c X E n).2 z := by
+  rw [aux_pruneSeq_succ] at hz
+  exact hz.2
+
+/-- Auxiliary: almost every configuration of each stage projects into the current vertex sets
+(`Auto.rig_prune`). -/
+theorem aux_pruneSeq_ae_proj (α β c : ℝ) (X : Fin 3 → Set ℝ²) (E : Set (ℝ² × Ang))
+    (hX : ∀ j, MeasurableSet (X j)) (hE : MeasurableSet E)
+    (hproj : ∀ j, ∀ᵐ p ∂(μinc.restrict E), proj α β j p ∈ X j) (n : ℕ) (j : Fin 3) :
+    ∀ᵐ p ∂(μinc.restrict (aux_pruneSeq α β c X E n).2),
+      proj α β j p ∈ (aux_pruneSeq α β c X E n).1 j := by
+  cases n with
+  | zero => exact hproj j
+  | succ n =>
+    exact ae_restrict_of_forall_mem (aux_pruneSeq_measurable α β c X E hX hE (n + 1)).2
+      fun p hp => aux_pruneSeq_proj α β c X E n j hp
+
+/-- Auxiliary: the loss in one step, `μ(E^{(m)} ∖ E^{(m+1)}) ≤ c ∑_j |V_j^{(m)}|`
+(proof of `rig:prune`, `Auto.rig_prune`). -/
+theorem aux_pruneSeq_step_loss (α β c : ℝ) (X : Fin 3 → Set ℝ²) (E : Set (ℝ² × Ang))
+    (hX : ∀ j, MeasurableSet (X j)) (hE : MeasurableSet E)
+    (hproj : ∀ j, ∀ᵐ p ∂(μinc.restrict E), proj α β j p ∈ X j) (n : ℕ) :
+    μinc ((aux_pruneSeq α β c X E n).2 \ (aux_pruneSeq α β c X E (n + 1)).2) ≤
+      ENNReal.ofReal c * ∑ j, volume ((aux_pruneSeq α β c X E n).1 j \
+        (aux_pruneSeq α β c X E (n + 1)).1 j) := by
+  have hm := aux_pruneSeq_measurable α β c X E hX hE n
+  have hm1 := aux_pruneSeq_measurable α β c X E hX hE (n + 1)
+  set P := aux_pruneSeq α β c X E n with hP
+  set P' := aux_pruneSeq α β c X E (n + 1) with hP'
+  have hP'eq : P' = aux_pruneStep α β c P := aux_pruneSeq_succ α β c X E n
+  have hsub : P.2 \ P'.2 ⊆ ⋃ j, ((P.2 ∩ proj α β j ⁻¹' (P.1 j \ P'.1 j)) ∪
+      (P.2 \ proj α β j ⁻¹' P.1 j)) := by
+    rintro p ⟨hpE, hpn⟩
+    rw [hP'eq] at hpn
+    have : ∃ j, proj α β j p ∉ {z ∈ P.1 j | c ≤ degree α β j P.2 z} := by
+      by_contra hcon
+      exact hpn ⟨hpE, mem_iInter.2 fun j => not_not.1 (fun h => hcon ⟨j, h⟩)⟩
+    obtain ⟨j, hj⟩ := this
+    refine mem_iUnion.2 ⟨j, ?_⟩
+    by_cases hpj : proj α β j p ∈ P.1 j
+    · left; refine ⟨hpE, hpj, ?_⟩; rw [hP'eq]; exact hj
+    · right; exact ⟨hpE, hpj⟩
+  have hnull : ∀ j, μinc (P.2 \ proj α β j ⁻¹' P.1 j) = 0 := by
+    intro j
+    have h := (ae_restrict_iff' hm.2).1 (aux_pruneSeq_ae_proj α β c X E hX hE hproj n j)
+    apply measure_mono_null (t := {p | ¬ (p ∈ P.2 → proj α β j p ∈ P.1 j)})
+    · intro p hp hpX; exact hp.2 (hpX hp.1)
+    · exact ae_iff.1 h
+  calc μinc (P.2 \ P'.2)
+      ≤ μinc (⋃ j, ((P.2 ∩ proj α β j ⁻¹' (P.1 j \ P'.1 j)) ∪
+          (P.2 \ proj α β j ⁻¹' P.1 j))) := measure_mono hsub
+    _ ≤ ∑ j, μinc ((P.2 ∩ proj α β j ⁻¹' (P.1 j \ P'.1 j)) ∪
+          (P.2 \ proj α β j ⁻¹' P.1 j)) := measure_iUnion_fintype_le _ _
+    _ ≤ ∑ j, (μinc (P.2 ∩ proj α β j ⁻¹' (P.1 j \ P'.1 j)) +
+          μinc (P.2 \ proj α β j ⁻¹' P.1 j)) :=
+        Finset.sum_le_sum fun j _ => measure_union_le _ _
+    _ = ∑ j, ∫⁻ z in P.1 j \ P'.1 j, ENNReal.ofReal (degree α β j P.2 z) := by
+        refine Finset.sum_congr rfl fun j _ => ?_
+        rw [hnull j, add_zero, aux_degree_setLIntegral _ _ _ _ hm.2 _ ((hm.1 j).diff (hm1.1 j))]
+    _ ≤ ∑ j, ∫⁻ z in P.1 j \ P'.1 j, ENNReal.ofReal c := by
+        refine Finset.sum_le_sum fun j _ => setLIntegral_mono' ((hm.1 j).diff (hm1.1 j)) ?_
+        intro z hz
+        have hz2 := hz.2
+        rw [hP'eq] at hz2
+        simp only [aux_pruneStep, mem_sep_iff, not_and, not_le] at hz2
+        exact ENNReal.ofReal_le_ofReal (hz2 hz.1).le
+    _ = ENNReal.ofReal c * ∑ j, volume (P.1 j \ P'.1 j) := by
+        rw [Finset.mul_sum]
+        refine Finset.sum_congr rfl fun j _ => ?_
+        rw [setLIntegral_const, mul_comm]
+
+/-- Auxiliary: the loss in the first `N` steps (`Auto.rig_prune`). -/
+theorem aux_pruneSeq_loss (α β c : ℝ) (X : Fin 3 → Set ℝ²) (E : Set (ℝ² × Ang))
+    (hX : ∀ j, MeasurableSet (X j)) (hE : MeasurableSet E)
+    (hproj : ∀ j, ∀ᵐ p ∂(μinc.restrict E), proj α β j p ∈ X j) (N : ℕ) :
+    μinc (E \ (aux_pruneSeq α β c X E N).2) ≤
+      ENNReal.ofReal c * ∑ j, volume (X j \ (aux_pruneSeq α β c X E N).1 j) := by
+  induction N with
+  | zero => simp [aux_pruneSeq]
+  | succ N ih =>
+    have hm := aux_pruneSeq_measurable α β c X E hX hE N
+    have hm1 := aux_pruneSeq_measurable α β c X E hX hE (N + 1)
+    have hXN : ∀ j, (aux_pruneSeq α β c X E N).1 j ⊆ X j := fun j =>
+      aux_pruneSeq_fst_anti α β c X E j (Nat.zero_le N)
+    calc μinc (E \ (aux_pruneSeq α β c X E (N + 1)).2)
+        ≤ μinc (E \ (aux_pruneSeq α β c X E N).2) +
+            μinc ((aux_pruneSeq α β c X E N).2 \ (aux_pruneSeq α β c X E (N + 1)).2) := by
+          refine (measure_mono ?_).trans (measure_union_le _ _)
+          intro p ⟨hpE, hpn⟩
+          by_cases h : p ∈ (aux_pruneSeq α β c X E N).2
+          · exact Or.inr ⟨h, hpn⟩
+          · exact Or.inl ⟨hpE, h⟩
+      _ ≤ ENNReal.ofReal c * ∑ j, volume (X j \ (aux_pruneSeq α β c X E N).1 j) +
+            ENNReal.ofReal c * ∑ j, volume ((aux_pruneSeq α β c X E N).1 j \
+              (aux_pruneSeq α β c X E (N + 1)).1 j) :=
+          add_le_add ih (aux_pruneSeq_step_loss α β c X E hX hE hproj N)
+      _ = ENNReal.ofReal c * ∑ j, volume (X j \ (aux_pruneSeq α β c X E (N + 1)).1 j) := by
+          rw [← mul_add, ← Finset.sum_add_distrib]
+          congr 1
+          refine Finset.sum_congr rfl fun j _ => ?_
+          rw [← measure_union]
+          · congr 1
+            ext z
+            have h1 := @aux_pruneSeq_fst_succ_subset α β c X E N j z
+            have h2 := @hXN j z
+            simp only [mem_union, Set.mem_sdiff]
+            tauto
+          · exact Set.disjoint_left.2 fun z h1 h2 => h1.2 h2.1
+          · exact (hm.1 j).diff (hm1.1 j)
 
 /-- **Lemma `rig:prune`**.  If $\mu(E)>0$, then for every
 $$0<c<\frac{\mu(E)}{\sum_{j=0}^2|X_j|}$$
@@ -100,7 +380,78 @@ theorem rig_prune (α β : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ�
     ∃ (F : Set (ℝ² × Ang)) (Y : Fin 3 → Set ℝ²), (∀ j, MeasurableSet (Y j) ∧ Y j ⊆ X j) ∧
       MeasurableSet F ∧ F ⊆ E ∧ IsCore α β F Y c ∧
       μinc (E \ F) ≤ ENNReal.ofReal c * ∑ j, volume (X j) := by
-  sorry
+  have hX := hEX.measurableSet_X
+  have hEm := hEX.measurableSet_E
+  set Y : Fin 3 → Set ℝ² := fun j => ⋂ n, (aux_pruneSeq α β c X E n).1 j with hYdef
+  set F : Set (ℝ² × Ang) := ⋂ n, (aux_pruneSeq α β c X E n).2 with hFdef
+  have hYm : ∀ j, MeasurableSet (Y j) := fun j =>
+    MeasurableSet.iInter fun n => (aux_pruneSeq_measurable α β c X E hX hEm n).1 j
+  have hFm : MeasurableSet F :=
+    MeasurableSet.iInter fun n => (aux_pruneSeq_measurable α β c X E hX hEm n).2
+  have hYX : ∀ j, Y j ⊆ X j := fun j => iInter_subset (fun n => (aux_pruneSeq α β c X E n).1 j) 0
+  have hFE : F ⊆ E := iInter_subset (fun n => (aux_pruneSeq α β c X E n).2) 0
+  -- the loss bound
+  have hloss : μinc (E \ F) ≤ ENNReal.ofReal c * ∑ j, volume (X j) := by
+    have e : E \ F = ⋃ n, (E \ (aux_pruneSeq α β c X E n).2) := by
+      simp only [hFdef, sdiff_iInter]
+    rw [e, Monotone.measure_iUnion]
+    · refine iSup_le fun n => (aux_pruneSeq_loss α β c X E hX hEm hEX.ae_proj_mem n).trans ?_
+      gcongr with j
+      exact sdiff_subset
+    · intro m n hmn
+      exact sdiff_subset_sdiff_right (aux_pruneSeq_snd_anti α β c X E hmn)
+  -- finiteness of the total vertex measure
+  have hSfin : ∑ j, volume (X j) ≠ ⊤ :=
+    ENNReal.sum_ne_top.2 fun j _ => (hEX.isBounded_X j).measure_lt_top.ne
+  have hlt : ENNReal.ofReal c * ∑ j, volume (X j) < μinc E := by
+    by_cases hS0 : ∑ j, volume (X j) = 0
+    · rw [hS0, mul_zero]; exact hE
+    · rwa [ENNReal.lt_div_iff_mul_lt (Or.inl hS0) (Or.inl hSfin)] at hcE
+  have hFpos : 0 < μinc F := by
+    by_contra h0
+    have h0' : μinc F = 0 := le_antisymm (not_lt.1 h0) bot_le
+    have : μinc E ≤ μinc F + μinc (E \ F) := by
+      calc μinc E ≤ μinc (E ∩ F) + μinc (E \ F) := measure_le_inter_add_sdiff _ _ _
+        _ ≤ μinc F + μinc (E \ F) := add_le_add (measure_mono inter_subset_right) le_rfl
+    rw [h0', zero_add] at this
+    exact absurd (this.trans hloss) (not_le.2 hlt)
+  -- every configuration of `F` projects into `Y`
+  have hFproj : ∀ j, ∀ p ∈ F, proj α β j p ∈ Y j := by
+    intro j p hp
+    refine mem_iInter.2 fun n => ?_
+    exact aux_pruneSeq_fst_succ_subset α β c X E n j
+      (aux_pruneSeq_proj α β c X E n j (mem_iInter.1 hp (n + 1)))
+  -- degrees on the surviving vertex sets
+  have hdeg : ∀ j, ∀ z ∈ Y j, c ≤ degree α β j F z := by
+    intro j z hz
+    have hz' : ∀ n, z ∈ (aux_pruneSeq α β c X E n).1 j := mem_iInter.1 hz
+    have e : {θ | (z - Lv α β j (u θ), θ) ∈ F} =
+        ⋂ n, {θ | (z - Lv α β j (u θ), θ) ∈ (aux_pruneSeq α β c X E n).2} := by
+      ext θ; simp [hFdef]
+    have hmeas : ∀ n, MeasurableSet {θ | (z - Lv α β j (u θ), θ) ∈ (aux_pruneSeq α β c X E n).2} :=
+      fun n => measurable_prodMk_left ((aux_ker_measurable_unshear α β j)
+        (aux_pruneSeq_measurable α β c X E hX hEm n).2)
+    have hF' : ENNReal.ofReal c ≤ ENNReal.ofReal (degree α β j F z) := by
+      rw [aux_degree_eq α β j F hFm z, e, Antitone.measure_iInter]
+      · refine le_iInf fun n => ?_
+        rw [← aux_degree_eq α β j _ (aux_pruneSeq_measurable α β c X E hX hEm n).2 z]
+        exact ENNReal.ofReal_le_ofReal (aux_pruneSeq_degree α β c X E n j z (hz' (n + 1)))
+      · exact antitone_nat_of_succ_le
+          (f := fun n => {θ | (z - Lv α β j (u θ), θ) ∈ (aux_pruneSeq α β c X E n).2})
+          fun n θ hθ => aux_pruneSeq_snd_succ_subset α β c X E n hθ
+      · exact fun n => (hmeas n).nullMeasurableSet
+      · exact ⟨0, measure_ne_top _ _⟩
+    exact (ENNReal.ofReal_le_ofReal_iff
+      (rig_degree_integration_bounds α β j F hFm z).1).1 hF'
+  refine ⟨F, Y, fun j => ⟨hYm j, hYX j⟩, hFm, hFE, ?_, hloss⟩
+  exact
+    { measurableSet_X := hYm
+      isBounded_X := fun j => (hEX.isBounded_X j).subset (hYX j)
+      measurableSet_E := hFm
+      ae_proj_mem := fun j => ae_restrict_of_forall_mem hFm fun p hp => hFproj j p hp
+      measure_pos := hFpos
+      degree_pos := hc
+      ae_degree_ge := fun j => ae_restrict_of_forall_mem (hYm j) fun z hz => hdeg j z hz }
 
 /-! ### The scalar incidence operator (`rig:def-kernel`) -/
 
@@ -114,13 +465,120 @@ abbrev HE (X : Fin 3 → Set ℝ²) : Type :=
 def incidenceFun (α β : ℝ) (X : Fin 3 → Set ℝ²) (f : HE X) (p : ℝ² × Ang) : ℝ :=
   ∑ j, (X j).indicator (f j : ℝ² → ℝ) (proj α β j p)
 
-/-- Auxiliary: the map `f ↦ incidenceFun α β X f` induces a continuous linear map
-`HE X →L[ℝ] Lp ℝ 2 (μinc.restrict E)`.  Used to define `Auto.incidenceOp`
-(`\label{rig:def-kernel}`). -/
-theorem aux_incidenceOp_exists (α β : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ²) :
+/-- Auxiliary: `π_j` pushes `μ` forward to Lebesgue measure (from `lem:geometry`, part 4);
+used for `Auto.incidenceOp` (`rig:def-kernel`). -/
+theorem aux_proj_measurePreserving (α β : ℝ) (j : Fin 3) :
+    MeasurePreserving (proj α β j) μinc volume := by
+  have h : MeasurePreserving (Prod.fst : ℝ² × Ang → ℝ²) μinc volume := by
+    unfold μinc; exact measurePreserving_fst
+  exact h.comp (lem_geometry_measurePreserving α β j)
+
+/-- Auxiliary: `1_S f ∈ L²(ℝ²)` for `f ∈ L²(S)` (zero extension, used for `Auto.incidenceOp`). -/
+theorem aux_memLp_indicator (S : Set ℝ²) (hS : MeasurableSet S) (f : Lp ℝ 2 (volume.restrict S)) :
+    MemLp (S.indicator ⇑f) 2 volume := by
+  rw [memLp_indicator_iff_restrict hS]; exact Lp.memLp f
+
+/-- Auxiliary: additivity of the zero extension. -/
+theorem aux_extFun_add (S : Set ℝ²) (hS : MeasurableSet S) (f g : Lp ℝ 2 (volume.restrict S)) :
+    (aux_memLp_indicator S hS (f + g)).toLp _ =
+      (aux_memLp_indicator S hS f).toLp _ + (aux_memLp_indicator S hS g).toLp _ := by
+  rw [← MemLp.toLp_add]
+  apply MemLp.toLp_congr
+  have h5 : S.indicator ⇑(f + g) =ᵐ[volume] S.indicator (⇑f + ⇑g) :=
+    (ae_eq_restrict_iff_indicator_ae_eq hS).1 (Lp.coeFn_add _ _)
+  refine h5.trans (Eventually.of_forall fun z => ?_)
+  simp only [Pi.add_apply, indicator_add']
+
+/-- Auxiliary: homogeneity of the zero extension. -/
+theorem aux_extFun_smul (S : Set ℝ²) (hS : MeasurableSet S) (c : ℝ)
+    (f : Lp ℝ 2 (volume.restrict S)) :
+    (aux_memLp_indicator S hS (c • f)).toLp _ = c • (aux_memLp_indicator S hS f).toLp _ := by
+  rw [← MemLp.toLp_const_smul]
+  apply MemLp.toLp_congr
+  have h5 : S.indicator ⇑(c • f) =ᵐ[volume] S.indicator (c • ⇑f) :=
+    (ae_eq_restrict_iff_indicator_ae_eq hS).1 (Lp.coeFn_smul _ _)
+  refine h5.trans (Eventually.of_forall fun z => ?_)
+  simp only [Pi.smul_apply]
+  exact indicator_const_smul_apply _ c _ z
+
+/-- Auxiliary: extension by zero `L²(S) → L²(ℝ²)` for measurable `S`, as a continuous linear map
+(used for `Auto.incidenceOp`, `rig:def-kernel`). -/
+def aux_extLp (S : Set ℝ²) (hS : MeasurableSet S) :
+    Lp ℝ 2 (volume.restrict S) →L[ℝ] Lp ℝ 2 (volume : Measure ℝ²) :=
+  LinearMap.mkContinuous
+    { toFun := fun f => (aux_memLp_indicator S hS f).toLp _
+      map_add' := aux_extFun_add S hS
+      map_smul' := aux_extFun_smul S hS }
+    1 (fun f => by
+      rw [one_mul, Lp.norm_def, Lp.norm_def]
+      refine le_of_eq ?_
+      congr 1
+      exact (eLpNorm_congr_ae (MemLp.coeFn_toLp (aux_memLp_indicator S hS f))).trans
+        (eLpNorm_indicator_eq_eLpNorm_restrict hS))
+
+/-- Auxiliary: the zero extension `aux_extLp` is represented by `1_S f`. -/
+theorem aux_extLp_coe (S : Set ℝ²) (hS : MeasurableSet S) (f : Lp ℝ 2 (volume.restrict S)) :
+    ⇑(aux_extLp S hS f) =ᵐ[volume] S.indicator ⇑f :=
+  MemLp.coeFn_toLp (aux_memLp_indicator S hS f)
+
+/-- Auxiliary: the zero extension `aux_extLp` is isometric. -/
+theorem aux_extLp_norm (S : Set ℝ²) (hS : MeasurableSet S) (f : Lp ℝ 2 (volume.restrict S)) :
+    ‖aux_extLp S hS f‖ = ‖f‖ := by
+  rw [Lp.norm_def, Lp.norm_def, eLpNorm_congr_ae (aux_extLp_coe S hS f),
+    eLpNorm_indicator_eq_eLpNorm_restrict hS]
+
+/-- Auxiliary: one vertex block `g ↦ (1_{X_j} g) ∘ π_j` of `D_E`, as a continuous linear map
+`L²(X_j) → L²(E, μ)` (used for `Auto.incidenceOp`, `rig:def-kernel`). -/
+def aux_incBlock (α β : ℝ) (E : Set (ℝ² × Ang)) (S : Set ℝ²) (hS : MeasurableSet S) (j : Fin 3) :
+    Lp ℝ 2 (volume.restrict S) →L[ℝ] Lp ℝ 2 (μinc.restrict E) :=
+  (LpToLpRestrictCLM (ℝ² × Ang) ℝ ℝ μinc 2 E) ∘L
+    (Lp.compMeasurePreservingₗᵢ ℝ (proj α β j)
+      (aux_proj_measurePreserving α β j)).toContinuousLinearMap
+    ∘L aux_extLp S hS
+
+/-- Auxiliary: the block `aux_incBlock` is represented by `(1_S g) ∘ π_j`. -/
+theorem aux_incBlock_coe (α β : ℝ) (E : Set (ℝ² × Ang)) (S : Set ℝ²) (hS : MeasurableSet S)
+    (j : Fin 3) (g : Lp ℝ 2 (volume.restrict S)) :
+    ⇑(aux_incBlock α β E S hS j g) =ᵐ[μinc.restrict E] fun p => S.indicator ⇑g (proj α β j p) := by
+  have h1 := LpToLpRestrictCLM_coeFn ℝ (μ := μinc) (p := 2) E
+    ((Lp.compMeasurePreservingₗᵢ ℝ (proj α β j) (aux_proj_measurePreserving α β j))
+      (aux_extLp S hS g))
+  have h2 := Lp.coeFn_compMeasurePreserving (aux_extLp S hS g) (aux_proj_measurePreserving α β j)
+  have h3 := (aux_proj_measurePreserving α β j).quasiMeasurePreserving.ae_eq_comp
+    (aux_extLp_coe S hS g)
+  refine h1.trans ?_
+  exact ae_restrict_of_ae (h2.trans h3)
+
+/-- Auxiliary: existence of the incidence operator `D_E` for measurable vertex sets; this is
+the content of `Auto.aux_incidenceOp_exists` (`rig:def-kernel`) under the measurability
+hypothesis that is part of every core. -/
+theorem aux_incidenceOp_exists_of_measurable (α β : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ²)
+    (hX : ∀ j, MeasurableSet (X j)) :
     ∃ D : HE X →L[ℝ] Lp ℝ 2 (μinc.restrict E),
       ∀ f, (D f : ℝ² × Ang → ℝ) =ᵐ[μinc.restrict E] incidenceFun α β X f := by
-  sorry
+  refine ⟨∑ j, aux_incBlock α β E (X j) (hX j) j ∘L
+      PiLp.proj 2 (fun j => Lp ℝ 2 (volume.restrict (X j))) j,
+    fun f => ?_⟩
+  simp only [Fin.sum_univ_three, add_apply, ContinuousLinearMap.comp_apply,
+    PiLp.proj_apply]
+  filter_upwards [Lp.coeFn_add (aux_incBlock α β E (X 0) (hX 0) 0 (f 0) +
+      aux_incBlock α β E (X 1) (hX 1) 1 (f 1)) (aux_incBlock α β E (X 2) (hX 2) 2 (f 2)),
+    Lp.coeFn_add (aux_incBlock α β E (X 0) (hX 0) 0 (f 0))
+      (aux_incBlock α β E (X 1) (hX 1) 1 (f 1)),
+    aux_incBlock_coe α β E (X 0) (hX 0) 0 (f 0), aux_incBlock_coe α β E (X 1) (hX 1) 1 (f 1),
+    aux_incBlock_coe α β E (X 2) (hX 2) 2 (f 2)] with p h1 h2 h3 h4 h5
+  rw [h1, Pi.add_apply, h2, Pi.add_apply, h3, h4, h5, incidenceFun, Fin.sum_univ_three]
+
+/-- Auxiliary: the map `f ↦ incidenceFun α β X f` induces a continuous linear map
+`HE X →L[ℝ] Lp ℝ 2 (μinc.restrict E)` whenever the vertex sets are measurable (as they are for
+every core, `\label{rig:def-core}`).  Used to define `Auto.incidenceOp` (`\label{rig:def-kernel}`). -/
+theorem aux_incidenceOp_exists (α β : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ²) :
+    ∃ D : HE X →L[ℝ] Lp ℝ 2 (μinc.restrict E), (∀ j, MeasurableSet (X j)) →
+      ∀ f, (D f : ℝ² × Ang → ℝ) =ᵐ[μinc.restrict E] incidenceFun α β X f := by
+  by_cases hX : ∀ j, MeasurableSet (X j)
+  · obtain ⟨D, hD⟩ := aux_incidenceOp_exists_of_measurable α β E X hX
+    exact ⟨D, fun _ => hD⟩
+  · exact ⟨0, fun h => absurd h hX⟩
 
 /-- The scalar incidence operator $D_E:\mathcal H_E\to L^2(E,\mu)$, $D_Ef=\sum_j f_j\circ\pi_j$
 (`\label{rig:def-kernel}`); see `Auto.incidenceOp_ae`. -/
@@ -129,10 +587,11 @@ def incidenceOp (α β : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ²)
   (aux_incidenceOp_exists α β E X).choose
 
 /-- The defining property of $D_E$ (`\label{rig:def-kernel}`):
-$D_Ef=\sum_{j=0}^2f_j\circ\pi_j$ almost everywhere on $E$. -/
-theorem incidenceOp_ae (α β : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ²) (f : HE X) :
+$D_Ef=\sum_{j=0}^2f_j\circ\pi_j$ almost everywhere on $E$, for measurable vertex sets. -/
+theorem incidenceOp_ae (α β : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ²)
+    (hX : ∀ j, MeasurableSet (X j)) (f : HE X) :
     (incidenceOp α β E X f : ℝ² × Ang → ℝ) =ᵐ[μinc.restrict E] incidenceFun α β X f :=
-  (aux_incidenceOp_exists α β E X).choose_spec f
+  (aux_incidenceOp_exists α β E X).choose_spec hX f
 
 /-- **Definition `rig:def-kernel`**.  On a core $(E;X_0,X_1,X_2)$ let
 $$\mathcal H_E=\bigoplus_{j=0}^2L^2(X_j;\mathbb R),\qquad D_E:\mathcal H_E\to L^2(E,\mu),\qquad
@@ -155,12 +614,712 @@ def aux_vertexShift (h : ℝ²) (X : Fin 3 → Set ℝ²) : Fin 3 → Set ℝ² 
 
 /-! ### Finite-dimensionality and a distance estimate (`rig:kernel-gap`) -/
 
+/-- Auxiliary: the base shear `(x, θ) ↦ (x + N u_θ, θ)` preserves `μ`, for every linear map `N`
+(as in `lem:geometry`, part 4); used for the blocks of `D_E^*D_E` (`rig:kernel-gap`). -/
+theorem aux_shear_mp (N : ℝ² →L[ℝ] ℝ²) :
+    MeasurePreserving (fun q : ℝ² × Ang => (q.1 + N (u q.2), q.2)) μinc μinc := by
+  have hc : Measurable fun θ : Ang => N (u θ) := N.continuous.measurable.comp aux_lw_u_meas
+  have hsk : MeasurePreserving (fun q : Ang × ℝ² => (q.1, q.2 + N (u q.1)))
+      (σ.prod (volume : Measure ℝ²)) (σ.prod volume) := by
+    refine (MeasurePreserving.id σ).skew_product (g := fun θ x => x + N (u θ))
+      (measurable_snd.add (hc.comp measurable_fst)) (Eventually.of_forall fun θ => ?_)
+    exact (measurePreserving_add_right volume _).map_eq
+  exact (Measure.measurePreserving_swap (μ := σ) (ν := (volume : Measure ℝ²))).comp
+    (hsk.comp (Measure.measurePreserving_swap (μ := (volume : Measure ℝ²)) (ν := σ)))
+
+/-- Auxiliary: `(x, θ) ↦ x + N u_θ` pushes `μ` forward to Lebesgue measure. -/
+theorem aux_shearFst_mp (N : ℝ² →L[ℝ] ℝ²) :
+    MeasurePreserving (fun q : ℝ² × Ang => q.1 + N (u q.2)) μinc volume := by
+  have h : MeasurePreserving (Prod.fst : ℝ² × Ang → ℝ²) μinc volume := by
+    unfold μinc; exact measurePreserving_fst
+  exact h.comp (aux_shear_mp N)
+
+/-- Auxiliary: if `F = F'` a.e., then for a.e. `z`, `F(z + N u_θ) = F'(z + N u_θ)` for
+`σ`-a.e. `θ` (circle averages only see a.e. classes). -/
+theorem aux_shear_ae {V : Type*} (N : ℝ² →L[ℝ] ℝ²) {F F' : ℝ² → V} (h : F =ᵐ[volume] F') :
+    ∀ᵐ z ∂(volume : Measure ℝ²), ∀ᵐ θ ∂σ, F (z + N (u θ)) = F' (z + N (u θ)) := by
+  have h1 : (fun q : ℝ² × Ang => F (q.1 + N (u q.2))) =ᵐ[μinc]
+      (fun q : ℝ² × Ang => F' (q.1 + N (u q.2))) :=
+    (aux_shearFst_mp N).quasiMeasurePreserving.ae_eq_comp h
+  have h2 : ∀ᵐ q ∂((volume : Measure ℝ²).prod σ), F (q.1 + N (u q.2)) = F' (q.1 + N (u q.2)) :=
+    h1
+  exact Measure.ae_ae_of_ae_prod h2
+
+/-- Auxiliary: the block $T_{ji}F(z)=\int\mathbf 1_E(z-L_ju_\theta,\theta)F(z+(L_i-L_j)u_\theta)
+\,d\sigma(\theta)$ of $D_E^*D_E$ from the proof of `rig:kernel-gap` (for `i = j` it is
+multiplication by the degree, see `Auto.aux_Tfun_diag`).  Used for `Auto.rig_kernel_gap` and
+`Auto.rig_kernel_ui`. -/
+def aux_Tfun (α β : ℝ) (E : Set (ℝ² × Ang)) (i j : Fin 3) (F : ℝ² → ℝ) (z : ℝ²) : ℝ :=
+  ∫ θ, E.indicator (fun _ => (1 : ℝ)) (z - Lv α β j (u θ), θ) *
+    F (z + (Lv α β i - Lv α β j) (u θ)) ∂σ
+
+/-- Auxiliary: the diagonal block is multiplication by the degree (`rig:kernel-gap`). -/
+theorem aux_Tfun_diag (α β : ℝ) (E : Set (ℝ² × Ang)) (j : Fin 3) (F : ℝ² → ℝ) (z : ℝ²) :
+    aux_Tfun α β E j j F z = degree α β j E z * F z := by
+  simp only [aux_Tfun, sub_self, zero_apply, add_zero]
+  rw [integral_mul_const]
+  rfl
+
+/-- Auxiliary: the block `aux_Tfun` only depends on the a.e. class of its input. -/
+theorem aux_Tfun_congr (α β : ℝ) (E : Set (ℝ² × Ang)) (i j : Fin 3) {F F' : ℝ² → ℝ}
+    (h : F =ᵐ[volume] F') : aux_Tfun α β E i j F =ᵐ[volume] aux_Tfun α β E i j F' := by
+  filter_upwards [aux_shear_ae (Lv α β i - Lv α β j) h] with z hz
+  refine integral_congr_ae ?_
+  filter_upwards [hz] with θ hθ
+  rw [hθ]
+
+/-- Auxiliary: the cross-term identity behind the blocks of $D_E^*D_E$ (proof of
+`rig:kernel-gap`): for $F,G\in L^2(\mathbb R^2)$,
+$\int_E F(\pi_ip)G(\pi_jp)\,d\mu(p)=\int G\,T_{ji}F$, the integrand being integrable. -/
+theorem aux_cross (α β : ℝ) (E : Set (ℝ² × Ang)) (hE : MeasurableSet E) (i j : Fin 3)
+    (F G : ℝ² → ℝ) (hF : MemLp F 2 volume) (hG : MemLp G 2 volume) :
+    Integrable (fun p => F (proj α β i p) * G (proj α β j p)) μinc ∧
+      ∫ p in E, F (proj α β i p) * G (proj α β j p) ∂μinc =
+        ∫ z, G z * aux_Tfun α β E i j F z := by
+  have hFi : MemLp (fun p => F (proj α β i p)) 2 μinc :=
+    hF.comp_measurePreserving (aux_proj_measurePreserving α β i)
+  have hGj : MemLp (fun p => G (proj α β j p)) 2 μinc :=
+    hG.comp_measurePreserving (aux_proj_measurePreserving α β j)
+  refine ⟨hFi.integrable_mul hGj, ?_⟩
+  set N := Lv α β i - Lv α β j with hN
+  set S' : Set (ℝ² × Ang) := (fun q : ℝ² × Ang => (q.1 - Lv α β j (u q.2), q.2)) ⁻¹' E with hS'
+  have hS'm : MeasurableSet S' := aux_ker_measurable_unshear α β j hE
+  set H : ℝ² × Ang → ℝ := S'.indicator (fun q => F (q.1 + N (u q.2)) * G q.1) with hH
+  have hFN : MemLp (fun q : ℝ² × Ang => F (q.1 + N (u q.2))) 2 μinc :=
+    hF.comp_measurePreserving (aux_shearFst_mp N)
+  have hfst : MeasurePreserving (Prod.fst : ℝ² × Ang → ℝ²) μinc volume := by
+    unfold μinc; exact measurePreserving_fst
+  have hG1 : MemLp (fun q : ℝ² × Ang => G q.1) 2 μinc := hG.comp_measurePreserving hfst
+  have hHint : Integrable H μinc := (hFN.integrable_mul hG1).indicator hS'm
+  have e1 : ∀ p : ℝ² × Ang, proj α β j p - Lv α β j (u p.2) = p.1 := fun p => by
+    simp [proj]
+  have e2 : ∀ p : ℝ² × Ang, proj α β j p + N (u p.2) = proj α β i p := fun p => by
+    simp only [proj, hN, sub_apply]; abel
+  have hcomp : ∀ p, H (proj α β j p, p.2) =
+      E.indicator (fun p => F (proj α β i p) * G (proj α β j p)) p := by
+    intro p
+    have hmem : (proj α β j p, p.2) ∈ S' ↔ p ∈ E := by
+      simp only [hS', mem_preimage, e1]
+    by_cases hp : p ∈ E
+    · rw [hH, indicator_of_mem (hmem.2 hp), indicator_of_mem hp, e2]
+    · rw [hH, indicator_of_notMem (fun h => hp (hmem.1 h)), indicator_of_notMem hp]
+  have hmp := lem_geometry_measurePreserving α β j
+  calc ∫ p in E, F (proj α β i p) * G (proj α β j p) ∂μinc
+      = ∫ p, E.indicator (fun p => F (proj α β i p) * G (proj α β j p)) p ∂μinc :=
+        (integral_indicator hE).symm
+    _ = ∫ p, H (proj α β j p, p.2) ∂μinc := by simp_rw [hcomp]
+    _ = ∫ q, H q ∂μinc := by
+        rw [← integral_map hmp.measurable.aemeasurable
+          (by rw [hmp.map_eq]; exact hHint.aestronglyMeasurable), hmp.map_eq]
+    _ = ∫ z, ∫ θ, H (z, θ) ∂σ := integral_prod H hHint
+    _ = ∫ z, G z * aux_Tfun α β E i j F z := by
+        congr 1; funext z
+        rw [aux_Tfun, ← integral_const_mul]
+        congr 1; funext θ
+        by_cases h : (z - Lv α β j (u θ), θ) ∈ E
+        · have h' : (z, θ) ∈ S' := h
+          rw [hH, indicator_of_mem h', indicator_of_mem h]; ring
+        · have h' : (z, θ) ∉ S' := h
+          rw [hH, indicator_of_notMem h', indicator_of_notMem h]; ring
+
+/-- Auxiliary: `‖T_{ji}F‖₂ ≤ ‖F‖₂` for strongly measurable `F` (helper for
+`Auto.aux_Tfun_memLp`). -/
+theorem aux_Tfun_memLp_of_sm (α β : ℝ) (E : Set (ℝ² × Ang)) (hE : MeasurableSet E) (i j : Fin 3)
+    (F : ℝ² → ℝ) (hFm : StronglyMeasurable F) :
+    AEStronglyMeasurable (aux_Tfun α β E i j F) volume ∧
+      eLpNorm (aux_Tfun α β E i j F) 2 volume ≤ eLpNorm F 2 volume := by
+  set N := Lv α β i - Lv α β j with hN
+  have hK : StronglyMeasurable (fun q : ℝ² × Ang =>
+      E.indicator (fun _ => (1 : ℝ)) (q.1 - Lv α β j (u q.2), q.2) * F (q.1 + N (u q.2))) := by
+    refine StronglyMeasurable.mul ?_ ?_
+    · exact ((measurable_const.indicator hE).comp
+        (aux_ker_measurable_unshear α β j)).stronglyMeasurable
+    · exact hFm.comp_measurable (aux_shearFst_mp N).measurable
+  have hTm : StronglyMeasurable (aux_Tfun α β E i j F) := hK.integral_prod_right'
+  refine ⟨hTm.aestronglyMeasurable, ?_⟩
+  have hFN : ∀ z, AEStronglyMeasurable (fun θ : Ang => F (z + N (u θ))) σ := fun z =>
+    (hFm.comp_measurable (measurable_const.add
+      (N.continuous.measurable.comp aux_lw_u_meas))).aestronglyMeasurable
+  have hpt : ∀ z, ‖aux_Tfun α β E i j F z‖ₑ ^ 2 ≤ ∫⁻ θ, ‖F (z + N (u θ))‖ₑ ^ 2 ∂σ := by
+    intro z
+    have h1 : ‖aux_Tfun α β E i j F z‖ₑ ≤ eLpNorm (fun θ : Ang => F (z + N (u θ))) 1 σ := by
+      rw [eLpNorm_one_eq_lintegral_enorm]
+      refine (enorm_integral_le_lintegral_enorm _).trans (lintegral_mono fun θ => ?_)
+      rw [enorm_mul]
+      refine (mul_le_of_le_one_left' ?_).trans le_rfl
+      by_cases h : (z - Lv α β j (u θ), θ) ∈ E <;> simp [h]
+    have h2 := eLpNorm_le_eLpNorm_of_exponent_le (μ := σ) (p := 1) (q := 2) (by norm_num) (hFN z)
+    calc ‖aux_Tfun α β E i j F z‖ₑ ^ 2 ≤ eLpNorm (fun θ : Ang => F (z + N (u θ))) 2 σ ^ 2 := by
+          gcongr; exact h1.trans h2
+      _ = ∫⁻ θ, ‖F (z + N (u θ))‖ₑ ^ 2 ∂σ := aux_s2a_eLpNorm_two_sq _ _
+  have hsq : eLpNorm (aux_Tfun α β E i j F) 2 volume ^ 2 ≤ eLpNorm F 2 volume ^ 2 := by
+    rw [aux_s2a_eLpNorm_two_sq, aux_s2a_eLpNorm_two_sq]
+    calc ∫⁻ z, ‖aux_Tfun α β E i j F z‖ₑ ^ 2 ≤ ∫⁻ z, ∫⁻ θ, ‖F (z + N (u θ))‖ₑ ^ 2 ∂σ :=
+          lintegral_mono hpt
+      _ = ∫⁻ q, ‖F (q.1 + N (u q.2))‖ₑ ^ 2 ∂μinc := by
+          have hm : Measurable (fun q : ℝ² × Ang => ‖F (q.1 + N (u q.2))‖ₑ ^ 2) :=
+            ((hFm.comp_measurable (aux_shearFst_mp N).measurable).measurable.enorm.pow_const 2)
+          rw [μinc, lintegral_prod _ hm.aemeasurable]
+      _ = ∫⁻ z, ‖F z‖ₑ ^ 2 := by
+          exact (aux_shearFst_mp N).lintegral_comp (f := fun z => ‖F z‖ₑ ^ 2)
+            (hFm.measurable.enorm.pow_const 2)
+  exact (ENNReal.pow_le_pow_left_iff (by norm_num : (2 : ℕ) ≠ 0)).1 hsq
+
+/-- Auxiliary: $T_{ji}$ maps $L^2$ to $L^2$ with norm at most one (proof of `rig:kernel-gap`,
+used for `Auto.rig_kernel_gap` and `Auto.rig_kernel_ui`). -/
+theorem aux_Tfun_memLp (α β : ℝ) (E : Set (ℝ² × Ang)) (hE : MeasurableSet E) (i j : Fin 3)
+    (F : ℝ² → ℝ) (hF : MemLp F 2 volume) :
+    MemLp (aux_Tfun α β E i j F) 2 volume ∧
+      eLpNorm (aux_Tfun α β E i j F) 2 volume ≤ eLpNorm F 2 volume := by
+  set F' := hF.1.mk F
+  have hFF' : F =ᵐ[volume] F' := hF.1.ae_eq_mk
+  have hc := aux_Tfun_congr α β E i j hFF'
+  obtain ⟨h1, h2⟩ := aux_Tfun_memLp_of_sm α β E hE i j F' hF.1.stronglyMeasurable_mk
+  have e1 : eLpNorm (aux_Tfun α β E i j F) 2 volume = eLpNorm (aux_Tfun α β E i j F') 2 volume :=
+    eLpNorm_congr_ae hc
+  have e2 : eLpNorm F 2 volume = eLpNorm F' 2 volume := eLpNorm_congr_ae hFF'
+  have hle : eLpNorm (aux_Tfun α β E i j F) 2 volume ≤ eLpNorm F 2 volume := by
+    rw [e1, e2]; exact h2
+  exact ⟨⟨h1.congr hc.symm, hle.trans_lt hF.2⟩, hle⟩
+
+/-- Auxiliary: the real inner product on `ℝ` is multiplication. -/
+theorem aux_real_inner_eq_mul (a b : ℝ) : ⟪a, b⟫_ℝ = a * b := by
+  simp only [RCLike.inner_apply, conj_trivial]; ring
+
+/-- Auxiliary: the defining property of `D_E` for measurable vertex sets (all downstream proofs
+use this form, which only relies on `Auto.incidenceOp_ae` under the measurability hypothesis
+present in every core; `rig:def-kernel`). -/
+theorem aux_incidenceOp_ae' (α β : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ²)
+    (hX : ∀ j, MeasurableSet (X j)) (f : HE X) :
+    (incidenceOp α β E X f : ℝ² × Ang → ℝ) =ᵐ[μinc.restrict E] incidenceFun α β X f :=
+  incidenceOp_ae α β E X hX f
+
+/-- Auxiliary: the bilinear form of $D_E^*D_E$ in terms of its blocks (proof of
+`rig:kernel-gap`): $\langle D_Ef,D_Eg\rangle=\sum_{i,j}\int (\mathbf 1_{X_j}g_j)\,
+T_{ji}(\mathbf 1_{X_i}f_i)$. -/
+theorem aux_inner_incidenceOp (α β : ℝ) (E : Set (ℝ² × Ang)) (hE : MeasurableSet E)
+    (X : Fin 3 → Set ℝ²) (hX : ∀ j, MeasurableSet (X j)) (f g : HE X) :
+    ⟪incidenceOp α β E X f, incidenceOp α β E X g⟫_ℝ =
+      ∑ i, ∑ j, ∫ z, (X j).indicator (g j : ℝ² → ℝ) z *
+        aux_Tfun α β E i j ((X i).indicator (f i : ℝ² → ℝ)) z := by
+  have hF : ∀ i, MemLp ((X i).indicator (f i : ℝ² → ℝ)) 2 volume := fun i =>
+    aux_memLp_indicator (X i) (hX i) (f i)
+  have hG : ∀ j, MemLp ((X j).indicator (g j : ℝ² → ℝ)) 2 volume := fun j =>
+    aux_memLp_indicator (X j) (hX j) (g j)
+  rw [L2.inner_def]
+  have e1 : ∫ p in E, ⟪(incidenceOp α β E X f : ℝ² × Ang → ℝ) p,
+      (incidenceOp α β E X g : ℝ² × Ang → ℝ) p⟫_ℝ ∂μinc =
+      ∫ p in E, ∑ i, ∑ j, (X i).indicator (f i : ℝ² → ℝ) (proj α β i p) *
+        (X j).indicator (g j : ℝ² → ℝ) (proj α β j p) ∂μinc := by
+    refine integral_congr_ae ?_
+    filter_upwards [aux_incidenceOp_ae' α β E X hX f, aux_incidenceOp_ae' α β E X hX g]
+      with p h1 h2
+    rw [h1, h2, incidenceFun, incidenceFun, aux_real_inner_eq_mul, Finset.sum_mul_sum]
+  rw [e1, integral_finsetSum _ (fun i _ => integrable_finsetSum _ fun j _ =>
+    (aux_cross α β E hE i j _ _ (hF i) (hG j)).1.restrict)]
+  refine Finset.sum_congr rfl fun i _ => ?_
+  rw [integral_finsetSum _ (fun j _ => (aux_cross α β E hE i j _ _ (hF i) (hG j)).1.restrict)]
+  exact Finset.sum_congr rfl fun j _ => (aux_cross α β E hE i j _ _ (hF i) (hG j)).2
+
+
+
+/-- Auxiliary: each difference `L_i - L_j`, `i ≠ j`, multiplies lengths by a positive constant
+(from `lem:geometry`, part 1); needed to apply `lem:circle-compact` in `rig:kernel-gap` and
+`rig:kernel-ui`. -/
+theorem aux_Lv_sub_similarity (α β : ℝ) (hβ : β ≠ 0) (i j : Fin 3) (hij : i ≠ j) :
+    ∃ c > 0, ∀ x, ‖(Lv α β i - Lv α β j) x‖ = c * ‖x‖ := by
+  obtain ⟨a, b, hab, he⟩ := lem_geometry_differences α β hβ i j hij
+  refine ⟨aux_mM a b, ?_, fun x => ?_⟩
+  · unfold aux_mM; exact Real.sqrt_pos.2 hab
+  · rw [he]; exact aux_lw_norm_M a b x
+
+/-- Auxiliary: the circle operator with a real weight applied to a real function is the
+complexification of the corresponding real circle average. -/
+theorem aux_circleOp_ofReal (N : ℝ² →L[ℝ] ℝ²) (w : ℝ² → Ang → ℝ) (F : ℝ² → ℝ) (z : ℝ²) :
+    circleOp N (fun z θ => (w z θ : ℂ)) (fun x => (F x : ℂ)) z =
+      ((∫ θ, w z θ * F (z + N (u θ)) ∂σ : ℝ) : ℂ) := by
+  rw [circleOp, ← integral_complex_ofReal]
+  congr 1; funext θ; push_cast; ring
+
+/-- Auxiliary: the circle operator only depends on the a.e. class of its input. -/
+theorem aux_circleOp_congr (N : ℝ² →L[ℝ] ℝ²) (W : ℝ² → Ang → ℂ) {f f' : ℝ² → ℂ}
+    (h : f =ᵐ[volume] f') : circleOp N W f =ᵐ[volume] circleOp N W f' := by
+  filter_upwards [aux_shear_ae N h] with z hz
+  refine integral_congr_ae ?_
+  filter_upwards [hz] with θ hθ
+  simp only [hθ]
+
+/-- Auxiliary: the off-diagonal block `T_{ji}`, `i ≠ j`, of `D_E^*D_E` as a compact operator
+`L²(X_i) → L²(X_j)` (proof of `rig:kernel-gap`, via `lem:circle-compact`); used for
+`Auto.rig_kernel_gap`. -/
+theorem aux_block_compact (α β : ℝ) (hβ : β ≠ 0) (E : Set (ℝ² × Ang)) (hE : MeasurableSet E)
+    (X : Fin 3 → Set ℝ²) (hX : ∀ j, MeasurableSet (X j))
+    (hXb : ∀ j, Bornology.IsBounded (X j)) (i j : Fin 3) (hij : i ≠ j) :
+    ∃ T : Lp ℝ 2 (volume.restrict (X i)) →L[ℝ] Lp ℝ 2 (volume.restrict (X j)),
+      IsCompactOperator T ∧ ∀ g, (T g : ℝ² → ℝ) =ᵐ[volume.restrict (X j)]
+        aux_Tfun α β E i j ((X i).indicator (g : ℝ² → ℝ)) := by
+  set N := Lv α β i - Lv α β j with hN
+  set w : ℝ² → Ang → ℝ := fun z θ =>
+    (X j).indicator (fun _ => (1 : ℝ)) z * E.indicator (fun _ => (1 : ℝ)) (z - Lv α β j (u θ), θ)
+    with hw
+  have hwm : Measurable (Function.uncurry w) := by
+    refine Measurable.mul ?_ ?_
+    · exact (measurable_const.indicator (hX j)).comp measurable_fst
+    · exact (measurable_const.indicator hE).comp (aux_ker_measurable_unshear α β j)
+  have hw1 : ∀ z θ, ‖((w z θ : ℝ) : ℂ)‖ ≤ 1 := by
+    intro z θ
+    rw [Complex.norm_real, Real.norm_eq_abs, hw]
+    by_cases h1 : z ∈ X j <;> by_cases h2 : (z - Lv α β j (u θ), θ) ∈ E <;> simp [h1, h2]
+  have hw0 : ∀ z θ, z ∉ X j → ((w z θ : ℝ) : ℂ) = 0 := by
+    intro z θ hz; simp [hw, hz]
+  obtain ⟨T, hTc, hT⟩ := lem_circle_compact N (aux_Lv_sub_similarity α β hβ i j hij)
+    (fun z θ => ((w z θ : ℝ) : ℂ)) (Complex.measurable_ofReal.comp hwm) hw1 (X j) (hXb j) hw0
+  set A : Lp ℝ 2 (volume.restrict (X i)) →L[ℝ] Lp ℂ 2 (volume : Measure ℝ²) :=
+    (Complex.ofRealCLM.compLpL 2 volume) ∘L aux_extLp (X i) (hX i) with hA
+  set B : Lp ℂ 2 (volume : Measure ℝ²) →L[ℝ] Lp ℝ 2 (volume.restrict (X j)) :=
+    LpToLpRestrictCLM ℝ² ℝ ℝ volume 2 (X j) ∘L Complex.reCLM.compLpL 2 volume with hB
+  refine ⟨B ∘L (T.restrictScalars ℝ) ∘L A, ?_, fun g => ?_⟩
+  · have h1 : IsCompactOperator (⇑T ∘ ⇑A) := hT.comp_clm A
+    have h2 := h1.clm_comp B
+    simpa [ContinuousLinearMap.coe_comp] using h2
+  · simp only [ContinuousLinearMap.comp_apply, ContinuousLinearMap.coe_restrictScalars']
+    have hB1 := LpToLpRestrictCLM_coeFn ℝ (μ := (volume : Measure ℝ²)) (p := 2) (X j)
+      (Complex.reCLM.compLpL 2 volume (T (A g)))
+    have hB2 := ContinuousLinearMap.coeFn_compLpL (p := 2) (μ := (volume : Measure ℝ²))
+      Complex.reCLM (T (A g))
+    have hT1 := hTc (A g)
+    have hA1 := ContinuousLinearMap.coeFn_compLpL (p := 2) (μ := (volume : Measure ℝ²))
+      Complex.ofRealCLM (aux_extLp (X i) (hX i) g)
+    have hA2 := aux_extLp_coe (X i) (hX i) g
+    have hA3 : (A g : ℝ² → ℂ) =ᵐ[volume] fun x => (((X i).indicator (g : ℝ² → ℝ) x : ℝ) : ℂ) := by
+      filter_upwards [hA1, hA2] with x h1 h2
+      simp only [hA, ContinuousLinearMap.comp_apply]
+      rw [h1, h2]; rfl
+    have hC := aux_circleOp_congr N (fun z θ => ((w z θ : ℝ) : ℂ)) hA3
+    refine hB1.trans ?_
+    have hmem : ∀ᵐ z ∂(volume.restrict (X j)), z ∈ X j := ae_restrict_mem (hX j)
+    filter_upwards [ae_restrict_of_ae hB2, ae_restrict_of_ae hT1, ae_restrict_of_ae hC, hmem]
+      with z h1 h2 h3 h4
+    rw [h1, h2, h3, aux_circleOp_ofReal]
+    simp only [Complex.reCLM_apply, Complex.ofReal_re, aux_Tfun, hw, indicator_of_mem h4, one_mul,
+      hN]
+
+
+
+/-- Auxiliary: the inclusion of the `j`-th summand into `𝓗_E` (`rig:def-kernel`). -/
+def aux_singleCLM (X : Fin 3 → Set ℝ²) (j : Fin 3) :
+    Lp ℝ 2 (volume.restrict (X j)) →L[ℝ] HE X :=
+  (PiLp.continuousLinearEquiv 2 ℝ
+    (fun j : Fin 3 => Lp ℝ 2 (volume.restrict (X j)))).symm.toContinuousLinearMap
+    ∘L ContinuousLinearMap.single ℝ (fun j : Fin 3 => Lp ℝ 2 (volume.restrict (X j))) j
+
+/-- Auxiliary: `⟨ι_j x, g⟩ = ⟨x, g_j⟩`. -/
+theorem aux_inner_singleCLM (X : Fin 3 → Set ℝ²) (j : Fin 3) (x : Lp ℝ 2 (volume.restrict (X j)))
+    (g : HE X) : ⟪aux_singleCLM X j x, g⟫_ℝ = ⟪x, g j⟫_ℝ := by
+  have e : aux_singleCLM X j x = PiLp.single 2 j x := rfl
+  rw [e, PiLp.inner_apply, Fintype.sum_eq_single j]
+  · rw [PiLp.single_eq_same]
+  · intro k hk; rw [PiLp.single_eq_of_ne 2 hk, inner_zero_left]
+
+/-- Auxiliary: the `L²(X_j)` inner product as an integral over the plane of zero extensions. -/
+theorem aux_inner_Lp_restrict (S : Set ℝ²) (hS : MeasurableSet S) (x y : Lp ℝ 2 (volume.restrict S))
+    (H : ℝ² → ℝ) (hxH : (x : ℝ² → ℝ) =ᵐ[volume.restrict S] H) :
+    ⟪x, y⟫_ℝ = ∫ z, S.indicator (y : ℝ² → ℝ) z * H z := by
+  have e0 : ⟪x, y⟫_ℝ = ∫ z, ⟪(x : ℝ² → ℝ) z, (y : ℝ² → ℝ) z⟫_ℝ ∂(volume.restrict S) :=
+    L2.inner_def x y
+  rw [e0]
+  have e1 : ∫ z, ⟪(x : ℝ² → ℝ) z, (y : ℝ² → ℝ) z⟫_ℝ ∂(volume.restrict S) =
+      ∫ z in S, (y : ℝ² → ℝ) z * H z := by
+    refine integral_congr_ae ?_
+    filter_upwards [hxH] with z hz
+    rw [aux_real_inner_eq_mul, hz, mul_comm]
+  rw [e1, ← integral_indicator hS]
+  congr 1; funext z
+  by_cases hz : z ∈ S <;> simp [hz]
+
+/-- Auxiliary: the `(i, j)` block operator `ι_j ∘ T_{ji} ∘ π_i` on `𝓗_E` (zero for `i = j`);
+used to assemble the compact part of `D_E^*D_E` in `Auto.aux_K_exists`. -/
+def aux_blockTerm (X : Fin 3 → Set ℝ²)
+    (T : (i j : Fin 3) → i ≠ j →
+      Lp ℝ 2 (volume.restrict (X i)) →L[ℝ] Lp ℝ 2 (volume.restrict (X j)))
+    (i j : Fin 3) : HE X →L[ℝ] HE X :=
+  if h : i = j then 0 else
+    aux_singleCLM X j ∘L T i j h ∘L
+      PiLp.proj 2 (fun j : Fin 3 => Lp ℝ 2 (volume.restrict (X j))) (𝕜 := ℝ) i
+
+/-- Auxiliary: the compact part `K` of `D_E^*D_E = A + K` (proof of `rig:kernel-gap`), the sum of
+the off-diagonal blocks `T_{ji}`, `i ≠ j`.  Used for `Auto.rig_kernel_gap`. -/
+theorem aux_K_exists (α β : ℝ) (hβ : β ≠ 0) (E : Set (ℝ² × Ang)) (hE : MeasurableSet E)
+    (X : Fin 3 → Set ℝ²) (hX : ∀ j, MeasurableSet (X j))
+    (hXb : ∀ j, Bornology.IsBounded (X j)) :
+    ∃ K : HE X →L[ℝ] HE X, IsCompactOperator K ∧ ∀ f g : HE X,
+      ⟪K f, g⟫_ℝ = ∑ i, ∑ j, if i = j then 0 else
+        ∫ z, (X j).indicator (g j : ℝ² → ℝ) z *
+          aux_Tfun α β E i j ((X i).indicator (f i : ℝ² → ℝ)) z := by
+  have hT := fun i j (hij : i ≠ j) => aux_block_compact α β hβ E hE X hX hXb i j hij
+  choose T hTc hTe using hT
+  have hc : ∀ i j, IsCompactOperator (aux_blockTerm X T i j) := by
+    intro i j
+    unfold aux_blockTerm
+    by_cases h : i = j
+    · rw [dif_pos h]; exact isCompactOperator_zero
+    · rw [dif_neg h]
+      have := ((hTc i j h).comp_clm (PiLp.proj 2 (fun j : Fin 3 => Lp ℝ 2 (volume.restrict (X j)))
+        (𝕜 := ℝ) i)).clm_comp (aux_singleCLM X j)
+      simpa [ContinuousLinearMap.coe_comp] using this
+  refine ⟨∑ i, ∑ j, aux_blockTerm X T i j, ?_, fun f g => ?_⟩
+  · have hsum : ∀ (s : Finset (Fin 3)) (F : Fin 3 → (HE X →L[ℝ] HE X)),
+        (∀ i, IsCompactOperator ⇑(F i)) → IsCompactOperator ⇑(∑ i ∈ s, F i) := by
+      intro s F hF
+      induction s using Finset.induction_on with
+      | empty => exact isCompactOperator_zero
+      | insert a s ha ih =>
+        rw [Finset.sum_insert ha]
+        exact (hF a).add ih
+    exact hsum _ _ fun i => hsum _ _ fun j => hc i j
+  · rw [sum_apply, sum_inner]
+    refine Finset.sum_congr rfl fun i _ => ?_
+    rw [sum_apply, sum_inner]
+    refine Finset.sum_congr rfl fun j _ => ?_
+    unfold aux_blockTerm
+    by_cases h : i = j
+    · rw [dif_pos h, if_pos h, zero_apply, inner_zero_left]
+    · rw [dif_neg h, if_neg h, ContinuousLinearMap.comp_apply, ContinuousLinearMap.comp_apply,
+        aux_inner_singleCLM]
+      exact aux_inner_Lp_restrict (X j) (hX j) _ _ _ (hTe i j h _)
+
+/-- Auxiliary: the decomposition $\langle D_Ef,D_Eg\rangle=\langle Af,g\rangle+\langle Kf,g\rangle$
+with $A$ the diagonal multiplication by the degrees (proof of `rig:kernel-gap`). -/
+theorem aux_inner_incidenceOp_split (α β : ℝ) (E : Set (ℝ² × Ang)) (hE : MeasurableSet E)
+    (X : Fin 3 → Set ℝ²) (hX : ∀ j, MeasurableSet (X j)) (K : HE X →L[ℝ] HE X)
+    (hK : ∀ f g : HE X, ⟪K f, g⟫_ℝ = ∑ i, ∑ j, if i = j then 0 else
+        ∫ z, (X j).indicator (g j : ℝ² → ℝ) z *
+          aux_Tfun α β E i j ((X i).indicator (f i : ℝ² → ℝ)) z) (f g : HE X) :
+    ⟪incidenceOp α β E X f, incidenceOp α β E X g⟫_ℝ =
+      (∑ j, ∫ z, (X j).indicator (g j : ℝ² → ℝ) z *
+        (degree α β j E z * (X j).indicator (f j : ℝ² → ℝ) z)) + ⟪K f, g⟫_ℝ := by
+  rw [aux_inner_incidenceOp α β E hE X hX, hK]
+  rw [← Finset.sum_add_distrib]
+  refine Finset.sum_congr rfl fun i _ => ?_
+  rw [Fintype.sum_eq_add_sum_compl i,
+    Fintype.sum_eq_add_sum_compl i (f := fun j => if i = j then _ else _)]
+  simp only [if_true, zero_add, aux_Tfun_diag]
+  congr 1
+  refine Finset.sum_congr rfl fun j hj => ?_
+  have hij : i ≠ j := fun h => (Finset.mem_compl.1 hj) (by simp [h])
+  rw [if_neg hij]
+
+/-- Auxiliary: the coercivity of the diagonal part, $\langle Af,f\rangle\ge c\|f\|^2$ on a core
+of degree `c` (proof of `rig:kernel-gap`). -/
+theorem aux_diag_coercive (α β : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ²) (c : ℝ)
+    (hEc : IsCore α β E X c) (f : HE X) :
+    c * ‖f‖ ^ 2 ≤ ∑ j, ∫ z, (X j).indicator (f j : ℝ² → ℝ) z *
+        (degree α β j E z * (X j).indicator (f j : ℝ² → ℝ) z) := by
+  have hX := hEc.measurableSet_X
+  have hEm := hEc.measurableSet_E
+  rw [PiLp.norm_sq_eq_of_L2, Finset.mul_sum]
+  refine Finset.sum_le_sum fun j _ => ?_
+  set F := (X j).indicator (f j : ℝ² → ℝ)
+  have hF : MemLp F 2 volume := aux_memLp_indicator (X j) (hX j) (f j)
+  have hF2 : Integrable (fun z => F z * F z) volume := by
+    simpa [pow_two] using hF.integrable_sq
+  have hnorm : ‖f j‖ ^ 2 = ∫ z, F z * F z := by
+    rw [← real_inner_self_eq_norm_sq, aux_inner_Lp_restrict (X j) (hX j) (f j) (f j) _
+      (EventuallyEq.refl _ _)]
+    congr 1; funext z
+    by_cases hz : z ∈ X j <;> simp [F, hz]
+  rw [hnorm, ← integral_const_mul]
+  have hdm := aux_degree_measurable α β j E hEm
+  have hb := rig_degree_integration_bounds α β j E hEm
+  have hint : Integrable (fun z => F z * (degree α β j E z * F z)) volume := by
+    have : Integrable (fun z => degree α β j E z * (F z * F z)) volume := by
+      refine hF2.bdd_mul (c := 1) hdm.aestronglyMeasurable (Eventually.of_forall fun z => ?_)
+      rw [Real.norm_eq_abs, abs_of_nonneg (hb z).1]; exact (hb z).2
+    refine this.congr (Eventually.of_forall fun z => ?_)
+    simp only; ring
+  refine integral_mono_ae (hF2.const_mul c) hint ?_
+  have hdeg := (ae_restrict_iff' (hX j)).1 (hEc.ae_degree_ge j)
+  filter_upwards [hdeg] with z hz
+  by_cases hzX : z ∈ X j
+  · have := hz hzX
+    have h2 : 0 ≤ F z * F z := mul_self_nonneg _
+    nlinarith
+  · simp [F, hzX]
+
+
+
+section AbstractGap
+
+variable {H V : Type*} [NormedAddCommGroup H] [InnerProductSpace ℝ H] [CompleteSpace H]
+  [NormedAddCommGroup V] [InnerProductSpace ℝ V]
+
+/-- Auxiliary (compactness step of `rig:kernel-gap`, cf. `ext:compact-gap`): if
+$c\|f\|^2\le\|Df\|^2-\langle Kf,f\rangle$ with $K$ compact, then every bounded sequence along
+which $Df$ is Cauchy has a convergent subsequence. -/
+theorem aux_gap_subseq (D : H →L[ℝ] V) (K : H →L[ℝ] H) (hK : IsCompactOperator K) (c : ℝ)
+    (hc : 0 < c) (hcoer : ∀ f, c * ‖f‖ ^ 2 ≤ ‖D f‖ ^ 2 - ⟪K f, f⟫_ℝ)
+    (x : ℕ → H) (R : ℝ) (hR : ∀ n, ‖x n‖ ≤ R) (hD : CauchySeq (fun n => D (x n))) :
+    ∃ φ : ℕ → ℕ, StrictMono φ ∧ ∃ y, Tendsto (x ∘ φ) atTop (𝓝 y) := by
+  have hmem : ∀ n, K (x n) ∈ closure (K '' Metric.closedBall 0 R) := fun n =>
+    subset_closure ⟨x n, by simpa using hR n, rfl⟩
+  obtain ⟨z, -, φ, hφ, hz⟩ := (hK.isCompact_closure_image_closedBall R).tendsto_subseq hmem
+  refine ⟨φ, hφ, ?_⟩
+  have hR0 : 0 ≤ R := (norm_nonneg _).trans (hR 0)
+  -- the key estimate
+  have hest : ∀ a b, c * ‖x a - x b‖ ^ 2 ≤
+      ‖D (x a) - D (x b)‖ ^ 2 + ‖K (x a) - K (x b)‖ * (2 * R) := by
+    intro a b
+    have h1 := hcoer (x a - x b)
+    have h2 : -⟪K (x a - x b), x a - x b⟫_ℝ ≤ ‖K (x a) - K (x b)‖ * (2 * R) := by
+      calc -⟪K (x a - x b), x a - x b⟫_ℝ ≤ |⟪K (x a - x b), x a - x b⟫_ℝ| := neg_le_abs _
+        _ ≤ ‖K (x a - x b)‖ * ‖x a - x b‖ := abs_real_inner_le_norm _ _
+        _ ≤ ‖K (x a) - K (x b)‖ * (2 * R) := by
+            rw [map_sub]
+            gcongr
+            calc ‖x a - x b‖ ≤ ‖x a‖ + ‖x b‖ := norm_sub_le _ _
+              _ ≤ 2 * R := by linarith [hR a, hR b]
+    rw [map_sub] at h1
+    linarith
+  have hKc : CauchySeq (fun n => K (x (φ n))) := hz.cauchySeq
+  have hDc : CauchySeq (fun n => D (x (φ n))) := hD.comp_tendsto hφ.tendsto_atTop
+  have hcs : CauchySeq (x ∘ φ) := by
+    rw [Metric.cauchySeq_iff] at hKc hDc ⊢
+    intro ε hε
+    -- choose `δ` with `δ² + 2Rδ < c ε²`
+    obtain ⟨δ, hδ, hδε⟩ : ∃ δ > 0, δ ^ 2 + δ * (2 * R) < c * ε ^ 2 := by
+      have hcont : Tendsto (fun δ : ℝ => δ ^ 2 + δ * (2 * R)) (𝓝[>] 0) (𝓝 0) := by
+        have : Tendsto (fun δ : ℝ => δ ^ 2 + δ * (2 * R)) (𝓝 0) (𝓝 (0 ^ 2 + 0 * (2 * R))) :=
+          ((continuous_pow 2).add (continuous_id.mul continuous_const)).tendsto 0
+        simpa using this.mono_left nhdsWithin_le_nhds
+      have hpos : 0 < c * ε ^ 2 := by positivity
+      obtain ⟨δ, hδ1, hδ2⟩ := ((hcont.eventually (gt_mem_nhds hpos)).and
+        self_mem_nhdsWithin).exists
+      exact ⟨δ, hδ2, hδ1⟩
+    obtain ⟨N1, hN1⟩ := hKc δ hδ
+    obtain ⟨N2, hN2⟩ := hDc δ hδ
+    refine ⟨max N1 N2, fun m hm n hn => ?_⟩
+    have hK' := hN1 m (le_of_max_le_left hm) n (le_of_max_le_left hn)
+    have hD' := hN2 m (le_of_max_le_right hm) n (le_of_max_le_right hn)
+    rw [dist_eq_norm] at hK' hD' ⊢
+    have h := hest (φ m) (φ n)
+    have h3 : ‖D (x (φ m)) - D (x (φ n))‖ ^ 2 ≤ δ ^ 2 := by
+      gcongr
+    have h4 : ‖K (x (φ m)) - K (x (φ n))‖ * (2 * R) ≤ δ * (2 * R) := by
+      gcongr
+    have h5 : c * ‖x (φ m) - x (φ n)‖ ^ 2 < c * ε ^ 2 := by linarith
+    have h6 : ‖x (φ m) - x (φ n)‖ ^ 2 < ε ^ 2 := lt_of_mul_lt_mul_left h5 hc.le
+    exact lt_of_pow_lt_pow_left₀ 2 hε.le h6
+  exact cauchySeq_tendsto_of_complete hcs
+
+/-- Auxiliary (abstract form of `rig:kernel-gap`, via the argument of `ext:compact-gap`): if
+$c\|f\|^2\le\|Df\|^2-\langle Kf,f\rangle$ for a compact $K$ and $c>0$, then $\ker D$ is finite
+dimensional and $\operatorname{dist}(f,\ker D)\le C\|Df\|$. -/
+theorem aux_abstract_gap (D : H →L[ℝ] V) (K : H →L[ℝ] H) (hK : IsCompactOperator K) (c : ℝ)
+    (hc : 0 < c) (hcoer : ∀ f, c * ‖f‖ ^ 2 ≤ ‖D f‖ ^ 2 - ⟪K f, f⟫_ℝ) :
+    FiniteDimensional ℝ (LinearMap.ker (D : H →ₗ[ℝ] V)) ∧
+      ∃ C : ℝ, 0 ≤ C ∧ ∀ f, Metric.infDist f (LinearMap.ker (D : H →ₗ[ℝ] V) : Set H) ≤
+        C * ‖D f‖ := by
+  set W := LinearMap.ker (D : H →ₗ[ℝ] V) with hW
+  have hWc : IsClosed (W : Set H) := ContinuousLinearMap.isClosed_ker D
+  -- finite dimensionality
+  have hfd : FiniteDimensional ℝ W := by
+    refine FiniteDimensional.of_isCompact_closedBall₀ ℝ one_pos ?_
+    refine IsSeqCompact.isCompact ?_
+    intro y hy
+    have hy' : ∀ n, ‖(y n : H)‖ ≤ 1 := fun n => by
+      have := hy n; simpa [mem_closedBall_zero_iff] using this
+    have hD0 : CauchySeq (fun n => D (y n : H)) := by
+      have : (fun n => D (y n : H)) = fun _ => 0 := funext fun n => (y n).2
+      rw [this]; exact cauchySeq_const _
+    obtain ⟨φ, hφ, x, hx⟩ := aux_gap_subseq D K hK c hc hcoer (fun n => (y n : H)) 1 hy' hD0
+    have hxW : x ∈ W := hWc.mem_of_tendsto hx (Eventually.of_forall fun n => (y (φ n)).2)
+    refine ⟨⟨x, hxW⟩, ?_, φ, hφ, ?_⟩
+    · have h1 : ‖x‖ ≤ 1 := le_of_tendsto (continuous_norm.tendsto x |>.comp hx)
+        (Eventually.of_forall fun n => hy' (φ n))
+      simpa [mem_closedBall_zero_iff] using h1
+    · rw [tendsto_subtype_rng]; exact hx
+  refine ⟨hfd, ?_⟩
+  have : CompleteSpace W := FiniteDimensional.complete ℝ W
+  -- coercivity on the orthogonal complement
+  have hγ : ∃ γ > (0 : ℝ), ∀ w ∈ Wᗮ, γ * ‖w‖ ≤ ‖D w‖ := by
+    by_contra hcon
+    push Not at hcon
+    have hw : ∀ n : ℕ, ∃ w ∈ Wᗮ, ‖D w‖ < (1 / ((n : ℝ) + 1)) * ‖w‖ :=
+      fun n => hcon _ (by positivity)
+    choose w hwW hwlt using hw
+    have hw0 : ∀ n, w n ≠ 0 := by
+      intro n h
+      have := hwlt n
+      simp [h] at this
+    set v : ℕ → H := fun n => (‖w n‖⁻¹ : ℝ) • w n with hv
+    have hvnorm : ∀ n, ‖v n‖ = 1 := by
+      intro n
+      simp only [hv, norm_smul, Real.norm_eq_abs, abs_inv, abs_norm]
+      exact inv_mul_cancel₀ (norm_ne_zero_iff.2 (hw0 n))
+    have hvW : ∀ n, v n ∈ Wᗮ := fun n => Submodule.smul_mem _ _ (hwW n)
+    have hDv : ∀ n, ‖D (v n)‖ < 1 / ((n : ℝ) + 1) := by
+      intro n
+      have hpos : 0 < ‖w n‖ := norm_pos_iff.2 (hw0 n)
+      have : ‖D (v n)‖ = ‖w n‖⁻¹ * ‖D (w n)‖ := by
+        simp only [hv, map_smul, norm_smul, Real.norm_eq_abs, abs_inv, abs_norm]
+      rw [this]
+      calc ‖w n‖⁻¹ * ‖D (w n)‖ < ‖w n‖⁻¹ * ((1 / ((n : ℝ) + 1)) * ‖w n‖) := by
+            gcongr; exact hwlt n
+        _ = 1 / ((n : ℝ) + 1) := by field_simp
+    have hDv0 : Tendsto (fun n => D (v n)) atTop (𝓝 0) := by
+      rw [tendsto_zero_iff_norm_tendsto_zero]
+      exact squeeze_zero (fun n => norm_nonneg _) (fun n => (hDv n).le)
+        tendsto_one_div_add_atTop_nhds_zero_nat
+    obtain ⟨φ, hφ, x, hx⟩ := aux_gap_subseq D K hK c hc hcoer v 1 (fun n => (hvnorm n).le)
+      hDv0.cauchySeq
+    have hn1 : ‖x‖ = 1 := by
+      have := (continuous_norm.tendsto x).comp hx
+      simp only [Function.comp_def, hvnorm] at this
+      exact (tendsto_nhds_unique tendsto_const_nhds this).symm
+    have hxW' : x ∈ Wᗮ :=
+      (Submodule.isClosed_orthogonal W).mem_of_tendsto hx (Eventually.of_forall fun n => hvW _)
+    have hxW : x ∈ W := by
+      have h1 := (D.continuous.tendsto x).comp hx
+      have h2 := hDv0.comp hφ.tendsto_atTop
+      have : D x = 0 := tendsto_nhds_unique h1 h2
+      exact this
+    have := Submodule.inner_right_of_mem_orthogonal hxW hxW'
+    rw [inner_self_eq_zero] at this
+    rw [this, norm_zero] at hn1
+    exact zero_ne_one hn1
+  obtain ⟨γ, hγpos, hγ⟩ := hγ
+  refine ⟨γ⁻¹, inv_nonneg.2 hγpos.le, fun f => ?_⟩
+  set P := W.starProjection f
+  have hPW : P ∈ W := W.starProjection_apply_mem f
+  have hwW : f - P ∈ Wᗮ := W.sub_starProjection_mem_orthogonal f
+  have hDP : D P = 0 := hPW
+  have hdist : Metric.infDist f (W : Set H) ≤ ‖f - P‖ := by
+    rw [← dist_eq_norm]; exact Metric.infDist_le_dist_of_mem hPW
+  have h1 := hγ _ hwW
+  rw [map_sub, hDP, sub_zero] at h1
+  calc Metric.infDist f (W : Set H) ≤ ‖f - P‖ := hdist
+    _ ≤ γ⁻¹ * ‖D f‖ := by
+        rw [le_inv_mul_iff₀ hγpos]; exact h1
+
+end AbstractGap
+
+
+
+/-- Auxiliary: `rig:kernel-gap` for a single core (without translations). -/
+theorem aux_kernel_gap_core (α β : ℝ) (hβ : β ≠ 0) (E : Set (ℝ² × Ang))
+    (X : Fin 3 → Set ℝ²) (c : ℝ) (hE : IsCore α β E X c) :
+    FiniteDimensional ℝ (kernelSpace α β E X) ∧
+      ∃ C : ℝ, 0 ≤ C ∧ ∀ f : HE X,
+        Metric.infDist f (kernelSpace α β E X) ≤ C * ‖incidenceOp α β E X f‖ := by
+  obtain ⟨K, hKc, hK⟩ := aux_K_exists α β hβ E hE.measurableSet_E X hE.measurableSet_X
+    hE.isBounded_X
+  have hcoer : ∀ f : HE X, c * ‖f‖ ^ 2 ≤ ‖incidenceOp α β E X f‖ ^ 2 - ⟪K f, f⟫_ℝ := by
+    intro f
+    have h1 := aux_inner_incidenceOp_split α β E hE.measurableSet_E X hE.measurableSet_X K hK f f
+    rw [real_inner_self_eq_norm_sq] at h1
+    have h2 := aux_diag_coercive α β E X c hE f
+    linarith
+  exact aux_abstract_gap (incidenceOp α β E X) K hKc c hE.degree_pos hcoer
+
+/-- Auxiliary: the translation `z ↦ z - h` identifies `L²(X - h)` with `L²(X)` isometrically
+(base translation in the proof of `rig:kernel-gap`). -/
+def aux_shiftLp (h : ℝ²) (S : Set ℝ²) (hS : MeasurableSet S) :
+    Lp ℝ 2 (volume.restrict ((fun z => z + h) ⁻¹' S)) ≃ₗᵢ[ℝ] Lp ℝ 2 (volume.restrict S) :=
+  have hσ : MeasurePreserving (fun z : ℝ² => z + h)
+      (volume.restrict ((fun z => z + h) ⁻¹' S)) (volume.restrict S) :=
+    (measurePreserving_add_right volume h).restrict_preimage hS
+  have hτ : MeasurePreserving (fun z : ℝ² => z - h)
+      (volume.restrict S) (volume.restrict ((fun z => z + h) ⁻¹' S)) := by
+    have h1 := (measurePreserving_sub_right volume h).restrict_preimage
+      (s := (fun z => z + h) ⁻¹' S) (measurable_add_const h hS)
+    have e : (fun z : ℝ² => z - h) ⁻¹' ((fun z => z + h) ⁻¹' S) = S := by
+      ext z; simp
+    rwa [e] at h1
+  { toLinearEquiv :=
+      { toFun := Lp.compMeasurePreserving (fun z : ℝ² => z - h) hτ
+        invFun := Lp.compMeasurePreserving (fun z : ℝ² => z + h) hσ
+        map_add' := map_add _
+        map_smul' := fun a g => (Lp.compMeasurePreservingₗ ℝ (fun z : ℝ² => z - h) hτ).map_smul a g
+        left_inv := fun g => by
+          rw [← Lp.compMeasurePreserving_comp_apply]
+          apply Lp.ext
+          refine (Lp.coeFn_compMeasurePreserving _ _).trans (Eventually.of_forall fun z => ?_)
+          simp
+        right_inv := fun g => by
+          rw [← Lp.compMeasurePreserving_comp_apply]
+          apply Lp.ext
+          refine (Lp.coeFn_compMeasurePreserving _ _).trans (Eventually.of_forall fun z => ?_)
+          simp }
+    norm_map' := fun g => Lp.norm_compMeasurePreserving g hτ }
+
+/-- Auxiliary: `aux_shiftLp` is represented by `g(· - h)`. -/
+theorem aux_shiftLp_coe (h : ℝ²) (S : Set ℝ²) (hS : MeasurableSet S)
+    (g : Lp ℝ 2 (volume.restrict ((fun z => z + h) ⁻¹' S))) :
+    (aux_shiftLp h S hS g : ℝ² → ℝ) =ᵐ[volume.restrict S] fun z => (g : ℝ² → ℝ) (z - h) :=
+  Lp.coeFn_compMeasurePreserving _ _
+
+/-- Auxiliary: the unitary identification `𝓗_{E_h} ≅ 𝓗_E` induced by a base translation
+(proof of `rig:kernel-gap`). -/
+def aux_shiftHE (h : ℝ²) (X : Fin 3 → Set ℝ²) (hX : ∀ j, MeasurableSet (X j)) :
+    HE (aux_vertexShift h X) ≃ₗᵢ[ℝ] HE X :=
+  LinearIsometryEquiv.piLpCongrRight 2 (fun j => aux_shiftLp h (X j) (hX j))
+
+/-- Auxiliary: base translation intertwines the incidence operators,
+`‖D_{E_h} f‖ = ‖D_E (U_h f)‖` (proof of `rig:kernel-gap`). -/
+theorem aux_shift_norm (α β : ℝ) (E : Set (ℝ² × Ang)) (hE : MeasurableSet E)
+    (X : Fin 3 → Set ℝ²) (hX : ∀ j, MeasurableSet (X j)) (h : ℝ²)
+    (f : HE (aux_vertexShift h X)) :
+    ‖incidenceOp α β (baseShift h E) (aux_vertexShift h X) f‖ =
+      ‖incidenceOp α β E X (aux_shiftHE h X hX f)‖ := by
+  have hX' : ∀ j, MeasurableSet (aux_vertexShift h X j) := fun j => measurable_add_const h (hX j)
+  set T : ℝ² × Ang → ℝ² × Ang := Prod.map (fun z : ℝ² => z + h) id with hTdef
+  have hTμ : MeasurePreserving T μinc μinc := by
+    unfold μinc
+    exact (measurePreserving_add_right volume h).prod (MeasurePreserving.id σ)
+  have hT : MeasurePreserving T (μinc.restrict (baseShift h E)) (μinc.restrict E) :=
+    hTμ.restrict_preimage hE
+  set G := incidenceFun α β X (aux_shiftHE h X hX f) with hG
+  have hGm : AEStronglyMeasurable G (μinc.restrict E) :=
+    (Lp.aestronglyMeasurable _).congr (aux_incidenceOp_ae' α β E X hX _)
+  rw [Lp.norm_def, Lp.norm_def]
+  congr 1
+  rw [eLpNorm_congr_ae (aux_incidenceOp_ae' α β _ _ hX' f),
+    eLpNorm_congr_ae (aux_incidenceOp_ae' α β E X hX _), ← eLpNorm_comp_measurePreserving hGm hT]
+  refine eLpNorm_congr_ae ?_
+  -- componentwise identification
+  have hcomp : ∀ j, ∀ᵐ p ∂μinc, (X j).indicator ((aux_shiftHE h X hX f) j : ℝ² → ℝ)
+      (proj α β j (T p)) = (aux_vertexShift h X j).indicator (f j : ℝ² → ℝ) (proj α β j p) := by
+    intro j
+    have h1 : (X j).indicator ((aux_shiftHE h X hX f) j : ℝ² → ℝ) =ᵐ[volume]
+        fun z => (aux_vertexShift h X j).indicator (f j : ℝ² → ℝ) (z - h) := by
+      have h2 := (ae_eq_restrict_iff_indicator_ae_eq (hX j)).1
+        (aux_shiftLp_coe h (X j) (hX j) (f j))
+      refine h2.trans (Eventually.of_forall fun z => ?_)
+      by_cases hz : z ∈ X j
+      · have hz' : z - h ∈ aux_vertexShift h X j := by simp [aux_vertexShift, hz]
+        simp only [indicator_of_mem hz, indicator_of_mem hz']
+        rfl
+      · have hz' : z - h ∉ aux_vertexShift h X j := by simp [aux_vertexShift, hz]
+        simp only [indicator_of_notMem hz, indicator_of_notMem hz']
+    have hψ : MeasurePreserving (fun p => proj α β j (T p)) μinc volume :=
+      (aux_proj_measurePreserving α β j).comp hTμ
+    filter_upwards [hψ.quasiMeasurePreserving.ae_eq_comp h1] with p hp
+    simp only [Function.comp_apply] at hp
+    rw [hp]
+    congr 1
+    simp only [hTdef, proj, Prod.map_fst, Prod.map_snd, id]
+    abel
+  filter_upwards [ae_restrict_of_ae (hcomp 0), ae_restrict_of_ae (hcomp 1),
+    ae_restrict_of_ae (hcomp 2)] with p h0 h1 h2
+  simp only [Function.comp_apply, hG, incidenceFun, Fin.sum_univ_three]
+  rw [h0, h1, h2]
+
 /-- **Lemma `rig:kernel-gap`** (finite dimensionality).  For every core $E$, the space $K_E$ is
 finite dimensional. -/
 theorem rig_kernel_gap_finiteDimensional (α β : ℝ) (hβ : β ≠ 0) (E : Set (ℝ² × Ang))
     (X : Fin 3 → Set ℝ²) (c : ℝ) (hE : IsCore α β E X c) :
-    FiniteDimensional ℝ (kernelSpace α β E X) := by
-  sorry
+    FiniteDimensional ℝ (kernelSpace α β E X) :=
+  (aux_kernel_gap_core α β hβ E X c hE).1
 
 /-- **Lemma `rig:kernel-gap`** (distance estimate).  There is $C_E<\infty$ such that
 $$\operatorname{dist}_{\mathcal H_E}(f,K_E)\le C_E\|D_Ef\|_{L^2(E,\mu)}\qquad(f\in\mathcal H_E).$$
@@ -171,9 +1330,119 @@ theorem rig_kernel_gap (α β : ℝ) (hβ : β ≠ 0) (E : Set (ℝ² × Ang)) (
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (h : ℝ²) (f : HE (aux_vertexShift h X)),
       Metric.infDist f (kernelSpace α β (baseShift h E) (aux_vertexShift h X)) ≤
         C * ‖incidenceOp α β (baseShift h E) (aux_vertexShift h X) f‖ := by
-  sorry
+  obtain ⟨-, C, hC0, hC⟩ := aux_kernel_gap_core α β hβ E X c hE
+  refine ⟨C, hC0, fun h f => ?_⟩
+  have hX := hE.measurableSet_X
+  have hEm := hE.measurableSet_E
+  set e := aux_shiftHE h X hX
+  have hmem : ∀ g, g ∈ kernelSpace α β (baseShift h E) (aux_vertexShift h X) ↔
+      e g ∈ kernelSpace α β E X := by
+    intro g
+    simp only [kernelSpace, LinearMap.mem_ker, ContinuousLinearMap.coe_coe]
+    rw [← norm_eq_zero, aux_shift_norm α β E hEm X hX h g, norm_eq_zero]
+  have himage : e '' (kernelSpace α β (baseShift h E) (aux_vertexShift h X) : Set _) =
+      (kernelSpace α β E X : Set (HE X)) := by
+    ext k
+    constructor
+    · rintro ⟨g, hg, rfl⟩; exact (hmem g).1 hg
+    · intro hk
+      refine ⟨e.symm k, (hmem _).2 ?_, e.apply_symm_apply k⟩
+      rw [e.apply_symm_apply]; exact hk
+  rw [← Metric.infDist_image e.isometry, himage, aux_shift_norm α β E hEm X hX h f]
+  exact hC (e f)
 
 /-! ### Uniform integrability of kernel elements (`rig:kernel-ui`) -/
+
+/-- Auxiliary: the $j$th block of $D_G^*D_Gf=0$ (proof of `rig:kernel-ui`): for $f\in K_G$,
+$\sum_iT_{ji}(\mathbf 1_{X_i}f_i)=0$ almost everywhere on $X_j$ (the $i=j$ term being
+$d_{j,G}f_j$). -/
+theorem aux_kernel_eq (α β : ℝ) (G : Set (ℝ² × Ang)) (hG : MeasurableSet G)
+    (X : Fin 3 → Set ℝ²) (hX : ∀ j, MeasurableSet (X j)) (f : HE X)
+    (hf : f ∈ kernelSpace α β G X) (j : Fin 3) :
+    ∀ᵐ z ∂(volume.restrict (X j)),
+      ∑ i, aux_Tfun α β G i j ((X i).indicator (f i : ℝ² → ℝ)) z = 0 := by
+  set Ψ : ℝ² → ℝ := fun z => ∑ i, aux_Tfun α β G i j ((X i).indicator (f i : ℝ² → ℝ)) z with hΨdef
+  have hT : ∀ i, MemLp (aux_Tfun α β G i j ((X i).indicator (f i : ℝ² → ℝ))) 2 volume := fun i =>
+    (aux_Tfun_memLp α β G hG i j _ (aux_memLp_indicator (X i) (hX i) (f i))).1
+  have hΨ : MemLp Ψ 2 volume := memLp_finsetSum _ fun i _ => hT i
+  set y : Lp ℝ 2 (volume.restrict (X j)) := (hΨ.restrict (X j)).toLp Ψ with hy
+  have hDf : incidenceOp α β G X f = 0 := hf
+  have h0 := aux_inner_incidenceOp α β G hG X hX f (aux_singleCLM X j y)
+  rw [hDf, inner_zero_left, Finset.sum_comm, Fintype.sum_eq_single j] at h0
+  swap
+  · intro k hk
+    refine Finset.sum_eq_zero fun i _ => integral_eq_zero_of_ae ?_
+    have e : (aux_singleCLM X j y) k = 0 :=
+      PiLp.single_eq_of_ne (β := fun j => Lp ℝ 2 (volume.restrict (X j))) 2 hk y
+    rw [e]
+    filter_upwards [(ae_eq_restrict_iff_indicator_ae_eq (hX k)).1
+      (Lp.coeFn_zero ℝ 2 (volume.restrict (X k)))] with z hz
+    rw [hz]; simp
+  have e : (aux_singleCLM X j y) j = y :=
+    PiLp.single_eq_same (β := fun j => Lp ℝ 2 (volume.restrict (X j))) 2 j y
+  rw [e] at h0
+  have hyΨ : (X j).indicator (y : ℝ² → ℝ) =ᵐ[volume] (X j).indicator Ψ :=
+    (ae_eq_restrict_iff_indicator_ae_eq (hX j)).1 (MemLp.coeFn_toLp _)
+  have hind : MemLp ((X j).indicator Ψ) 2 volume := hΨ.indicator (hX j)
+  have h1 : ∫ z, (X j).indicator Ψ z * Ψ z = 0 := by
+    refine Eq.trans ?_ h0.symm
+    rw [← integral_finsetSum _ (fun i _ => ?_)]
+    · refine integral_congr_ae ?_
+      filter_upwards [hyΨ] with z hz
+      rw [hz, Finset.mul_sum]
+    · exact (MemLp.ae_eq hyΨ.symm hind).integrable_mul (hT i)
+  have hnn : 0 ≤ᵐ[volume] fun z => (X j).indicator Ψ z * Ψ z := Eventually.of_forall fun z => by
+    by_cases hz : z ∈ X j
+    · simp only [indicator_of_mem hz, Pi.zero_apply]; exact mul_self_nonneg _
+    · simp [hz]
+  have h2 := (integral_eq_zero_iff_of_nonneg_ae hnn (hind.integrable_mul hΨ)).1 h1
+  rw [ae_restrict_iff' (hX j)]
+  filter_upwards [h2] with z hz hzX
+  simp only [indicator_of_mem hzX, Pi.zero_apply, mul_self_eq_zero] at hz
+  exact hz
+
+
+
+/-- Auxiliary: the small-set control of `lem:circle-compact` for a block
+$T_{ji}$, $i\ne j$, uniformly in the configuration set (proof of `rig:kernel-ui`). -/
+theorem aux_block_small (α β : ℝ) (hβ : β ≠ 0) (i j : Fin 3) (hij : i ≠ j) :
+    ∃ ω : ℝ → ℝ, MonotoneOn ω (Ici 0) ∧ (∀ s, 0 ≤ s → 0 ≤ ω s) ∧
+      Tendsto ω (𝓝[>] 0) (𝓝 0) ∧
+      ∀ (G : Set (ℝ² × Ang)), MeasurableSet G → ∀ (e : ℝ² → ℝ), Measurable e →
+        (∀ z, e z ∈ Icc 0 1) → Integrable e → ∀ F : ℝ² → ℝ, MemLp F 2 volume →
+        eLpNorm (fun z => Real.sqrt (e z) * aux_Tfun α β G i j F z) 2 volume ≤
+          ENNReal.ofReal (ω (∫ z, e z)) * eLpNorm F 2 volume := by
+  obtain ⟨ω, hmono, hrange, htend, hbd⟩ := lem_circle_compact_small (Lv α β i - Lv α β j)
+    (aux_Lv_sub_similarity α β hβ i j hij)
+  refine ⟨ω, hmono, fun s hs => (hrange s hs).1, htend, fun G hG e he hei hint F hF => ?_⟩
+  set w : ℝ² → Ang → ℝ := fun z θ => G.indicator (fun _ => (1 : ℝ)) (z - Lv α β j (u θ), θ)
+    with hw
+  have hwm : Measurable (Function.uncurry fun z θ => ((w z θ : ℝ) : ℂ)) :=
+    Complex.measurable_ofReal.comp
+      ((measurable_const.indicator hG).comp (aux_ker_measurable_unshear α β j))
+  have hw1 : ∀ z θ, ‖((w z θ : ℝ) : ℂ)‖ ≤ 1 := by
+    intro z θ
+    rw [Complex.norm_real, Real.norm_eq_abs, hw]
+    by_cases h : (z - Lv α β j (u θ), θ) ∈ G <;> simp [h]
+  have h := hbd (fun z θ => ((w z θ : ℝ) : ℂ)) hwm hw1 e he hei hint (fun x => (F x : ℂ))
+    hF.ofReal
+  have e1 : eLpNorm (fun z => ((Real.sqrt (e z) : ℝ) : ℂ) *
+      circleOp (Lv α β i - Lv α β j) (fun z θ => ((w z θ : ℝ) : ℂ)) (fun x => (F x : ℂ)) z)
+      2 volume = eLpNorm (fun z => Real.sqrt (e z) * aux_Tfun α β G i j F z) 2 volume := by
+    refine eLpNorm_congr_norm_ae (Eventually.of_forall fun z => ?_)
+    rw [aux_circleOp_ofReal, ← Complex.ofReal_mul, Complex.norm_real]
+    rfl
+  have e2 : eLpNorm (fun x => (F x : ℂ)) 2 volume = eLpNorm F 2 volume :=
+    eLpNorm_congr_norm_ae (Eventually.of_forall fun z => Complex.norm_real _)
+  rw [e1, e2] at h
+  exact h
+
+/-- Auxiliary: the norm of a component, `‖1_{X_j} f_j‖_{L²(ℝ²)} ≤ ‖f‖_{𝓗}`. -/
+theorem aux_eLpNorm_component_le (X : Fin 3 → Set ℝ²) (hX : ∀ j, MeasurableSet (X j))
+    (f : HE X) (j : Fin 3) :
+    eLpNorm ((X j).indicator (f j : ℝ² → ℝ)) 2 volume ≤ ENNReal.ofReal ‖f‖ := by
+  rw [eLpNorm_indicator_eq_eLpNorm_restrict (hX j), ← Lp.enorm_def, ← ofReal_norm]
+  exact ENNReal.ofReal_le_ofReal (PiLp.norm_apply_le f j)
 
 /-- **Lemma `rig:kernel-ui`**.  There is a nondecreasing function
 $\omega:[0,\infty)\to[0,\infty)$, depending only on $M$, with $\omega(s)\to0$ as $s\downarrow0$,
@@ -188,9 +1457,554 @@ theorem rig_kernel_ui (α β : ℝ) (hβ : β ≠ 0) :
       ∀ f ∈ kernelSpace α β G X, ∀ e : ℝ² → ℝ, (∀ z, e z ∈ Icc 0 1) → Integrable e →
       ∀ j, eLpNorm (fun z => Real.sqrt (e z) * (X j).indicator (f j : ℝ² → ℝ) z) 2 volume ≤
         ENNReal.ofReal (C * t⁻¹ * ω (∫ z, e z) * ‖f‖) := by
-  sorry
+  have hω := fun i j (hij : i ≠ j) => aux_block_small α β hβ i j hij
+  choose ω hmono hnn htend hbd using hω
+  set Ω : ℝ → ℝ := fun s => ∑ i, ∑ j, if h : i = j then 0 else ω i j h s with hΩ
+  have hterm_nn : ∀ i j s, 0 ≤ s → 0 ≤ (if h : i = j then 0 else ω i j h s) := by
+    intro i j s hs; split_ifs with h
+    · exact le_rfl
+    · exact hnn i j h s hs
+  have hΩnn : ∀ s, 0 ≤ s → 0 ≤ Ω s := fun s hs =>
+    Finset.sum_nonneg fun i _ => Finset.sum_nonneg fun j _ => hterm_nn i j s hs
+  have hle : ∀ i j (h : i ≠ j) s, 0 ≤ s → ω i j h s ≤ Ω s := by
+    intro i j h s hs
+    have h1 : (if h' : i = j then 0 else ω i j h' s) = ω i j h s := dif_neg h
+    calc ω i j h s = (if h' : i = j then 0 else ω i j h' s) := h1.symm
+      _ ≤ ∑ j', (if h' : i = j' then 0 else ω i j' h' s) :=
+          Finset.single_le_sum (f := fun j' => if h' : i = j' then 0 else ω i j' h' s)
+            (fun j' _ => hterm_nn i j' s hs) (Finset.mem_univ j)
+      _ ≤ Ω s :=
+          Finset.single_le_sum (f := fun i' => ∑ j', if h' : i' = j' then 0 else ω i' j' h' s)
+            (fun i' _ => Finset.sum_nonneg fun j' _ => hterm_nn i' j' s hs) (Finset.mem_univ i)
+  refine ⟨2, Ω, by norm_num, ?_, hΩnn, ?_, ?_⟩
+  · intro a ha b hb hab
+    refine Finset.sum_le_sum fun i _ => Finset.sum_le_sum fun j _ => ?_
+    split_ifs with h
+    · exact le_rfl
+    · exact hmono i j h ha hb hab
+  · have : Tendsto Ω (𝓝[>] 0) (𝓝 (∑ i : Fin 3, ∑ j : Fin 3, (0 : ℝ))) := by
+      refine tendsto_finsetSum _ fun i _ => tendsto_finsetSum _ fun j _ => ?_
+      by_cases h : i = j
+      · simp only [h]; exact tendsto_const_nhds
+      · simp only [h, dif_neg, not_false_eq_true]; exact htend i j h
+    simpa using this
+  intro G X t hcore f hf e hei hint j
+  have hX := hcore.measurableSet_X
+  have hGm := hcore.measurableSet_E
+  have ht := hcore.degree_pos
+  -- a measurable modification of `e` with values in `[0,1]`
+  set e' : ℝ² → ℝ := fun z => max 0 (min 1 (hint.1.mk e z)) with he'
+  have he'm : Measurable e' :=
+    measurable_const.max (measurable_const.min hint.1.stronglyMeasurable_mk.measurable)
+  have hee' : e =ᵐ[volume] e' := by
+    filter_upwards [hint.1.ae_eq_mk] with z hz
+    simp only [he', ← hz]
+    rw [min_eq_right (hei z).2, max_eq_right (hei z).1]
+  have he'i : ∀ z, e' z ∈ Icc 0 1 := fun z =>
+    ⟨le_max_left _ _, max_le zero_le_one (min_le_left _ _)⟩
+  have hint' : Integrable e' := hint.congr hee'
+  have hinteq : ∫ z, e z = ∫ z, e' z := integral_congr_ae hee'
+  have hint0 : 0 ≤ ∫ z, e z := integral_nonneg fun z => (hei z).1
+  set F : Fin 3 → ℝ² → ℝ := fun i => (X i).indicator (f i : ℝ² → ℝ) with hF
+  have hFm : ∀ i, MemLp (F i) 2 volume := fun i => aux_memLp_indicator (X i) (hX i) (f i)
+  set T : Fin 3 → ℝ² → ℝ := fun i => aux_Tfun α β G i j (F i) with hT
+  have hTm : ∀ i, MemLp (T i) 2 volume := fun i => (aux_Tfun_memLp α β G hGm i j _ (hFm i)).1
+  -- the pointwise inequality
+  have hkey := aux_kernel_eq α β G hGm X hX f hf j
+  have hdeg := hcore.ae_degree_ge j
+  rw [ae_restrict_iff' (hX j)] at hkey hdeg
+  have hpt : ∀ᵐ z ∂(volume : Measure ℝ²), ‖Real.sqrt (e' z) * F j z‖ ≤
+      ‖t⁻¹ * ∑ i ∈ Finset.univ.erase j, ‖Real.sqrt (e' z) * T i z‖‖ := by
+    filter_upwards [hkey, hdeg] with z hk hd
+    have hsum_nn : 0 ≤ t⁻¹ * ∑ i ∈ Finset.univ.erase j, ‖Real.sqrt (e' z) * T i z‖ :=
+      mul_nonneg (inv_nonneg.2 ht.le) (Finset.sum_nonneg fun i _ => norm_nonneg _)
+    rw [Real.norm_of_nonneg hsum_nn]
+    by_cases hzX : z ∈ X j
+    · have hk' := hk hzX
+      have hd' := hd hzX
+      rw [← Finset.add_sum_erase _ _ (Finset.mem_univ j)] at hk'
+      simp only [aux_Tfun_diag] at hk'
+      -- `d_j F_j = -∑_{i ≠ j} T_i`
+      have habs : t * |F j z| ≤ ∑ i ∈ Finset.univ.erase j, |T i z| := by
+        have h1 : degree α β j G z * F j z = -∑ i ∈ Finset.univ.erase j, T i z := by
+          simp only [hT, hF]; linarith
+        calc t * |F j z| ≤ degree α β j G z * |F j z| := by gcongr
+          _ = |degree α β j G z * F j z| := by
+              rw [abs_mul, abs_of_nonneg (ht.le.trans hd')]
+          _ = |∑ i ∈ Finset.univ.erase j, T i z| := by rw [h1, abs_neg]
+          _ ≤ ∑ i ∈ Finset.univ.erase j, |T i z| := Finset.abs_sum_le_sum_abs _ _
+      have hs : 0 ≤ Real.sqrt (e' z) := Real.sqrt_nonneg _
+      rw [Real.norm_eq_abs, abs_mul, abs_of_nonneg hs]
+      have : ∑ i ∈ Finset.univ.erase j, ‖Real.sqrt (e' z) * T i z‖ =
+          Real.sqrt (e' z) * ∑ i ∈ Finset.univ.erase j, |T i z| := by
+        rw [Finset.mul_sum]
+        refine Finset.sum_congr rfl fun i _ => ?_
+        rw [Real.norm_eq_abs, abs_mul, abs_of_nonneg hs]
+      rw [this, le_inv_mul_iff₀ ht]
+      calc t * (Real.sqrt (e' z) * |F j z|) = Real.sqrt (e' z) * (t * |F j z|) := by ring
+        _ ≤ Real.sqrt (e' z) * ∑ i ∈ Finset.univ.erase j, |T i z| := by gcongr
+    · simp only [hF, indicator_of_notMem hzX, mul_zero, norm_zero]
+      exact hsum_nn
+  -- integrate
+  have hTsm : ∀ i ∈ Finset.univ.erase j, AEStronglyMeasurable
+      (fun z => ‖Real.sqrt (e' z) * T i z‖) volume := fun i _ =>
+    ((he'm.sqrt.aestronglyMeasurable).mul (hTm i).1).norm
+  have hcomp : ∀ i ∈ Finset.univ.erase j,
+      eLpNorm (fun z => ‖Real.sqrt (e' z) * T i z‖) 2 volume ≤
+        ENNReal.ofReal (Ω (∫ z, e z)) * ENNReal.ofReal ‖f‖ := by
+    intro i hi
+    have hij : i ≠ j := Finset.ne_of_mem_erase hi
+    rw [eLpNorm_norm]
+    calc eLpNorm (fun z => Real.sqrt (e' z) * T i z) 2 volume
+        ≤ ENNReal.ofReal (ω i j hij (∫ z, e' z)) * eLpNorm (F i) 2 volume :=
+          hbd i j hij G hGm e' he'm he'i hint' (F i) (hFm i)
+      _ ≤ ENNReal.ofReal (Ω (∫ z, e z)) * ENNReal.ofReal ‖f‖ := by
+          gcongr
+          · rw [← hinteq]; exact hle i j hij _ hint0
+          · exact aux_eLpNorm_component_le X hX f i
+  have hcard : (Finset.univ.erase j).card = 2 := by
+    rw [Finset.card_erase_of_mem (Finset.mem_univ j)]; rfl
+  calc eLpNorm (fun z => Real.sqrt (e z) * (X j).indicator (f j : ℝ² → ℝ) z) 2 volume
+      = eLpNorm (fun z => Real.sqrt (e' z) * F j z) 2 volume := by
+        refine eLpNorm_congr_ae ?_
+        filter_upwards [hee'] with z hz
+        rw [hz]
+    _ ≤ eLpNorm (fun z => t⁻¹ * ∑ i ∈ Finset.univ.erase j, ‖Real.sqrt (e' z) * T i z‖) 2
+          volume := eLpNorm_mono_ae hpt
+    _ = ENNReal.ofReal t⁻¹ * eLpNorm (∑ i ∈ Finset.univ.erase j,
+          fun z => ‖Real.sqrt (e' z) * T i z‖) 2 volume := by
+        have : (fun z => t⁻¹ * ∑ i ∈ Finset.univ.erase j, ‖Real.sqrt (e' z) * T i z‖) =
+            t⁻¹ • (∑ i ∈ Finset.univ.erase j, fun z => ‖Real.sqrt (e' z) * T i z‖) := by
+          funext z; simp [Finset.sum_apply]
+        rw [this, eLpNorm_const_smul, Real.enorm_eq_ofReal (inv_nonneg.2 ht.le)]
+    _ ≤ ENNReal.ofReal t⁻¹ * ∑ i ∈ Finset.univ.erase j,
+          eLpNorm (fun z => ‖Real.sqrt (e' z) * T i z‖) 2 volume := by
+        gcongr
+        exact eLpNorm_sum_le hTsm (by norm_num)
+    _ ≤ ENNReal.ofReal t⁻¹ * ((Finset.univ.erase j).card •
+          (ENNReal.ofReal (Ω (∫ z, e z)) * ENNReal.ofReal ‖f‖)) := by
+        gcongr
+        exact Finset.sum_le_card_nsmul _ _ _ hcomp
+    _ = ENNReal.ofReal (2 * t⁻¹ * Ω (∫ z, e z) * ‖f‖) := by
+        have hΩ0 := hΩnn _ hint0
+        have ht0 : 0 ≤ t⁻¹ := inv_nonneg.2 ht.le
+        rw [hcard, nsmul_eq_mul, ENNReal.ofReal_mul (mul_nonneg (mul_nonneg (by norm_num) ht0) hΩ0),
+          ENNReal.ofReal_mul (mul_nonneg (by norm_num) ht0), ENNReal.ofReal_mul (by norm_num)]
+        push_cast
+        rw [ENNReal.ofReal_ofNat]
+        ring
 
 /-! ### Stability under removal of a small set (`rig:kernel-stability`) -/
+
+/-- Auxiliary: restriction of an `L²(μ)` class to a smaller measure `ν ≤ μ` (the restriction
+map of `rig:kernel-stability`). -/
+def aux_resLp {μ ν : Measure ℝ²} (h : ν ≤ μ) (f : Lp ℝ 2 μ) : Lp ℝ 2 ν :=
+  ((Lp.memLp f).mono_measure h).toLp f
+
+/-- Auxiliary: `aux_resLp` is represented by the original function. -/
+theorem aux_resLp_coe {μ ν : Measure ℝ²} (h : ν ≤ μ) (f : Lp ℝ 2 μ) :
+    ⇑(aux_resLp h f) =ᵐ[ν] ⇑f :=
+  MemLp.coeFn_toLp _
+
+/-- Auxiliary: the restriction map `𝓗_E → 𝓗_F`, `f ↦ (f_j|_{Y_j})_j`
+(`rig:kernel-stability`). -/
+def aux_res (X Y : Fin 3 → Set ℝ²) (hYX : ∀ j, Y j ⊆ X j) : HE X →ₗ[ℝ] HE Y where
+  toFun f := WithLp.toLp 2 fun j =>
+    aux_resLp (Measure.restrict_mono (hYX j) le_rfl) (f j)
+  map_add' f g := by
+    ext j : 1
+    simp only [PiLp.add_apply]
+    apply Lp.ext
+    filter_upwards [aux_resLp_coe (Measure.restrict_mono (hYX j) le_rfl) (f j + g j),
+      aux_resLp_coe (Measure.restrict_mono (hYX j) le_rfl) (f j),
+      aux_resLp_coe (Measure.restrict_mono (hYX j) le_rfl) (g j),
+      Lp.coeFn_add (aux_resLp (Measure.restrict_mono (hYX j) le_rfl) (f j))
+        (aux_resLp (Measure.restrict_mono (hYX j) le_rfl) (g j)),
+      ae_mono (Measure.restrict_mono (hYX j) le_rfl) (Lp.coeFn_add (f j) (g j))]
+      with z h1 h2 h3 h4 h5
+    rw [h4, Pi.add_apply, h1, h2, h3, h5, Pi.add_apply]
+  map_smul' c f := by
+    ext j : 1
+    simp only [PiLp.smul_apply, RingHom.id_apply]
+    apply Lp.ext
+    filter_upwards [aux_resLp_coe (Measure.restrict_mono (hYX j) le_rfl) (c • f j),
+      aux_resLp_coe (Measure.restrict_mono (hYX j) le_rfl) (f j),
+      Lp.coeFn_smul c (aux_resLp (Measure.restrict_mono (hYX j) le_rfl) (f j)),
+      ae_mono (Measure.restrict_mono (hYX j) le_rfl) (Lp.coeFn_smul c (f j))]
+      with z h1 h2 h3 h4
+    rw [h3, Pi.smul_apply, h1, h2, h4, Pi.smul_apply]
+
+/-- Auxiliary: componentwise description of `aux_res`. -/
+theorem aux_res_coe (X Y : Fin 3 → Set ℝ²) (hYX : ∀ j, Y j ⊆ X j) (f : HE X) (j : Fin 3) :
+    ⇑((aux_res X Y hYX f) j) =ᵐ[volume.restrict (Y j)] ⇑(f j) :=
+  aux_resLp_coe (Measure.restrict_mono (hYX j) le_rfl) _
+
+/-- Auxiliary: extension by zero `L²(S) → L²(T)` for `S ⊆ T` (`rig:kernel-stability`). -/
+def aux_extLp' {S T : Set ℝ²} (hS : MeasurableSet S) (hST : S ⊆ T)
+    (f : Lp ℝ 2 (volume.restrict S)) : Lp ℝ 2 (volume.restrict T) :=
+  (show MemLp (S.indicator ⇑f) 2 (volume.restrict T) by
+    rw [memLp_indicator_iff_restrict hS, Measure.restrict_restrict_of_subset hST]
+    exact Lp.memLp f).toLp _
+
+/-- Auxiliary: `aux_extLp'` is represented by `1_S f`. -/
+theorem aux_extLp'_coe {S T : Set ℝ²} (hS : MeasurableSet S) (hST : S ⊆ T)
+    (f : Lp ℝ 2 (volume.restrict S)) :
+    ⇑(aux_extLp' hS hST f) =ᵐ[volume.restrict T] S.indicator ⇑f :=
+  MemLp.coeFn_toLp _
+
+/-- Auxiliary: `aux_extLp'` is isometric. -/
+theorem aux_extLp'_norm {S T : Set ℝ²} (hS : MeasurableSet S) (hST : S ⊆ T)
+    (f : Lp ℝ 2 (volume.restrict S)) : ‖aux_extLp' hS hST f‖ = ‖f‖ := by
+  rw [Lp.norm_def, Lp.norm_def, eLpNorm_congr_ae (aux_extLp'_coe hS hST f),
+    eLpNorm_indicator_eq_eLpNorm_restrict hS, Measure.restrict_restrict_of_subset hST]
+
+/-- Auxiliary: the zero-extension map `𝓗_F → 𝓗_E` (`rig:kernel-stability`). -/
+def aux_ext (X Y : Fin 3 → Set ℝ²) (hY : ∀ j, MeasurableSet (Y j)) (hYX : ∀ j, Y j ⊆ X j) :
+    HE Y →ₗ[ℝ] HE X where
+  toFun f := WithLp.toLp 2 fun j => aux_extLp' (hY j) (hYX j) (f j)
+  map_add' f g := by
+    ext j : 1
+    simp only [PiLp.add_apply]
+    apply Lp.ext
+    have h5 : (Y j).indicator ⇑(f j + g j) =ᵐ[volume.restrict (X j)]
+        (Y j).indicator (⇑(f j) + ⇑(g j)) := by
+      apply (ae_eq_restrict_iff_indicator_ae_eq (hY j)).1
+      rw [Measure.restrict_restrict_of_subset (hYX j)]; exact Lp.coeFn_add _ _
+    filter_upwards [aux_extLp'_coe (hY j) (hYX j) (f j + g j),
+      aux_extLp'_coe (hY j) (hYX j) (f j), aux_extLp'_coe (hY j) (hYX j) (g j),
+      Lp.coeFn_add (aux_extLp' (hY j) (hYX j) (f j)) (aux_extLp' (hY j) (hYX j) (g j)), h5]
+      with z h1 h2 h3 h4 h5
+    rw [h4, Pi.add_apply, h1, h2, h3, h5, indicator_add']
+    rfl
+  map_smul' c f := by
+    ext j : 1
+    simp only [PiLp.smul_apply, RingHom.id_apply]
+    apply Lp.ext
+    have h5 : (Y j).indicator ⇑(c • f j) =ᵐ[volume.restrict (X j)]
+        (Y j).indicator (c • ⇑(f j)) := by
+      apply (ae_eq_restrict_iff_indicator_ae_eq (hY j)).1
+      rw [Measure.restrict_restrict_of_subset (hYX j)]; exact Lp.coeFn_smul _ _
+    filter_upwards [aux_extLp'_coe (hY j) (hYX j) (c • f j),
+      aux_extLp'_coe (hY j) (hYX j) (f j),
+      Lp.coeFn_smul c (aux_extLp' (hY j) (hYX j) (f j)), h5]
+      with z h1 h2 h3 h4
+    rw [h3, Pi.smul_apply, h1, h2, h4]
+    exact indicator_const_smul_apply _ c _ z
+
+/-- Auxiliary: componentwise description of `aux_ext`. -/
+theorem aux_ext_coe (X Y : Fin 3 → Set ℝ²) (hY : ∀ j, MeasurableSet (Y j))
+    (hYX : ∀ j, Y j ⊆ X j) (f : HE Y) (j : Fin 3) :
+    ⇑((aux_ext X Y hY hYX f) j) =ᵐ[volume.restrict (X j)] (Y j).indicator ⇑(f j) :=
+  aux_extLp'_coe (hY j) (hYX j) _
+
+/-- Auxiliary: `aux_ext` is isometric. -/
+theorem aux_ext_norm (X Y : Fin 3 → Set ℝ²) (hY : ∀ j, MeasurableSet (Y j))
+    (hYX : ∀ j, Y j ⊆ X j) (f : HE Y) : ‖aux_ext X Y hY hYX f‖ = ‖f‖ := by
+  have h1 := PiLp.norm_sq_eq_of_L2 _ (aux_ext X Y hY hYX f)
+  have h2 := PiLp.norm_sq_eq_of_L2 _ f
+  have e : ∀ j, ‖(aux_ext X Y hY hYX f) j‖ = ‖f j‖ := fun j =>
+    aux_extLp'_norm (hY j) (hYX j) (f j)
+  simp only [e] at h1
+  rw [← h2] at h1
+  exact (sq_eq_sq₀ (norm_nonneg _) (norm_nonneg _)).1 h1
+
+/-- Auxiliary: membership in `K_E` as an a.e. identity on `E`. -/
+theorem aux_mem_kernel_iff (α β : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ²)
+    (hX : ∀ j, MeasurableSet (X j)) (f : HE X) :
+    f ∈ kernelSpace α β E X ↔ incidenceFun α β X f =ᵐ[μinc.restrict E] 0 := by
+  change incidenceOp α β E X f = 0 ↔ _
+  rw [Lp.eq_zero_iff_ae_eq_zero]
+  constructor
+  · intro h; exact (aux_incidenceOp_ae' α β E X hX f).symm.trans h
+  · intro h; exact (aux_incidenceOp_ae' α β E X hX f).trans h
+
+/-- Auxiliary: if `F = G` a.e. on the plane, then `F ∘ π_j = G ∘ π_j` a.e. for `μ`. -/
+theorem aux_proj_ae (α β : ℝ) (j : Fin 3) {F G : ℝ² → ℝ} (h : F =ᵐ[volume] G) :
+    (fun p => F (proj α β j p)) =ᵐ[μinc] fun p => G (proj α β j p) :=
+  (aux_proj_measurePreserving α β j).quasiMeasurePreserving.ae_eq_comp h
+
+/-- Auxiliary: restriction maps `K_E` into `K_F` for a subcore (`rig:kernel-stability`). -/
+theorem aux_res_mem (α β : ℝ) (E F : Set (ℝ² × Ang)) (X Y : Fin 3 → Set ℝ²)
+    (hX : ∀ j, MeasurableSet (X j)) (hY : ∀ j, MeasurableSet (Y j)) (hYX : ∀ j, Y j ⊆ X j)
+    (hFE : F ⊆ E) (hFY : ∀ j, ∀ᵐ p ∂(μinc.restrict F), proj α β j p ∈ Y j)
+    (f : HE X) (hf : f ∈ kernelSpace α β E X) : aux_res X Y hYX f ∈ kernelSpace α β F Y := by
+  rw [aux_mem_kernel_iff α β E X hX] at hf
+  rw [aux_mem_kernel_iff α β F Y hY]
+  have hcomp : ∀ j, ∀ᵐ p ∂(μinc.restrict F),
+      (Y j).indicator (⇑((aux_res X Y hYX f) j)) (proj α β j p) =
+        (X j).indicator (⇑(f j)) (proj α β j p) := by
+    intro j
+    have h1 : (Y j).indicator (⇑((aux_res X Y hYX f) j)) =ᵐ[volume] (Y j).indicator ⇑(f j) :=
+      (ae_eq_restrict_iff_indicator_ae_eq (hY j)).1 (aux_res_coe X Y hYX f j)
+    filter_upwards [ae_restrict_of_ae (aux_proj_ae α β j h1), hFY j] with p hp hpY
+    rw [hp, indicator_of_mem hpY, indicator_of_mem (hYX j hpY)]
+  filter_upwards [ae_restrict_of_ae_restrict_of_subset hFE hf, hcomp 0, hcomp 1, hcomp 2]
+    with p hp h0 h1 h2
+  simp only [incidenceFun, Fin.sum_univ_three, Pi.zero_apply] at hp ⊢
+  rw [h0, h1, h2]; exact hp
+
+/-- Auxiliary: the vertex loss `c |X_j \ Y_j| ≤ μ(E \ F)` (proof of `rig:kernel-stability`). -/
+theorem aux_vertex_loss (α β : ℝ) (E F : Set (ℝ² × Ang)) (X Y : Fin 3 → Set ℝ²) (c : ℝ)
+    (hE : IsCore α β E X c) (hFm : MeasurableSet F) (hY : ∀ j, MeasurableSet (Y j))
+    (hFY : ∀ j, ∀ᵐ p ∂(μinc.restrict F), proj α β j p ∈ Y j) (j : Fin 3) :
+    ENNReal.ofReal c * volume (X j \ Y j) ≤ μinc (E \ F) := by
+  have hX := hE.measurableSet_X
+  have hEm := hE.measurableSet_E
+  have hnull : μinc (F ∩ proj α β j ⁻¹' (X j \ Y j)) = 0 := by
+    have h := hFY j
+    rw [ae_restrict_iff' hFm] at h
+    apply measure_mono_null (t := {p | ¬ (p ∈ F → proj α β j p ∈ Y j)})
+    · intro p hp hpY; exact hp.2.2 (hpY hp.1)
+    · exact ae_iff.1 h
+  calc ENNReal.ofReal c * volume (X j \ Y j) = ∫⁻ z in X j \ Y j, ENNReal.ofReal c := by
+        rw [setLIntegral_const, mul_comm]
+    _ ≤ ∫⁻ z in X j \ Y j, ENNReal.ofReal (degree α β j E z) := by
+        refine lintegral_mono_ae ?_
+        filter_upwards [ae_restrict_of_ae_restrict_of_subset sdiff_subset (hE.ae_degree_ge j)]
+          with z hz
+        exact ENNReal.ofReal_le_ofReal hz
+    _ = μinc (E ∩ proj α β j ⁻¹' (X j \ Y j)) :=
+        aux_degree_setLIntegral _ _ _ _ hEm _ ((hX j).diff (hY j))
+    _ ≤ μinc (E \ F) + μinc (F ∩ proj α β j ⁻¹' (X j \ Y j)) := by
+        refine (measure_mono ?_).trans (measure_union_le _ _)
+        intro p hp
+        by_cases h : p ∈ F
+        · exact Or.inr ⟨h, hp.2⟩
+        · exact Or.inl ⟨hp.1, h⟩
+    _ = μinc (E \ F) := by rw [hnull, add_zero]
+
+
+
+/-- Auxiliary: `|a_0+a_1+a_2|^2 ≤ 3∑_j|a_j|^2` in `ℝ≥0∞` (proof of `rig:kernel-stability`). -/
+theorem aux_enorm_sum3_sq (a : Fin 3 → ℝ) : ‖∑ j, a j‖ₑ ^ 2 ≤ 3 * ∑ j, ‖a j‖ₑ ^ 2 := by
+  have e : ∀ x : ℝ, ‖x‖ₑ ^ 2 = ENNReal.ofReal (x ^ 2) := fun x => by
+    rw [Real.enorm_eq_ofReal_abs, ← ENNReal.ofReal_pow (abs_nonneg _), sq_abs]
+  simp only [e]
+  rw [← ENNReal.ofReal_sum_of_nonneg (fun j _ => sq_nonneg _), ← ENNReal.ofReal_ofNat 3,
+    ← ENNReal.ofReal_mul (by norm_num)]
+  refine ENNReal.ofReal_le_ofReal ?_
+  have := sq_sum_le_card_mul_sum_sq (s := (Finset.univ : Finset (Fin 3))) (f := a)
+  simpa using this
+
+/-- Auxiliary: `∫_D |G(π_j p)|^2 dμ = ‖√(d_{j,D}) G‖_2^2` (`rig:degree-integration` applied in the
+proof of `rig:kernel-stability`). -/
+theorem aux_lintegral_proj_sq (α β : ℝ) (j : Fin 3) (D : Set (ℝ² × Ang)) (hD : MeasurableSet D)
+    (G : ℝ² → ℝ) (hG : AEStronglyMeasurable G volume) :
+    ∫⁻ p in D, ‖G (proj α β j p)‖ₑ ^ 2 ∂μinc =
+      eLpNorm (fun z => Real.sqrt (degree α β j D z) * G z) 2 volume ^ 2 := by
+  set G' := hG.mk G
+  have hGG' : G =ᵐ[volume] G' := hG.ae_eq_mk
+  have hG'm : Measurable G' := hG.stronglyMeasurable_mk.measurable
+  have hpt : ∀ z, ‖Real.sqrt (degree α β j D z) * G' z‖ₑ ^ 2 =
+      ‖G' z‖ₑ ^ 2 * ENNReal.ofReal (degree α β j D z) := by
+    intro z
+    rw [enorm_mul, Real.enorm_eq_ofReal (Real.sqrt_nonneg _), mul_pow, ← ENNReal.ofReal_pow
+      (Real.sqrt_nonneg _), Real.sq_sqrt (rig_degree_integration_bounds α β j D hD z).1, mul_comm]
+  rw [aux_s2a_eLpNorm_two_sq]
+  calc ∫⁻ p in D, ‖G (proj α β j p)‖ₑ ^ 2 ∂μinc = ∫⁻ p in D, ‖G' (proj α β j p)‖ₑ ^ 2 ∂μinc := by
+        refine lintegral_congr_ae (ae_restrict_of_ae ?_)
+        filter_upwards [aux_proj_ae α β j hGG'] with p hp
+        rw [hp]
+    _ = ∫⁻ z, ‖G' z‖ₑ ^ 2 * ENNReal.ofReal (degree α β j D z) :=
+        rig_degree_integration α β j D hD (fun z => ‖G' z‖ₑ ^ 2) (hG'm.enorm.pow_const 2)
+    _ = ∫⁻ z, ‖Real.sqrt (degree α β j D z) * G' z‖ₑ ^ 2 := by simp only [hpt]
+    _ = ∫⁻ z, ‖Real.sqrt (degree α β j D z) * G z‖ₑ ^ 2 := by
+        refine lintegral_congr_ae ?_
+        filter_upwards [hGG'] with z hz
+        rw [hz]
+
+/-- Auxiliary: the degree of a finite-measure configuration set is an integrable function with
+values in `[0,1]` and integral `μ(D)` (proof of `rig:kernel-stability`). -/
+theorem aux_degree_integrable (α β : ℝ) (j : Fin 3) (D : Set (ℝ² × Ang)) (hD : MeasurableSet D)
+    (hDf : μinc D ≠ ⊤) :
+    Integrable (degree α β j D) ∧ ∫ z, degree α β j D z = (μinc D).toReal := by
+  have hm := aux_degree_measurable α β j D hD
+  have hnn : ∀ z, 0 ≤ degree α β j D z := fun z => (rig_degree_integration_bounds α β j D hD z).1
+  have htot := rig_degree_integration_total α β j D hD
+  refine ⟨⟨hm.aestronglyMeasurable, ?_⟩, ?_⟩
+  · rw [HasFiniteIntegral]
+    have : ∀ z, ‖degree α β j D z‖ₑ = ENNReal.ofReal (degree α β j D z) := fun z =>
+      Real.enorm_eq_ofReal (hnn z)
+    simp only [this, htot]
+    exact hDf.lt_top
+  · rw [integral_eq_lintegral_of_nonneg_ae (Eventually.of_forall hnn) hm.aestronglyMeasurable,
+      htot]
+
+/-- Auxiliary: the bound $\|D_E\widetilde f\|\le 3C_Mt^{-1}\omega(\mu(E\setminus F))\|f\|$ for the
+zero extension of $f\in K_F$ (proof of `rig:kernel-stability`). -/
+theorem aux_ext_bound (α β : ℝ) (E F : Set (ℝ² × Ang)) (X Y : Fin 3 → Set ℝ²) (t : ℝ)
+    (hEm : MeasurableSet E) (hX : ∀ j, MeasurableSet (X j)) (hF : IsCore α β F Y t)
+    (hFE : F ⊆ E) (hYX : ∀ j, Y j ⊆ X j) (hEF : μinc (E \ F) ≠ ⊤) (Cu : ℝ) (ω : ℝ → ℝ)
+    (hCu : 0 ≤ Cu) (hω : ∀ s, 0 ≤ s → 0 ≤ ω s)
+    (hui : ∀ (G : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ²) (t : ℝ), IsCore α β G X t →
+      ∀ f ∈ kernelSpace α β G X, ∀ e : ℝ² → ℝ, (∀ z, e z ∈ Icc 0 1) → Integrable e →
+      ∀ j, eLpNorm (fun z => Real.sqrt (e z) * (X j).indicator (f j : ℝ² → ℝ) z) 2 volume ≤
+        ENNReal.ofReal (Cu * t⁻¹ * ω (∫ z, e z) * ‖f‖))
+    (f : HE Y) (hf : f ∈ kernelSpace α β F Y) :
+    ‖incidenceOp α β E X (aux_ext X Y hF.measurableSet_X hYX f)‖ ≤
+      3 * (Cu * t⁻¹ * ω (μinc (E \ F)).toReal * ‖f‖) := by
+  have hY := hF.measurableSet_X
+  have hFm := hF.measurableSet_E
+  have hDm : MeasurableSet (E \ F) := hEm.diff hFm
+  set B := Cu * t⁻¹ * ω (μinc (E \ F)).toReal * ‖f‖ with hBdef
+  have hB0 : 0 ≤ B := mul_nonneg (mul_nonneg (mul_nonneg hCu (inv_nonneg.2 hF.degree_pos.le))
+    (hω _ ENNReal.toReal_nonneg)) (norm_nonneg _)
+  set g := incidenceFun α β Y f with hg
+  have hcomp : ∀ j, (fun p => (X j).indicator ⇑((aux_ext X Y hY hYX f) j) (proj α β j p)) =ᵐ[μinc]
+      fun p => (Y j).indicator ⇑(f j) (proj α β j p) := by
+    intro j
+    have h1 : (X j).indicator ⇑((aux_ext X Y hY hYX f) j) =ᵐ[volume]
+        (X j).indicator ((Y j).indicator ⇑(f j)) :=
+      (ae_eq_restrict_iff_indicator_ae_eq (hX j)).1 (aux_ext_coe X Y hY hYX f j)
+    rw [indicator_indicator, inter_eq_right.2 (hYX j)] at h1
+    exact aux_proj_ae α β j h1
+  have hDg : (incidenceOp α β E X (aux_ext X Y hY hYX f) : ℝ² × Ang → ℝ) =ᵐ[μinc.restrict E] g := by
+    refine (aux_incidenceOp_ae' α β E X hX _).trans ?_
+    filter_upwards [ae_restrict_of_ae (hcomp 0), ae_restrict_of_ae (hcomp 1),
+      ae_restrict_of_ae (hcomp 2)] with p h0 h1 h2
+    simp only [incidenceFun, Fin.sum_univ_three, hg]
+    rw [h0, h1, h2]
+  have hg0 : g =ᵐ[μinc.restrict F] 0 := (aux_mem_kernel_iff α β F Y hY f).1 hf
+  -- the component estimate
+  have hcompb : ∀ j, ∫⁻ p in E \ F, ‖(Y j).indicator ⇑(f j) (proj α β j p)‖ₑ ^ 2 ∂μinc ≤
+      ENNReal.ofReal B ^ 2 := by
+    intro j
+    obtain ⟨hint, hinteq⟩ := aux_degree_integrable α β j (E \ F) hDm hEF
+    rw [aux_lintegral_proj_sq α β j (E \ F) hDm _
+      (aux_memLp_indicator (Y j) (hY j) (f j)).1]
+    gcongr
+    have h := hui F Y t hF f hf (degree α β j (E \ F))
+      (fun z => ⟨(rig_degree_integration_bounds α β j _ hDm z).1,
+        (rig_degree_integration_bounds α β j _ hDm z).2⟩) hint j
+    rw [hinteq] at h
+    exact h
+  have hsq : eLpNorm g 2 (μinc.restrict E) ^ 2 ≤ (3 * ENNReal.ofReal B) ^ 2 := by
+    rw [aux_s2a_eLpNorm_two_sq, ← union_sdiff_cancel hFE,
+      lintegral_union hDm disjoint_sdiff_right]
+    have h0 : ∫⁻ p in F, ‖g p‖ₑ ^ 2 ∂μinc = 0 := by
+      rw [lintegral_congr_ae (g := fun _ => 0) (hg0.mono fun p hp => by simp [hp])]
+      exact lintegral_zero
+    rw [h0, zero_add]
+    calc ∫⁻ p in E \ F, ‖g p‖ₑ ^ 2 ∂μinc
+        ≤ ∫⁻ p in E \ F, 3 * ∑ j, ‖(Y j).indicator ⇑(f j) (proj α β j p)‖ₑ ^ 2 ∂μinc :=
+          lintegral_mono fun p => aux_enorm_sum3_sq _
+      _ = 3 * ∑ j, ∫⁻ p in E \ F, ‖(Y j).indicator ⇑(f j) (proj α β j p)‖ₑ ^ 2 ∂μinc := by
+          rw [lintegral_const_mul' _ _ (by norm_num), lintegral_finsetSum']
+          intro j _
+          exact ((((aux_memLp_indicator (Y j) (hY j) (f j)).1.comp_measurePreserving
+            (aux_proj_measurePreserving α β j)).restrict).enorm.pow_const 2)
+      _ ≤ 3 * ∑ _j : Fin 3, ENNReal.ofReal B ^ 2 := by gcongr with j; exact hcompb j
+      _ = (3 * ENNReal.ofReal B) ^ 2 := by simp; ring
+  have hle : eLpNorm g 2 (μinc.restrict E) ≤ 3 * ENNReal.ofReal B :=
+    (ENNReal.pow_le_pow_left_iff (by norm_num : (2 : ℕ) ≠ 0)).1 hsq
+  rw [Lp.norm_def, eLpNorm_congr_ae hDg]
+  calc (eLpNorm g 2 (μinc.restrict E)).toReal ≤ (3 * ENNReal.ofReal B).toReal :=
+        ENNReal.toReal_mono (ENNReal.mul_ne_top (by norm_num) ENNReal.ofReal_ne_top) hle
+    _ = 3 * B := by
+        rw [ENNReal.toReal_mul, ENNReal.toReal_ofReal hB0]; norm_num
+
+/-- Auxiliary: the bound $\|f_j\|\le C_Mc^{-1}\omega(|X_j\setminus Y_j|)\|f\|$ for $f\in K_E$
+vanishing on the `Y_j` (proof of `rig:kernel-stability`). -/
+theorem aux_res_bound (α β : ℝ) (E : Set (ℝ² × Ang)) (X Y : Fin 3 → Set ℝ²) (c : ℝ)
+    (hE : IsCore α β E X c) (hY : ∀ j, MeasurableSet (Y j)) (hYX : ∀ j, Y j ⊆ X j)
+    (Cu : ℝ) (ω : ℝ → ℝ) (hCu : 0 ≤ Cu) (hω : ∀ s, 0 ≤ s → 0 ≤ ω s)
+    (hui : ∀ (G : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ²) (t : ℝ), IsCore α β G X t →
+      ∀ f ∈ kernelSpace α β G X, ∀ e : ℝ² → ℝ, (∀ z, e z ∈ Icc 0 1) → Integrable e →
+      ∀ j, eLpNorm (fun z => Real.sqrt (e z) * (X j).indicator (f j : ℝ² → ℝ) z) 2 volume ≤
+        ENNReal.ofReal (Cu * t⁻¹ * ω (∫ z, e z) * ‖f‖))
+    (f : HE X) (hf : f ∈ kernelSpace α β E X) (h0 : aux_res X Y hYX f = 0) (j : Fin 3) :
+    ‖f j‖ ≤ Cu * c⁻¹ * ω (volume (X j \ Y j)).toReal * ‖f‖ := by
+  have hX := hE.measurableSet_X
+  have hS : MeasurableSet (X j \ Y j) := (hX j).diff (hY j)
+  have hSf : volume (X j \ Y j) ≠ ⊤ :=
+    ((hE.isBounded_X j).subset sdiff_subset).measure_lt_top.ne
+  set e : ℝ² → ℝ := (X j \ Y j).indicator 1 with he
+  have hei : ∀ z, e z ∈ Icc 0 1 := fun z => by
+    by_cases hz : z ∈ X j \ Y j <;> simp [he, hz]
+  have hint : Integrable e := (integrable_indicator_iff hS).2
+    (integrableOn_const (C := (1 : ℝ)) hSf)
+  have hinteq : ∫ z, e z = (volume (X j \ Y j)).toReal := by
+    rw [he, integral_indicator_one hS, measureReal_def]
+  have hfY : ∀ᵐ z ∂(volume : Measure ℝ²), z ∈ Y j → (f j : ℝ² → ℝ) z = 0 := by
+    have h1 := aux_res_coe X Y hYX f j
+    rw [h0] at h1
+    have h2 : (f j : ℝ² → ℝ) =ᵐ[volume.restrict (Y j)] 0 :=
+      h1.symm.trans (by simpa using Lp.coeFn_zero ℝ 2 (volume.restrict (Y j)))
+    exact (ae_restrict_iff' (hY j)).1 h2
+  have heq : (fun z => Real.sqrt (e z) * (X j).indicator (f j : ℝ² → ℝ) z) =ᵐ[volume]
+      (X j).indicator (f j : ℝ² → ℝ) := by
+    filter_upwards [hfY] with z hz
+    by_cases hzX : z ∈ X j
+    · by_cases hzY : z ∈ Y j
+      · simp [indicator_of_mem hzX, hz hzY]
+      · have : z ∈ X j \ Y j := ⟨hzX, hzY⟩
+        simp [he, this]
+    · simp [hzX]
+  have h := hui E X c hE f hf e hei hint j
+  rw [eLpNorm_congr_ae heq, eLpNorm_indicator_eq_eLpNorm_restrict (hX j), ← Lp.enorm_def,
+    ← ofReal_norm, hinteq] at h
+  have hb : 0 ≤ Cu * c⁻¹ * ω (volume (X j \ Y j)).toReal * ‖f‖ :=
+    mul_nonneg (mul_nonneg (mul_nonneg hCu (inv_nonneg.2 hE.degree_pos.le))
+      (hω _ ENNReal.toReal_nonneg)) (norm_nonneg _)
+  exact (ENNReal.ofReal_le_ofReal_iff hb).1 h
+
+
+
+/-- Auxiliary: if `‖f_j‖ ≤ a‖f‖` for all `j` and `3a² < 1` then `f = 0`
+(injectivity of the restriction in `rig:kernel-stability`). -/
+theorem aux_eq_zero_of_component_small (X : Fin 3 → Set ℝ²) (f : HE X) (a : ℝ)
+    (ha : 3 * a ^ 2 < 1) (h : ∀ j, ‖f j‖ ≤ a * ‖f‖) : f = 0 := by
+  have hsq := PiLp.norm_sq_eq_of_L2 _ f
+  have hle : ‖f‖ ^ 2 ≤ 3 * a ^ 2 * ‖f‖ ^ 2 := by
+    rw [hsq]
+    calc ∑ j, ‖f j‖ ^ 2 ≤ ∑ _j : Fin 3, (|a| * ‖f‖) ^ 2 := by
+          refine Finset.sum_le_sum fun j _ => ?_
+          exact pow_le_pow_left₀ (norm_nonneg _) ((h j).trans (by gcongr; exact le_abs_self a)) 2
+      _ = 3 * a ^ 2 * ∑ j, ‖f j‖ ^ 2 := by
+          rw [← hsq]; simp [mul_pow, sq_abs]; ring
+  have h0 : ‖f‖ ^ 2 ≤ 0 := by nlinarith [sq_nonneg ‖f‖]
+  have : ‖f‖ = 0 := by nlinarith [norm_nonneg f]
+  exact norm_eq_zero.1 this
+
+/-- Auxiliary: if the orthogonal projection of `x` onto `K` vanishes, then
+`‖x‖ ≤ dist(x, K)` (proof of `rig:kernel-stability`). -/
+theorem aux_norm_le_infDist_of_proj_eq_zero {H : Type*} [NormedAddCommGroup H]
+    [InnerProductSpace ℝ H] (K : Submodule ℝ H) [K.HasOrthogonalProjection] (x : H)
+    (hx : K.orthogonalProjectionOnto x = 0) : ‖x‖ ≤ Metric.infDist x (K : Set H) := by
+  have hPx : K.starProjection x = 0 := by
+    rw [Submodule.starProjection_apply, hx]; rfl
+  have hxperp : x ∈ Kᗮ := (Submodule.starProjection_apply_eq_zero_iff K).1 hPx
+  rw [Metric.le_infDist ⟨0, K.zero_mem⟩]
+  intro y hy
+  rw [dist_eq_norm]
+  have horth : ⟪x, y⟫_ℝ = 0 := Submodule.inner_left_of_mem_orthogonal hy hxperp
+  have h1 := norm_sub_sq_eq_norm_sq_add_norm_sq_real horth
+  have h2 : ‖x‖ ^ 2 ≤ ‖x - y‖ ^ 2 := by rw [sq, sq, h1]; linarith [mul_self_nonneg ‖y‖]
+  exact (pow_le_pow_iff_left₀ (norm_nonneg _) (norm_nonneg _) two_ne_zero).1 h2
+
+/-- Auxiliary: two injective linear maps between finite-dimensional spaces in opposite directions
+make the first one bijective (dimension count in `rig:kernel-stability`). -/
+theorem aux_bijective_of_injective_pair {V W : Type*} [AddCommGroup V] [Module ℝ V]
+    [AddCommGroup W] [Module ℝ W] [FiniteDimensional ℝ V] [FiniteDimensional ℝ W]
+    (f : V →ₗ[ℝ] W) (g : W →ₗ[ℝ] V) (hf : Function.Injective f) (hg : Function.Injective g) :
+    Function.Bijective f := by
+  have hdim : Module.finrank ℝ V = Module.finrank ℝ W :=
+    le_antisymm (LinearMap.finrank_le_finrank_of_injective hf)
+      (LinearMap.finrank_le_finrank_of_injective hg)
+  exact ⟨hf, (LinearMap.injective_iff_surjective_of_finrank_eq_finrank hdim).1 hf⟩
+
+/-- Auxiliary: the real arithmetic closing the injectivity of `K_F → K_E` in
+`rig:kernel-stability`. -/
+theorem aux_stab_arith (N I d C Cu ti w δ : ℝ) (hN : 0 ≤ N) (hC : 0 ≤ C) (hCu : 0 ≤ Cu)
+    (hti : 0 ≤ ti) (_hw : 0 ≤ w) (hwδ : w ≤ δ) (h1 : N ≤ I) (h2 : I ≤ C * d)
+    (h3 : d ≤ 3 * (Cu * ti * w * N)) (hs : 3 * (C * Cu * ti) * δ < 1) : N = 0 := by
+  have hk : 0 ≤ C * Cu * ti := mul_nonneg (mul_nonneg hC hCu) hti
+  have h4 : N ≤ 3 * (C * Cu * ti) * δ * N := by
+    calc N ≤ C * d := h1.trans h2
+      _ ≤ C * (3 * (Cu * ti * w * N)) := mul_le_mul_of_nonneg_left h3 hC
+      _ = 3 * (C * Cu * ti) * w * N := by ring
+      _ ≤ 3 * (C * Cu * ti) * δ * N := by gcongr
+  nlinarith
 
 /-- **Lemma `rig:kernel-stability`**.  Fix a core $(E;X_0,X_1,X_2)$ of degree $c$ and a number
 $t>0$.  There is $\eta_0>0$ such that, whenever $(F;Y_0,Y_1,Y_2)$ is a core of degree $t$, with
@@ -213,6 +2027,97 @@ theorem rig_kernel_stability (α β : ℝ) (hβ : β ≠ 0) (c t C : ℝ) (hc : 
       ∃ R : kernelSpace α β E X ≃ₗ[ℝ] kernelSpace α β F Y,
         ∀ (f : kernelSpace α β E X) (j : Fin 3),
           ((R f : HE Y) j : ℝ² → ℝ) =ᵐ[volume.restrict (Y j)] ((f : HE X) j : ℝ² → ℝ) := by
-  sorry
+  obtain ⟨Cu, ω, hCu, hmono, hnn, htend, hui⟩ := rig_kernel_ui α β hβ
+  set A := Cu * c⁻¹ with hA
+  set Bc := C * Cu * t⁻¹ with hBc
+  have hA0 : 0 ≤ A := mul_nonneg hCu (inv_nonneg.2 hc.le)
+  have hBc0 : 0 ≤ Bc := mul_nonneg (mul_nonneg hC hCu) (inv_nonneg.2 ht.le)
+  set δ := 1 / (2 * (1 + 3 * A + 3 * Bc)) with hδ
+  have hδ0 : 0 < δ := by positivity
+  have hAδ : 3 * (A * δ) ^ 2 < 1 := by
+    have h1 : A * δ ≤ 1 / 6 := by
+      rw [hδ, mul_one_div, div_le_div_iff₀ (by positivity) (by norm_num)]; nlinarith
+    nlinarith [mul_nonneg hA0 hδ0.le]
+  have hBδ : 3 * Bc * δ < 1 := by
+    rw [hδ, mul_one_div, div_lt_one (by positivity)]; nlinarith
+  -- choose `ε` with `ω < δ` on `(0, ε)`
+  obtain ⟨ε, hε, hεω⟩ : ∃ ε > 0, ∀ s ∈ Ioo 0 ε, ω s < δ := by
+    have h := htend (Iio_mem_nhds hδ0)
+    obtain ⟨u, hu, hsub⟩ := mem_nhdsGT_iff_exists_Ioo_subset.1 h
+    exact ⟨u, hu, fun s hs => hsub hs⟩
+  set η₀ := min (ε * c) ε / 2 with hη₀
+  have hη₀0 : 0 < η₀ := by positivity
+  have hη₀c : η₀ / c < ε := by
+    rw [div_lt_iff₀ hc]
+    calc η₀ < min (ε * c) ε := by rw [hη₀]; linarith [lt_min (mul_pos hε hc) hε]
+      _ ≤ ε * c := min_le_left _ _
+  have hη₀ε : η₀ < ε := by
+    calc η₀ < min (ε * c) ε := by rw [hη₀]; linarith [lt_min (mul_pos hε hc) hε]
+      _ ≤ ε := min_le_right _ _
+  have hωc : ∀ s, 0 ≤ s → s ≤ η₀ / c → ω s < δ := fun s hs hs' =>
+    lt_of_le_of_lt (hmono hs (le_of_lt (by positivity : (0 : ℝ) < η₀ / c)) hs')
+      (hεω _ ⟨by positivity, hη₀c⟩)
+  have hω0 : ∀ s, 0 ≤ s → s ≤ η₀ → ω s < δ := fun s hs hs' =>
+    lt_of_le_of_lt (hmono hs hη₀0.le hs') (hεω _ ⟨hη₀0, hη₀ε⟩)
+  refine ⟨η₀, hη₀0, fun E X hE hgap F Y hF hFE hYX hη => ?_⟩
+  have hX := hE.measurableSet_X
+  have hY := hF.measurableSet_X
+  have hEm := hE.measurableSet_E
+  have hFm := hF.measurableSet_E
+  have hEF : μinc (E \ F) ≠ ⊤ := (hη.trans ENNReal.ofReal_lt_top).ne
+  have hηlt : (μinc (E \ F)).toReal < η₀ := ENNReal.toReal_lt_of_lt_ofReal hη
+  have hfdE := rig_kernel_gap_finiteDimensional α β hβ E X c hE
+  have hfdF := rig_kernel_gap_finiteDimensional α β hβ F Y t hF
+  have : CompleteSpace (kernelSpace α β E X) := FiniteDimensional.complete ℝ _
+  -- the restriction map
+  obtain ⟨Res, hRes⟩ : ∃ Res : kernelSpace α β E X →ₗ[ℝ] kernelSpace α β F Y,
+      ∀ f, (Res f : HE Y) = aux_res X Y hYX (f : HE X) :=
+    ⟨(aux_res X Y hYX).restrict (fun f hf => aux_res_mem α β E F X Y hX hY hYX hFE
+      hF.ae_proj_mem f hf), fun f => rfl⟩
+  have hResinj : Function.Injective Res := by
+    rw [← LinearMap.ker_eq_bot, LinearMap.ker_eq_bot']
+    intro f hf0
+    have h0 : aux_res X Y hYX (f : HE X) = 0 := by
+      have := congrArg Subtype.val hf0; rw [hRes] at this; exact this
+    have hcomp : ∀ j, ‖(f : HE X) j‖ ≤ (A * δ) * ‖(f : HE X)‖ := by
+      intro j
+      have h1 := aux_res_bound α β E X Y c hE hY hYX Cu ω hCu hnn hui f f.2 h0 j
+      have hloss := aux_vertex_loss α β E F X Y c hE hFm hY hF.ae_proj_mem j
+      have hvol : (volume (X j \ Y j)).toReal ≤ η₀ / c := by
+        have hfin : volume (X j \ Y j) ≠ ⊤ :=
+          ((hE.isBounded_X j).subset sdiff_subset).measure_lt_top.ne
+        have h2 : ENNReal.ofReal c * volume (X j \ Y j) < ENNReal.ofReal η₀ := hloss.trans_lt hη
+        rw [← ENNReal.ofReal_toReal hfin, ← ENNReal.ofReal_mul hc.le,
+          ENNReal.ofReal_lt_ofReal_iff hη₀0] at h2
+        rw [le_div_iff₀ hc]; linarith
+      have hωv := hωc _ ENNReal.toReal_nonneg hvol
+      calc ‖(f : HE X) j‖ ≤ Cu * c⁻¹ * ω (volume (X j \ Y j)).toReal * ‖(f : HE X)‖ := h1
+        _ ≤ A * δ * ‖(f : HE X)‖ := by
+            rw [hA]; gcongr
+    have := aux_eq_zero_of_component_small X (f : HE X) (A * δ) hAδ hcomp
+    exact Subtype.ext this
+  -- the projected zero extension
+  obtain ⟨Q, hQ⟩ : ∃ Q : kernelSpace α β F Y →ₗ[ℝ] kernelSpace α β E X,
+      ∀ f, Q f = (kernelSpace α β E X).orthogonalProjectionOnto (aux_ext X Y hY hYX (f : HE Y)) :=
+    ⟨((kernelSpace α β E X).orthogonalProjectionOnto :
+      HE X →L[ℝ] kernelSpace α β E X).toLinearMap ∘ₗ (aux_ext X Y hY hYX) ∘ₗ
+        (kernelSpace α β F Y).subtype, fun f => rfl⟩
+  have hQinj : Function.Injective Q := by
+    rw [← LinearMap.ker_eq_bot, LinearMap.ker_eq_bot']
+    intro f hf0
+    have hP : (kernelSpace α β E X).orthogonalProjectionOnto
+        (aux_ext X Y hY hYX (f : HE Y)) = 0 := by rw [← hQ]; exact hf0
+    have hlow := aux_norm_le_infDist_of_proj_eq_zero _ _ hP
+    rw [aux_ext_norm] at hlow
+    have hD := aux_ext_bound α β E F X Y t hEm hX hF hFE hYX hEF Cu ω hCu hnn hui (f : HE Y) f.2
+    have hg := hgap (aux_ext X Y hY hYX (f : HE Y))
+    have hωη := hω0 _ ENNReal.toReal_nonneg hηlt.le
+    have hN := aux_stab_arith _ _ _ C Cu t⁻¹ _ δ (norm_nonneg _) hC hCu (inv_nonneg.2 ht.le)
+      (hnn _ ENNReal.toReal_nonneg) hωη.le hlow hg hD (by rw [← hBc]; exact hBδ)
+    exact Subtype.ext (norm_eq_zero.1 hN)
+  refine ⟨LinearEquiv.ofBijective Res
+    (aux_bijective_of_injective_pair Res Q hResinj hQinj), fun f j => ?_⟩
+  rw [LinearEquiv.ofBijective_apply, hRes]
+  exact aux_res_coe X Y hYX (f : HE X) j
 
 end Auto

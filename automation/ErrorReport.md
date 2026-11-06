@@ -89,3 +89,10 @@ formalization from the blueprint. Each entry records the date/time and the bluep
   constructing the Radon–Nikodym kernel K(z,y).
 - (2026-11-06T14:35:25-08:00) `lem:triple-l2` (tex ~2121): the constant C_M is the explicit constant of the reused reference proof,
   N_M/(2π)·(2/|β|)^{1/2} with N_M = ⌈π/h_M⌉+1, h_M = |β|/(4(1+α²+β²)); the statement keeps C_M existential.
+- (2026-11-06T14:48:51-08:00) Lean translation fix (not a blueprint error), `rig:def-kernel` (tex ~2294): the auxiliary existence lemma
+  `aux_incidenceOp_exists` and `incidenceOp_ae` lacked the hypothesis that the vertex sets X_j are measurable, which
+  `rig:def-core` assumes; without it the statement is false (non-measurable X_j). The hypothesis was added; no public
+  theorem statement changed. Resolved.
+- (2026-11-06T14:48:51-08:00) `rig:kernel-gap` (tex ~2307–2350): proof route changed (no error). Instead of forming A^{-1/2}D*DA^{-1/2}, Lean
+  proves ‖D_E f‖² = ⟨Af,f⟩ + ⟨Kf,f⟩ with K compact (off-diagonal blocks via `lem:circle-compact`) and uses a
+  real-Hilbert-space version of `ext:compact-gap`.

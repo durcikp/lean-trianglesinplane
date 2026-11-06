@@ -145,15 +145,15 @@ Lean file: Auto/FiniteDimensionalScalarKernels/FiniteDimensionalScalarKernels.le
 #### Definitions
 
 \label{rig:def-core}: [Completed] (Lean: Auto.degree, Auto.IsCoreData, Auto.IsCore) (2026-11-06T12:28:18-08:00)
-\label{rig:def-kernel}: [Completed] (Lean: Auto.HE, Auto.incidenceOp, Auto.kernelSpace) (2026-11-06T12:28:18-08:00)
+\label{rig:def-kernel}: [Completed] (Lean: Auto.HE, Auto.incidenceOp, Auto.incidenceOp_ae, Auto.kernelSpace) (2026-11-06T14:48:51-08:00)
 
 #### Theorems
 
-\label{rig:degree-integration}: [Statement completed] (Lean: Auto.rig_degree_integration, Auto.rig_degree_integration_bounds, Auto.rig_degree_integration_total, Auto.rig_degree_integration_null) (2026-11-06T12:28:18-08:00)
-\label{rig:prune}: [Statement completed] (Lean: Auto.rig_prune) (2026-11-06T12:28:18-08:00)
-\label{rig:kernel-gap}: [Statement completed] (Lean: Auto.rig_kernel_gap_finiteDimensional, Auto.rig_kernel_gap) (2026-11-06T12:28:18-08:00)
-\label{rig:kernel-ui}: [Statement completed] (Lean: Auto.rig_kernel_ui) (2026-11-06T12:28:18-08:00)
-\label{rig:kernel-stability}: [Statement completed] (Lean: Auto.rig_kernel_stability) (2026-11-06T12:28:18-08:00)
+\label{rig:degree-integration}: [Proof completed] (Lean: Auto.rig_degree_integration, Auto.rig_degree_integration_bounds, Auto.rig_degree_integration_total, Auto.rig_degree_integration_null) (2026-11-06T14:48:51-08:00)
+\label{rig:prune}: [Proof completed] (Lean: Auto.rig_prune) (2026-11-06T14:48:51-08:00)
+\label{rig:kernel-gap}: [Proof completed] (Lean: Auto.rig_kernel_gap_finiteDimensional, Auto.rig_kernel_gap) (2026-11-06T14:48:51-08:00)
+\label{rig:kernel-ui}: [Proof completed] (Lean: Auto.rig_kernel_ui) (2026-11-06T14:48:51-08:00)
+\label{rig:kernel-stability}: [Proof completed] (Lean: Auto.rig_kernel_stability) (2026-11-06T14:48:51-08:00)
 
 ## Analytic pieces and measurable rigidity
 
