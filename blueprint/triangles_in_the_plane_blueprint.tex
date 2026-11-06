@@ -1,0 +1,4326 @@
+\documentclass[11pt]{amsart}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage[margin=1in]{geometry}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\newcommand{\R}{\mathbb R}
+\newcommand{\C}{\mathbb C}
+\newcommand{\N}{\mathbb N}
+\newcommand{\Z}{\mathbb Z}
+\newcommand{\Q}{\mathbb Q}
+\newcommand{\dd}{\,\mathrm d}
+\newcommand{\one}{\mathbf 1}
+\newcommand{\e}{\mathrm e}
+\newcommand{\norm}[1]{\left\|#1\right\|}
+\newcommand{\abs}[1]{\left|#1\right|}
+\newcommand{\ip}[2]{\left\langle #1,#2\right\rangle}
+\DeclareMathOperator{\supp}{supp}
+\DeclareMathOperator{\dist}{dist}
+\DeclareMathOperator{\Lip}{Lip}
+\DeclareMathOperator{\TV}{TV}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem*{remark*}{Remark}
+\newtheorem{maintheorem}{Theorem}
+\renewcommand{\themaintheorem}{\Alph{maintheorem}}
+\numberwithin{equation}{section}
+\setlist[enumerate]{leftmargin=*,itemsep=4pt}
+\setlist[itemize]{leftmargin=*,itemsep=3pt}
+\allowdisplaybreaks[2]
+\providecommand{\lean}[1]{}
+\providecommand{\leanok}{}
+\emergencystretch=2em
+\title[Blueprint: triangles in the plane]{Triangles in the plane:\\a self-contained proof blueprint}
+\author{}
+\date{November 6, 2026}
+\hypersetup{pdftitle={Triangles in the plane: a self-contained proof blueprint},
+ pdfsubject={Expanded triangle proof including three-letter density Hales-Jewett and the analytic inputs}}
+\begin{document}
+\begin{abstract}
+This blueprint expands the argument of the supplied manuscript on planar
+triangles.  It includes proofs of the three-letter density Hales--Jewett
+theorem and the analytic representation and rigidity facts needed by the
+argument.  Weighted circle compactness, measurable stationarity, annular
+cancellation, and frequency summation then give uniform smoothing of the
+triangle counting form and the geometric conclusion.  All results are
+arranged in dependency order, and each theorem, proposition, lemma, and
+corollary after the introduction is followed immediately by its proof.
+The foundational measure theory and calculus assumed are specified below.
+\end{abstract}
+\maketitle
+\tableofcontents
+
+\section{Introduction and foundations}\label{sec:introduction}
+
+The purpose of this document is to make the proof structure and the
+measure-theoretic, functional-analytic, and summation steps of the supplied
+paper explicit.  The notation is kept close to that paper.  Definitions
+are made before use, and the geometric density argument is placed after
+the analytic estimates on which it depends.
+
+For a measurable set $E\subset\R^2$, write
+\[
+ d^*(E)=\limsup_{L\to\infty}\sup_{z\in\R^2}
+       \frac{|E\cap(z+[0,L]^2)|}{L^2}.
+\]
+Here and throughout, $|\cdot|$ denotes Lebesgue measure when applied
+to a measurable subset of Euclidean space.
+
+\begin{maintheorem}[Geometric conclusion]\label{intro:density}
+\lean{Auto.intro_density}
+Let $\Delta\subset\R^2$ consist of three noncollinear points.  If
+$E\subset\R^2$ is measurable and $d^*(E)>0$, there is $\lambda_0>0$
+such that, for every $\lambda\ge\lambda_0$, the set $E$ contains a
+translate of a rotation of $\lambda\Delta$.
+\end{maintheorem}
+
+The analytic assertion used to prove this is as follows.  Let
+$J(x_1,x_2)=(-x_2,x_1)$ and $M=\alpha I+\beta J$ with $\beta\ne0$.
+Let $\sigma$ be uniform probability measure on the unit circle.  For
+a finite measure $\nu$ define
+\[
+ \Lambda_\nu(f_0,f_1,f_2)
+  =\iint f_0(x)f_1(x+u)f_2(x+Mu)\dd\nu(u)\dd x.
+\]
+Write $\nu_s$ for the pushforward of $\nu$ under $u\mapsto su$,
+and write $\|\Lambda_\nu\|$ for the
+$L^2\times L^2\times L^\infty$ operator norm.
+
+\begin{maintheorem}[Uniform smoothing]\label{intro:smoothing}
+\lean{Auto.intro_smoothing}
+For every nonnegative $\rho\in L^1(\R^2)$ with $\int\rho=1$, put
+$\rho_\varepsilon(u)=\varepsilon^{-2}\rho(u/\varepsilon)$.  Then
+\[
+ \lim_{\varepsilon\downarrow0}\sup_{s>0}
+  \big\|\Lambda_{(\sigma*\rho_\varepsilon-\sigma)_s}\big\|=0.
+\]
+The same statement holds with the $L^\infty$ slot at any of the
+three vertices.
+\end{maintheorem}
+
+These two introductory statements are proved in the main text, after
+their prerequisites.  The analytic proof has three main parts: a rigidity
+theorem for measurable stationary frequency fields; a compactness argument
+for cancellation on a single frequency annulus; and a positive
+telescoping estimate that sums the annuli without a decay rate.
+
+\subsection*{Foundations and the scope of self-containment}
+
+We work over the usual construction of Lebesgue measure, integration,
+$L^p$ spaces, and Hilbert spaces.  The foundational facts used are
+Tonelli and Fubini, monotone and dominated convergence, regularity of
+finite Borel measures on Euclidean spaces, completion of Lebesgue
+measure, measure extension, Radon--Nikodym, and monotone classes.
+We also use elementary
+Euclidean calculus, including change of variables, the inverse function
+theorem, and convergent power series.  The Hilbert-space foundations
+include orthogonal projection onto a closed subspace and the existence
+of adjoints of bounded operators.  Basic inner-product algebra and
+finite combinatorics are understood.  Thus ``self-contained'' here means
+a proof over these standard analysis foundations, rather than a
+reconstruction of measure theory itself.
+
+All additional inputs used by the triangle argument are proved in the
+text.  The analytic preliminaries include the needed Fourier facts,
+sequential weak-* extraction, elementary compact-operator facts, the
+positive-definite representation theorem, the exponential form of local
+matrix groups, and the real-analytic zero-set argument.  These statements
+are restricted to the settings in which they are applied.
+
+The combinatorial preliminaries prove the density Hales--Jewett theorem
+for three letters.  This is the theorem of Furstenberg and Katznelson
+\cite{FK}; the proof here follows the finite density-increment approach
+of Polymath \cite{Polymath}, with a tiling argument in the form developed
+by Dodos, Kanellopoulos, and Tyros \cite{DKT}.  The two-letter input,
+the comparisons of finite probability measures, the insensitive-set
+tilings, and the density-increment iteration are all proved.  The
+three-letter theorem is therefore an established earlier result when it
+is used in the final geometric argument.
+
+
+
+\section{Analytic prerequisites with proofs}\label{ext:section}
+
+This section supplies the Fourier, compactness, spectral-measure,
+matrix-group, and analytic-zero-set facts used in the argument.  The
+foundations are Lebesgue measure and integration, the ordinary extension
+theorem for a finite premeasure, elementary Euclidean calculus, and the
+elementary Hilbert-space operations of taking adjoints and orthogonal
+projections.  No spectral theorem for compact operators, representation
+theorem for positive-definite functions, or local Lie-group theorem is
+assumed.
+
+\subsection{Fourier analysis in the required form}
+
+\begin{definition}[Fourier convention and Gaussian kernels]
+\label{ext:fourier-convention}
+\lean{Auto.FCMeasure,Auto.FCMeasure.fourier,Auto.gaussKernel}
+For $f\in L^1(\R^2)$ and a finite complex Borel measure $\eta$, put
+\[
+ \widehat f(\xi)=\int_{\R^2}f(x)\exp(-2\pi i x\cdot\xi)\dd x,
+ \qquad
+ \widehat\eta(\xi)=\int_{\R^2}\exp(-2\pi i x\cdot\xi)\dd\eta(x).
+\]
+The inverse transform uses the positive sign in the exponential and
+is denoted by a check.  The Schwartz space $\mathcal S(\R^2)$ consists
+of the smooth functions for which every derivative, multiplied by any
+polynomial, is bounded.  For $t>0$ write
+\[
+ \gamma_t(x)=t^{-1}\exp(-\pi|x|^2/t).
+\]
+\end{definition}
+
+\begin{lemma}[The convolution inequalities used below]\label{ext:young}
+\lean{Auto.ext_young_one,Auto.ext_young_two,Auto.ext_young_top}
+\leanok
+If $\kappa$ is a finite complex Borel measure and
+$p\in\{1,2,\infty\}$, then
+\[
+ \|\kappa*f\|_p\le\|\kappa\|_{\mathrm{TV}}\|f\|_p.
+\]
+In particular this holds when $\kappa$ has an $L^1$ density.
+\end{lemma}
+\begin{proof}
+The assertion for $p=\infty$ follows by taking absolute
+values inside the convolution integral; for $p=1$ it follows
+by Tonelli and translation invariance.  For $p=2$,
+Cauchy--Schwarz against the finite measure $|\kappa|$ gives
+\[
+ |(\kappa*f)(x)|^2
+ \le\|\kappa\|_{\mathrm{TV}}
+             \int|f(x-y)|^2\dd|\kappa|(y).
+\]
+Tonelli and translation invariance give the claimed $L^2$
+bound after integration in $x$.  The same estimate shows
+that the defining integral is absolutely convergent for
+almost every $x$, by another application of Cauchy--Schwarz.
+\end{proof}
+
+\begin{lemma}[Density and continuity under translations and dilations]
+\label{ext:approximation}
+\lean{Auto.ext_approximation_dense,Auto.ext_approximation_translation,Auto.ext_approximation_translation_config,Auto.ext_approximation_dilation}
+\leanok
+Smooth compactly supported functions are dense in $L^p(\R^2)$ for
+$p=1,2$.  For these two exponents, translations are continuous:
+\[
+ \|f(\cdot-h)-f\|_p\longrightarrow0\qquad(h\to0).
+\]
+For $F\in L^p(\R^2\times[0,2\pi))$, the same conclusion
+holds for translation in the first two variables, with the
+product measure $\dd x\dd\theta/(2\pi)$.
+The normalized dilations $D_rf(x)=r^{-2}f(x/r)$ satisfy
+$\|D_rf-f\|_1\to0$ as $r\to1$.
+\end{lemma}
+\begin{proof}
+Truncating both the support and the magnitude of a function reduces
+density to bounded functions on a bounded set.  Simple functions
+approximate these in $L^p$.  By regularity of Lebesgue measure, their
+level sets can be approximated in measure by finite unions of bounded
+rectangles.  The indicator of a bounded rectangle can in turn be
+approximated in $L^p$ by a smooth function between zero and one that
+equals one away from a thin boundary layer and vanishes outside a
+slightly enlarged rectangle.  These steps prove the density assertion.
+
+For a smooth compactly supported function, translation continuity
+follows from uniform continuity and a common bounded support for small
+translations.  Translation is an isometry on $L^p$, so approximation
+proves the assertion for every $f\in L^p$.  The same argument proves
+dilation continuity in $L^1$, using $\|D_rf\|_1=\|f\|_1$ and the
+common bounded support of $D_rg$ for $r$ near one and $g\in C_c^\infty$.
+For the product-space assertion, apply planar translation
+continuity to $F(\cdot,\theta)$ for almost every $\theta$.
+Fubini writes the $p$th power of the product norm as the
+integral of the $p$th powers of these sectional norms.
+They are dominated by
+$2^p\|F(\cdot,\theta)\|_p^p$, an integrable function of
+$\theta$.  Dominated convergence gives the assertion.
+\end{proof}
+
+\begin{lemma}[The Gaussian Fourier calculation]\label{ext:gaussian}
+\lean{Auto.ext_gaussian_integral,Auto.ext_gaussian_fourier,Auto.ext_gaussian_pointwise,Auto.ext_gaussian_uniform}
+\leanok
+The Gaussian kernels have integral one and satisfy
+\[
+ \widehat{\gamma_t}(\xi)=\exp(-\pi t|\xi|^2).
+\]
+If $f$ is bounded and continuous, then $\gamma_t*f(x)\to f(x)$
+at every $x$ as $t\downarrow0$.  The convergence is uniform when
+$f$ is bounded and uniformly continuous.
+\end{lemma}
+\begin{proof}
+The elementary Gaussian integral is
+$\int_\R\exp(-\pi x^2)\dd x=1$: square the integral and use polar
+coordinates in the plane.  If
+\[
+ G(\xi)=\int_\R\exp(-\pi x^2)\exp(-2\pi i x\xi)\dd x,
+\]
+differentiation under the integral and integration by parts give
+$G'(\xi)=-2\pi\xi G(\xi)$.  Since $G(0)=1$, differentiating
+$\exp(\pi\xi^2)G(\xi)$ shows that $G(\xi)=\exp(-\pi\xi^2)$.
+Taking products of the one-dimensional identity and then scaling
+proves the displayed formula and the integral normalization.
+
+After the substitution $y=\sqrt t\,z$,
+\[
+ (\gamma_t*f)(x)-f(x)
+ =\int\exp(-\pi|z|^2)
+               \big(f(x-\sqrt t\,z)-f(x)\big)\dd z.
+\]
+Pointwise convergence follows by dominated convergence.  For uniform
+convergence, use uniform continuity on $|z|\le A$ and bound the
+remaining integral by
+$2\|f\|_\infty\int_{|z|>A}\exp(-\pi|z|^2)\dd z$; first increase
+$A$, and then decrease $t$.
+\end{proof}
+
+\begin{lemma}[Fourier inversion and Plancherel]\label{ext:fourier}
+\lean{Auto.ext_fourier_maps,Auto.ext_fourier_onto,Auto.ext_fourier_inversion,Auto.ext_fourier_plancherel,Auto.ext_fourier_unitary}
+\leanok
+The Fourier transform maps $\mathcal S(\R^2)$ onto itself, and
+\[
+ f(x)=\int\widehat f(\xi)\exp(2\pi i x\cdot\xi)\dd\xi
+ \qquad(f\in\mathcal S).
+\]
+For $f,g\in\mathcal S$,
+\[
+ \int\widehat f(\xi)\overline{\widehat g(\xi)}\dd\xi
+       =\int f(x)\overline{g(x)}\dd x.
+\]
+Consequently the Fourier transform extends uniquely to a unitary
+operator on $L^2(\R^2)$.
+\end{lemma}
+\begin{proof}
+Differentiation under the integral expresses derivatives of
+$\widehat f$ as transforms of polynomial multiples of $f$.
+Integration by parts expresses polynomial multiples of these
+derivatives as transforms of derivatives of polynomial multiples
+of $f$.  All the latter functions are integrable.  This proves
+that $\widehat f$ is Schwartz.  The identical argument applies
+to the inverse transform.
+
+Fubini and Lemma~\ref{ext:gaussian} give, for $t>0$,
+\[
+ \int\widehat f(\xi)\exp(2\pi i x\cdot\xi)
+                         \exp(-\pi t|\xi|^2)\dd\xi
+       =(f*\gamma_t)(x).
+\]
+The left side converges to the inverse-transform integral by
+dominated convergence, because $\widehat f\in L^1$.  The right
+side converges to $f(x)$ by Lemma~\ref{ext:gaussian}.  This proves
+inversion, including that the transform is onto the Schwartz space.
+
+Apply inversion to $g$, take its complex conjugate, multiply by
+$f$, and integrate.  Fubini is legitimate because
+$\|f\|_1\|\widehat g\|_1<\infty$.  The result is the inner-product
+identity.  In particular the transform is an $L^2$ isometry on
+the Schwartz space.  This space is dense in $L^2$ by
+Lemma~\ref{ext:approximation}, so the isometry extends uniquely
+to $L^2$.  Its range is closed and contains the dense Schwartz
+space, and is therefore all of $L^2$.
+\end{proof}
+
+\begin{lemma}[Uniqueness for finite measures]\label{ext:fourier-uniqueness}
+\lean{Auto.ext_fourier_uniqueness,Auto.ext_fourier_uniqueness_dense}
+\leanok
+A finite complex Borel measure on $\R^2$ is determined by its
+Fourier transform.  In particular, if $\nu$ is a finite positive
+measure, the characters
+$\xi\mapsto\exp(2\pi i s\cdot\xi)$ with $s\in\Q^2$ span a
+dense subspace of $L^2(\nu)$.
+\end{lemma}
+\begin{proof}
+It is enough to consider a finite complex measure $\eta$ with
+$\widehat\eta=0$.  The Gaussian formula and Fubini imply
+\[
+ (\eta*\gamma_t)(x)
+ =\int\exp(2\pi i x\cdot\xi)\exp(-\pi t|\xi|^2)
+                          \widehat\eta(\xi)\dd\xi=0.
+\]
+For $\varphi\in C_c(\R^2)$, another use of Fubini gives
+\[
+ 0=\int\varphi(x)(\eta*\gamma_t)(x)\dd x
+   =\int(\varphi*\gamma_t)(y)\dd\eta(y).
+\]
+By uniform convergence in Lemma~\ref{ext:gaussian}, the last
+integral tends to $\int\varphi\dd\eta$.  Thus this integral is
+zero for every continuous compactly supported $\varphi$.
+Regularity of a finite Borel measure on Euclidean space shows
+that these test functions determine the measure: approximate
+indicators of compact sets from above by continuous cutoffs in
+arbitrarily small open neighborhoods, and then use inner
+regularity on Borel sets.  Hence $\eta=0$.
+
+If $g\in L^2(\nu)$ is orthogonal to all the stated characters,
+the finite complex measure $\overline g\,\nu$ has Fourier
+transform zero on $\Q^2$, with the sign of the argument
+immaterial.  Its transform is continuous by dominated
+convergence, so it is zero everywhere.  The first assertion
+therefore gives $g=0$ almost everywhere.  The orthogonal
+complement of the character span is zero, proving density.
+\end{proof}
+
+\begin{definition}[Fourier support for bounded functions]
+\label{ext:bounded-support}
+\lean{Auto.HasFourierSupportIn,Auto.HasL2FourierSupportIn}
+For a compact set $K\subset\R^2$, a bounded measurable function $g$
+has Fourier support in $K$ if
+\[
+ \int_{\R^2}g(x)\widehat\varphi(x)\dd x=0
+ \quad\text{for every }\varphi\in C_c^\infty(\R^2)
+ \text{ with }\supp\varphi\cap K=\varnothing.
+\]
+This is the test-function definition of distributional Fourier support;
+the displayed integrals are absolutely convergent because
+$\widehat\varphi$ is Schwartz.  For an $L^2$ function, Fourier support
+in $K$ means that its $L^2$ Fourier transform vanishes almost everywhere
+outside $K$.
+\end{definition}
+
+\begin{lemma}[Reproduction of an input with compact Fourier support]
+\label{ext:reproduction}
+\lean{Auto.ext_reproduction_L2,Auto.ext_reproduction_bounded,Auto.ext_reproduction_agree}
+\leanok
+Suppose $p\in\mathcal S(\R^2)$ and $\widehat p=1$ on a
+neighborhood of a compact set $K$.  If $g\in L^2$ or $g\in L^\infty$
+has Fourier support in $K$, then $p*g=g$ almost everywhere.
+For a function in $L^2\cap L^\infty$, the two support conditions in
+Definition~\ref{ext:bounded-support} agree.
+\end{lemma}
+\begin{proof}
+For $L^2$ inputs, the identity
+$\widehat{p*g}=\widehat p\,\widehat g$ holds first for Schwartz
+functions by Fubini and then by $L^2$ approximation, using
+Lemmas~\ref{ext:young} and~\ref{ext:fourier}.  The support assumption
+then proves the assertion by injectivity of the $L^2$ Fourier transform.
+
+For bounded inputs we first extend the defining support condition to
+Schwartz tests $\varphi$ that vanish on a neighborhood of $K$.
+Choose $\eta\in C_c^\infty$ equal to one near zero and put
+$\varphi_R(\xi)=\eta(\xi/R)\varphi(\xi)$.  Each $\varphi_R$ is an
+allowed compactly supported test.  Write
+$\Delta=\partial_1^2+\partial_2^2$ for the Laplacian.
+If $v\in\mathcal S$, integration by parts gives
+\[
+ (1+4\pi^2|x|^2)^2\widehat v(x)
+       =\widehat{(1-\Delta)^2v}(x),
+ \qquad
+ \|\widehat v\|_1
+       \le C\sum_{|\alpha|\le4}\|\partial^\alpha v\|_1.
+\]
+The second inequality follows by bounding the transform on the right
+by the $L^1$ norm of its input and integrating
+$(1+4\pi^2|x|^2)^{-2}$ over the plane.
+The product rule and rapid decay of $\varphi$ give
+$\|\partial^\alpha(\varphi_R-\varphi)\|_1\to0$ for every
+$|\alpha|\le4$: the undifferentiated cutoff contributes a tail
+integral, and each differentiated cutoff contributes a factor
+$R^{-1}$ or smaller times a rapidly decaying derivative.
+Consequently $\|\widehat\varphi_R-\widehat\varphi\|_1\to0$.
+Pairing with bounded $g$ proves $\int g\widehat\varphi=0$.
+
+For any $\psi\in\mathcal S$, Fubini now gives
+\[
+ \int(p*g-g)(x)\widehat\psi(x)\dd x
+   =\int g(y)\widehat{(\widehat p-1)\psi}(y)\dd y=0.
+\]
+For the convolution term, absolute integrability follows from
+$\|g\|_\infty\|p\|_1\|\widehat\psi\|_1<\infty$.
+The final equality holds because $(\widehat p-1)\psi$ is Schwartz
+and vanishes near $K$.  Lemma~\ref{ext:fourier} says that Fourier
+transforms of Schwartz tests exhaust the Schwartz space.  Thus the
+bounded function $p*g-g$ annihilates every $C_c^\infty$ test and,
+by their $L^1$ density from Lemma~\ref{ext:approximation}, every
+$L^1$ test.  It is zero almost everywhere.
+
+Finally, for $g\in L^2\cap L^\infty$, Plancherel gives
+$\int g\widehat\varphi=\int\widehat g\,\varphi$.
+Vanishing of the latter pairings for all smooth tests supported
+outside $K$ is equivalent to $\widehat g=0$ there almost everywhere.
+For the nontrivial direction, cover $\R^2\setminus K$ by countably
+many balls whose closures are disjoint from $K$.  Smooth tests supported
+in a ball are dense in its $L^2$ space: first multiply a function by
+smooth cutoffs increasing to one inside that ball, and then approximate
+each resulting function in $L^2(\R^2)$ using
+Lemma~\ref{ext:approximation}, multiplying the approximants by another
+cutoff equal to one on its compact support and supported in the ball.
+Thus $\widehat g$ vanishes on each ball almost everywhere.
+This proves agreement of the definitions.
+\end{proof}
+
+\subsection{The compactness facts used for circle operators}
+
+\begin{definition}[Compact operator]\label{ext:compact-definition}
+\lean{IsCompactOperator}
+A bounded linear operator between Hilbert spaces is compact if
+the image of every bounded sequence has a norm-convergent
+subsequence.  Equivalently, the image of its unit ball has a
+finite $\varepsilon$-net for every $\varepsilon>0$.
+\end{definition}
+
+\begin{lemma}[Elementary compactness principles]\label{ext:compact-facts}
+\lean{Auto.ext_compact_facts_norm_adjoint,Auto.ext_compact_facts_norm_comp_adjoint,Auto.ext_compact_facts_finite_rank,Auto.ext_compact_facts_limit,Auto.ext_compact_facts_integral,Auto.ext_compact_facts_weak}
+\leanok
+For a bounded operator between Hilbert spaces,
+$\|T\|=\|T^*\|$ and $\|TT^*\|=\|T\|^2$.
+The following compactness facts also hold.
+\begin{enumerate}
+\item Finite-rank operators are compact, and an operator-norm
+limit of compact operators is compact.
+\item An integral operator with kernel in $L^2(X\times Y)$,
+where $X,Y$ are bounded measurable subsets of Euclidean space,
+is compact from $L^2(Y)$ to $L^2(X)$.
+\item If $T$ is compact and a bounded sequence $f_n$ converges
+weakly to $f$, then $Tf_n\to Tf$ in norm.
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+Taking the supremum of $|\langle Tx,y\rangle|$ over unit
+vectors in the two spaces gives $\|T\|=\|T^*\|$.
+The inequality $\|TT^*\|\le\|T\|^2$ follows by composition,
+and $\|T^*y\|^2=\langle TT^*y,y\rangle$ gives the reverse
+inequality after taking the supremum over unit $y$.
+
+The first assertion for finite rank follows from compactness of
+bounded closed sets in finite-dimensional Euclidean space.
+If $T_m\to T$ in operator norm, approximate the image of the
+unit ball under $T$ by its image under one $T_m$ and then by a
+finite net for that image.  This gives a finite net for $T$ at
+every positive accuracy.  A successive-net or diagonal argument
+shows that every sequence in this image has a Cauchy subsequence;
+completeness makes it convergent.
+
+For the second assertion, finite sums of kernels
+$a(x)b(y)$ are dense in $L^2(X\times Y)$.  Indeed, rectangular
+simple functions are dense in the product measure space, by
+approximation of measurable sets using the algebra of finite
+unions of measurable rectangles.  Such finite sums define
+finite-rank operators.  Cauchy--Schwarz shows that the operator
+norm of the difference of two integral operators is at most
+the $L^2$ norm of the difference of their kernels.  Apply the
+first assertion.
+
+For the third, suppose norm convergence fails.  A subsequence
+stays a positive distance from $Tf$, and a further subsequence
+converges in norm to some $v$ by compactness.  For every test
+vector $h$, the identity
+$\langle Tf_n,h\rangle=\langle f_n,T^*h\rangle$ shows that the
+weak limit is $Tf$.  The norm limit $v$ must therefore equal
+$Tf$, a contradiction.
+\end{proof}
+
+\begin{lemma}[Compactness from the product with the adjoint]
+\label{ext:ttstar}
+\lean{Auto.ext_ttstar}
+\leanok
+If $T:H\to H'$ is bounded and $TT^*:H'\to H'$ is compact,
+then $T$ is compact.
+\end{lemma}
+\begin{proof}
+For a bounded sequence $u_n$ in $H'$, choose a subsequence on
+which $TT^*u_n$ converges.  On that subsequence,
+\[
+ \|T^*(u_n-u_m)\|^2
+ =\langle TT^*(u_n-u_m),u_n-u_m\rangle\longrightarrow0.
+\]
+Thus $T^*$ is compact.  Given $\varepsilon>0$, choose a finite
+$\varepsilon$-net for $T^*$ of the unit ball.  Let $F\subset H$
+be the span of its finitely many centers and $P_F$ the orthogonal
+projection onto $F$.  Then
+$\|(I-P_F)T^*\|\le\varepsilon$.  Taking adjoints gives
+$\|T(I-P_F)\|\le\varepsilon$.  The operator $TP_F$ has finite
+rank and approximates $T$ in norm.  Lemma~\ref{ext:compact-facts}
+proves compactness.
+\end{proof}
+
+\begin{lemma}[A gap for a nonnegative compact perturbation]
+\label{ext:compact-gap}
+\lean{Auto.ext_compact_gap_ker,Auto.ext_compact_gap}
+\leanok
+Let $K$ be a compact self-adjoint operator on a Hilbert space,
+and suppose $B=I+K$ is nonnegative.  Then $\ker B$ is finite
+dimensional, and there is $\gamma>0$ such that
+\[
+ \langle Bf,f\rangle\ge
+       \gamma\operatorname{dist}(f,\ker B)^2
+       \qquad(f\in H).
+\]
+\end{lemma}
+\begin{proof}
+If the kernel were infinite dimensional, it would contain an
+orthonormal sequence $u_n$.  Since $Ku_n=-u_n$, its image under
+$K$ would have no convergent subsequence, contrary to compactness.
+
+For any bounded nonnegative operator $B$, positivity of
+$\langle B(x+ty),x+ty\rangle$ for real or complex $t$ gives
+the Cauchy--Schwarz inequality for its quadratic form:
+\[
+ |\langle Bx,y\rangle|^2
+       \le\langle Bx,x\rangle\langle By,y\rangle.
+\]
+When the second diagonal term is positive, minimize the
+quadratic polynomial in $t$; when it is zero, letting $t$
+vary first shows that the cross term is zero.  Taking the
+supremum over unit vectors $y$ gives
+\[
+ \|Bx\|^2\le\|B\|\langle Bx,x\rangle.
+\]
+If there were no positive lower bound for the quadratic form
+on unit vectors orthogonal to $\ker B$, there would be such
+vectors $x_n$ with $\langle Bx_n,x_n\rangle\to0$.  The last
+inequality gives $Bx_n\to0$.  On a subsequence $Kx_n$ converges,
+so $x_n=Bx_n-Kx_n$ converges in norm to a unit vector $x$.
+This vector is still orthogonal to the kernel, but $Bx=0$,
+a contradiction.  Finally decompose an arbitrary $f$ into
+its kernel component and its orthogonal component.  The
+quadratic form vanishes on the first component and has no
+cross term, proving the stated estimate.
+\end{proof}
+
+\begin{lemma}[Sequential weak-* extraction]\label{ext:weakstar}
+\lean{Auto.ext_weakstar_plane,Auto.ext_weakstar_plane_countable,Auto.ext_weakstar_config,Auto.ext_weakstar_config_countable}
+\leanok
+On $\R^2$, and on $\R^2\times[0,2\pi)$ with measure
+$\dd x\dd\theta/(2\pi)$, every sequence bounded in
+$L^\infty$ has a weak-* convergent subsequence.  A common
+subsequence can be chosen for any countable family of such
+bounded sequences.
+\end{lemma}
+\begin{proof}
+Write the measure as $m$.  Step functions on rectangles with
+rational endpoints and rational real and imaginary values
+form a countable dense subset of $L^1$, after allowing finite
+linear combinations.  Density follows by truncation and
+regularity of Lebesgue measure, as in
+Lemma~\ref{ext:approximation}.  If $\|f_n\|_\infty\le A$,
+the pairings of $f_n$ with each of these tests form a bounded
+scalar sequence.  Successive subsequence extraction and a
+diagonal choice make all these pairings converge.  The bound
+$A\|\varphi\|_1$ then extends the limit to a bounded linear
+functional $L$ on all of $L^1$, and gives convergence against
+every $L^1$ test.
+
+For clarity, this functional is represented by a bounded
+function without invoking a compactness theorem for dual
+spaces.  Exhaust the underlying space by sets $X_k$ of finite
+measure.  On each $X_k$, the set function
+$A\mapsto L(\one_A)$ is a complex measure: for disjoint sets,
+countable additivity follows from convergence of the partial
+union indicators in $L^1(X_k)$.  Its total variation is at
+most $A m$, by the defining norm bound.  The Radon--Nikodym
+theorem gives a density $g_k$ with $|g_k|\le A$.
+Uniqueness of densities makes these functions agree on
+overlaps.  They define a global $g\in L^\infty$ satisfying
+$L(\varphi)=\int g\varphi\dd m$, first for simple functions
+of finite support and then for all $L^1$ functions by density.
+This is the required weak-* limit.
+
+For countably many sequences, perform the scalar diagonal
+selection over the countable set of all pairs consisting of
+a sequence index and a test index.  The preceding construction
+then supplies the limit for each sequence on the same
+subsequence.
+\end{proof}
+
+\subsection{Spectral measures of the correlation functions}
+
+\begin{definition}[Positive-definite function]\label{ext:pd-definition}
+\lean{Auto.IsPositiveDefinite}
+A function $c:\R^2\to\C$ is positive definite if
+\[
+ \sum_{a,b=1}^N z_a\overline{z_b}\,c(s_a-s_b)\ge0
+\]
+for every finite family $s_a\in\R^2$, $z_a\in\C$; the
+displayed quantity is required to be real.
+\end{definition}
+
+\begin{lemma}[Integrable positive-definite functions]
+\label{ext:pd-integrable}
+\lean{Auto.ext_pd_integrable_elementary,Auto.ext_pd_integrable_fourier}
+\leanok
+If $c$ is positive definite, then $c(0)\ge0$,
+$c(-s)=\overline{c(s)}$, and $|c(s)|\le c(0)$.
+If, in addition, $c$ is continuous and integrable, then
+$\widehat c$ is a nonnegative integrable function,
+\[
+ \int\widehat c(\xi)\dd\xi=c(0),
+ \qquad
+ c(s)=\int\exp(2\pi i s\cdot\xi)\widehat c(\xi)\dd\xi.
+\]
+\end{lemma}
+\begin{proof}
+Use one point and then the two points $0,s$ in the defining
+inequality.  Varying their complex coefficients shows that
+the corresponding matrix is Hermitian and nonnegative.
+Minimizing its quadratic form gives
+$|c(s)|^2\le c(0)^2$.  This also shows that $c$ is identically
+zero if $c(0)=0$.
+
+For a continuous compactly supported function $\varphi$, the
+defining finite inequalities and Riemann-sum approximation give
+\[
+ \iint c(x-y)\varphi(x)\overline{\varphi(y)}\dd x\dd y\ge0.
+\]
+Fix $\xi\in\R^2$ and a real $\varphi\in C_c^\infty$ with
+$\|\varphi\|_2=1$.  Apply this inequality to
+$L^{-1}\varphi(x/L)\exp(-2\pi i\xi\cdot x)$.
+After writing $h=x-y$, the resulting integral is
+\[
+ \int c(h)\exp(-2\pi i\xi\cdot h)
+       \left(\int\varphi(t+h/L)\varphi(t)\dd t\right)\dd h.
+\]
+The inner correlation has absolute value at most one and
+tends to one for each fixed $h$, by translation continuity
+in $L^2$.  Since $c\in L^1$, dominated convergence shows
+that the last integral tends to $\widehat c(\xi)$.  Thus
+$\widehat c$ is nonnegative everywhere.
+
+For $t>0$, Fubini and Lemma~\ref{ext:gaussian} give
+\[
+ \int\widehat c(\xi)\exp(-\pi t|\xi|^2)\dd\xi
+       =\int c(s)\gamma_t(s)\dd s\longrightarrow c(0).
+\]
+Monotone convergence on the left as $t\downarrow0$ proves
+integrability and the mass formula.  Finally,
+\[
+ \int\widehat c(\xi)\exp(2\pi i s\cdot\xi)
+                         \exp(-\pi t|\xi|^2)\dd\xi
+       =(c*\gamma_t)(s).
+\]
+The left side converges by the newly proved integrability,
+and the right side converges by continuity and boundedness
+of $c$.  This proves the representation.
+\end{proof}
+
+\begin{lemma}[A subsequence of uniformly tight measures]
+\label{ext:tight-measures}
+\lean{Auto.ext_tight_measures}
+\leanok
+Let $\nu_n$ be positive Borel measures on $\R^2$ with the
+same finite mass $m$, and suppose
+\[
+ \lim_{A\to\infty}\sup_n\nu_n(\{x:|x|>A\})=0.
+\]
+There are a subsequence and a positive Borel measure $\nu$
+of mass $m$ such that
+\[
+ \int g\dd\nu_n\longrightarrow\int g\dd\nu
+\]
+for every bounded continuous function $g$ on $\R^2$.
+\end{lemma}
+\begin{proof}
+The case $m=0$ is immediate, so divide by $m$ and assume
+$m=1$.  The coordinatewise map
+\[
+ \Phi(x_1,x_2)=
+ \left(\frac12+\frac{\arctan x_1}{\pi},
+       \frac12+\frac{\arctan x_2}{\pi}\right)
+\]
+is a homeomorphism onto $(0,1)^2$.  Push the measures forward
+to the compact square $K=[0,1]^2$.
+
+Here is an explicit subsequence construction on $K$.  Encode
+each coordinate by its binary expansion, taking the expansion
+ending in zeros at dyadic points and taking all ones at the
+endpoint one.  This is a measurable map from $K$ into
+$\Omega=(\{0,1\}^2)^{\N}$, and the continuous binary-sum
+map $\pi:\Omega\to K$ recovers the original point.
+For each finite word $w$ on the four-symbol alphabet, let
+$p_n(w)$ be the mass of the cylinder specified by $w$ in
+the encoded measure.  There are countably many such words.
+A diagonal subsequence makes all $p_n(w)$ converge to numbers
+$p(w)$.  They satisfy
+\[
+ p(\varnothing)=1,
+ \qquad p(w)=\sum_{a\in\{0,1\}^2}p(wa),
+ \qquad p(w)\ge0.
+\]
+These numbers define a probability on the algebra of finite
+unions of cylinders, by refining to a common word length.
+
+This algebra probability is a premeasure.  Indeed, cylinders
+are both open and closed for the metric in which agreement
+in the first $k$ coordinates gives distance at most $2^{-k}$.
+The space $\Omega$ is compact: successive choice of constant
+coordinates gives a convergent subsequence of any sequence,
+or equivalently the finitely many length-$k$ cylinders give
+finite nets and the space is complete.  If an algebra set is
+a disjoint countable union of algebra sets, compactness gives
+a finite subcover, so only finitely many of the disjoint
+pieces are nonempty.  Finite additivity is therefore already
+the countable additivity needed on the algebra.  The ordinary
+measure-extension theorem gives a probability $P$ on the
+Borel sets of $\Omega$.  Put $\widetilde\nu=\pi_*P$.
+
+For a continuous function $g$ on $K$, approximate $g\circ\pi$
+by a function constant on cylinders of length $k$, using any
+point in the corresponding closed dyadic square.  The
+uniform error is at most the modulus of continuity of $g$
+at $\sqrt2\,2^{-k}$.  The integrals of this cylinder function
+converge because they are finite sums involving $p_n(w)$.
+First take the subsequence limit and then let $k\to\infty$.
+This proves convergence of the pushed-forward measures
+against every continuous function on $K$.
+
+The measure $\widetilde\nu$ gives no mass to $\partial K$.
+Given $\delta>0$, tightness supplies $A$ for which all original
+measures have mass at most $\delta$ outside $[-A,A]^2$.
+There is a continuous function on $K$, between zero and one,
+equal to zero on $\Phi([-A,A]^2)$ and equal to one on
+$\partial K$; for example use the quotient of the distance
+to the first set by the sum of distances to the two disjoint
+closed sets.  Its integrals against the pushed-forward
+measures are at most $\delta$, and the same is true for
+$\widetilde\nu$.  Hence $\widetilde\nu(\partial K)\le\delta$.
+Let $\delta\downarrow0$.
+
+Pull $\widetilde\nu$ back to $(0,1)^2$ by $\Phi^{-1}$ to
+obtain a probability $\nu$ on $\R^2$.  Compactly supported
+continuous tests on $\R^2$ extend by zero to continuous
+tests on $K$ after this change of coordinates, so their
+integrals converge.  For a bounded continuous test, insert
+a continuous compact cutoff equal to one on $[-A,A]^2$.
+The discarded integrals are uniformly small for the original
+measures by tightness, and small for $\nu$ because its finite
+mass is exhausted by these squares.  This proves convergence
+for every bounded continuous test and finishes the proof.
+\end{proof}
+
+\begin{theorem}[Spectral representation in the required form]
+\label{ext:bochner}
+\lean{Auto.ext_bochner,Auto.ext_bochner_mass_le_one}
+\leanok
+Let $c:\R^2\to\C$ be a Lipschitz positive-definite function.
+There is a unique finite positive Borel measure $\nu$ such that
+\[
+ c(s)=\int\exp(2\pi i s\cdot\xi)\dd\nu(\xi)
+ \qquad(s\in\R^2),\qquad \nu(\R^2)=c(0).
+\]
+In particular, $c(0)\le1$ implies that the representing measure
+has mass at most one.
+\end{theorem}
+\begin{proof}
+Put $m=c(0)$.  The elementary part of
+Lemma~\ref{ext:pd-integrable} gives $m\ge0$ and $|c|\le m$;
+if $m=0$ there is nothing to prove.  For $0<\varepsilon\le1$
+put
+\[
+ c_\varepsilon(s)=c(s)\exp(-\pi\varepsilon|s|^2).
+\]
+This function is integrable and positive definite.  To see the
+latter directly, the Gaussian formula represents
+$\exp(-\pi\varepsilon|s_a-s_b|^2)$ as the integral of
+$\exp(2\pi i(s_a-s_b)\cdot\xi)$ against the positive
+probability density $\gamma_\varepsilon(\xi)$.  Inside that
+integral the positive-definite inequality for
+$c_\varepsilon$ is the one for $c$ with coefficients
+$z_a\exp(2\pi i s_a\cdot\xi)$.
+
+By Lemma~\ref{ext:pd-integrable},
+\[
+ \dd\nu_\varepsilon(\xi)
+       =\widehat{c_\varepsilon}(\xi)\dd\xi
+\]
+is a positive measure of mass $m$, with characteristic function
+$c_\varepsilon$.  These measures are uniformly tight.  Indeed,
+for $t>0$ the Gaussian identity gives
+\begin{align*}
+ \int\big(1-\exp(-\pi t|\xi|^2)\big)\dd\nu_\varepsilon(\xi)
+ &=\int\gamma_t(s)
+       \big(m-\operatorname{Re}c_\varepsilon(s)\big)\dd s\\
+ &\le\int\gamma_t(s)
+       \big(L|s|+m\pi|s|^2\big)\dd s\\
+ &\le C\big(L\sqrt t+mt\big),
+\end{align*}
+where $L$ is a Lipschitz constant for $c$.  In the second line
+we used $1-\exp(-\pi\varepsilon|s|^2)\le\pi|s|^2$ and
+$|c(s)-c(0)|\le L|s|$.  The last line follows by scaling
+in the first and second Gaussian moments.  Set $t=A^{-2}$.
+On $|\xi|\ge A$, the integrand on the left is at least
+$1-\exp(-\pi)$.  Consequently
+\[
+ \sup_{0<\varepsilon\le1}\nu_\varepsilon(\{|\xi|\ge A\})
+       \le C\big(L/A+m/A^2\big)\longrightarrow0.
+\]
+
+Apply Lemma~\ref{ext:tight-measures} to
+$\nu_{1/n}$.  The limiting measure $\nu$ has mass $m$.
+For each $s$, the character $\xi\mapsto\exp(2\pi i s\cdot\xi)$
+is bounded and continuous, so
+\[
+ \int\exp(2\pi i s\cdot\xi)\dd\nu(\xi)
+   =\lim_n c(s)\exp(-\pi|s|^2/n)=c(s).
+\]
+Uniqueness follows from Lemma~\ref{ext:fourier-uniqueness}.
+\end{proof}
+
+\begin{lemma}[Measurable dependence of spectral measures]
+\label{ext:measurable-spectral}
+\lean{Auto.ext_measurable_spectral}
+\leanok
+Suppose $z\mapsto c_z(s)$ is measurable for each $s\in\R^2$,
+and every $c_z$ is Lipschitz and positive definite with
+$c_z(0)\le1$.  Let $\nu_z$ be the measures supplied by
+Theorem~\ref{ext:bochner}.  Then $z\mapsto\nu_z(B)$ is
+measurable for every Borel set $B\subset\R^2$.
+\end{lemma}
+\begin{proof}
+The functions $(z,s)\mapsto c_z(s)$ are jointly measurable:
+replace $s$ by a sequence of rational-grid approximations
+and use continuity in $s$.  For $\varphi\in\mathcal S$,
+Fourier inversion and Fubini give
+\[
+ \int\varphi(\xi)\dd\nu_z(\xi)
+      =\int\widehat\varphi(s)c_z(s)\dd s.
+\]
+The right side is measurable in $z$, since
+$|c_z(s)|\le c_z(0)\le1$ and $\widehat\varphi\in L^1$.
+
+For an open set $O$, choose smooth compactly supported
+functions $0\le\varphi_m\le1$ in $O$ increasing pointwise
+to $\one_O$.  One explicit construction takes cutoffs
+$\eta_m$ equal to one on a compact exhaustion of $O$, with
+support inside $O$, and sets
+$\varphi_m=1-\prod_{j=1}^m(1-\eta_j)$.
+Thus $\nu_z(O)=\lim_m\int\varphi_m\dd\nu_z$ is measurable.
+The class of sets with measurable $\nu_z$-mass is closed
+under complements and countable disjoint unions, since the
+total mass is the measurable function $c_z(0)$.  Open sets
+are closed under finite intersections and generate the
+Borel sets.  The elementary monotone-class argument therefore
+extends measurability to all Borel sets.
+\end{proof}
+
+\begin{definition}[Measurable measure kernels]\label{ext:kernel-definition}
+\lean{Auto.IsMeasurableKernel}
+Let $(X,\mathcal A)$ be a measurable space.  A family
+$z\mapsto\nu_z$ of finite positive Borel measures on $\R^q$ is a
+\emph{measurable kernel} if $z\mapsto\nu_z(B)$ is
+$\mathcal A$-measurable for every Borel set $B\subset\R^q$.
+\end{definition}
+
+\begin{lemma}[Integration against measurable kernels]
+\label{ext:kernel-integration}
+\lean{Auto.ext_kernel_integration_measurable,Auto.ext_kernel_integration_measurable_complex,Auto.ext_kernel_integration_measure,Auto.ext_kernel_integration_prod}
+\leanok
+Let $(X,\mathcal A,\lambda)$ be a sigma-finite measure space and let
+$z\mapsto\nu_z$ be a measurable kernel on $\R^q$.
+For every nonnegative $\mathcal A\otimes\mathcal B(\R^q)$-measurable
+function $F$, the function
+$z\mapsto\int F(z,\xi)\dd\nu_z(\xi)$ is measurable.
+There is a sigma-finite measure $\mathfrak m$ on the product space
+satisfying
+\[
+ \int F\dd\mathfrak m
+   =\int_X\int_{\R^q}F(z,\xi)\dd\nu_z(\xi)\dd\lambda(z).
+\]
+If $z\mapsto\eta_z$ is another measurable finite positive kernel,
+then $z\mapsto\nu_z\otimes\eta_z$ is a measurable kernel.
+These identities also hold for integrable complex functions.
+\end{lemma}
+\begin{proof}
+For the indicator of a rectangle $A\times B$, the inner integral is
+$\one_A(z)\nu_z(B)$ and is measurable.  The class of product-measurable
+sets for which the section integral is measurable is closed under
+complements, because $\nu_z(\R^q)$ is finite and measurable, and under
+countable disjoint unions by monotone convergence.  Rectangles form
+a system closed under finite intersections and generate the product
+sigma-algebra.  The monotone-class theorem therefore proves the
+claim for indicators of all product-measurable sets.  Increasing simple
+approximations prove it for all nonnegative $F$.
+
+For such a set $A$, define
+\[
+ \mathfrak m(A)=\int_X\nu_z(A_z)\dd\lambda(z),
+ \qquad A_z=\{\xi:(z,\xi)\in A\}.
+\]
+Sections are Borel measurable, and the preceding argument makes this
+definition meaningful.  Countable additivity follows from countable
+additivity of each $\nu_z$ and monotone convergence under the outer
+integral.  If $X_n$ increase to $X$ and $\lambda(X_n)<\infty$, the sets
+\[
+ \bigl(X_n\cap\{z:\nu_z(\R^q)\le n\}\bigr)\times\R^q
+\]
+exhaust the product and have $\mathfrak m$-measure at most
+$n\lambda(X_n)$.  Thus $\mathfrak m$ is sigma-finite.
+The integral identity follows first for indicators from its definition,
+then for simple functions, and then by monotone convergence.
+
+For product kernels, the mass of a rectangle $B\times C$ is
+$\nu_z(B)\eta_z(C)$ and is measurable.  The same monotone-class
+argument, using the finite measurable total mass, extends this to every
+Borel subset of the product Euclidean space.  Finally split an
+integrable complex function into positive and negative real and
+imaginary parts.  Ordinary Tonelli applied to the constructed measure
+and an additional independent measure permits the angular integrations
+used below to be interchanged as well.
+\end{proof}
+
+\subsection{Local matrix groups and analytic zero sets}
+
+\begin{lemma}[A continuous local matrix group is exponential]
+\label{ext:matrix-group}
+\lean{Auto.ext_matrix_group,Auto.ext_matrix_group_analytic}
+\leanok
+Let $U$ be a neighborhood of zero in $\R^2$.  Suppose
+$C:U\to\mathrm{GL}_d(\R)$ is continuous, $C(0)=I$, and
+$C(h+k)=C(h)C(k)$ whenever $h,k,h+k\in U$.
+There are commuting real matrices $T_1,T_2$ such that,
+on a possibly smaller neighborhood of zero,
+\[
+ C(h)=\exp(h_1T_1+h_2T_2).
+\]
+The expression on the right is real analytic for all
+$h\in\R^2$.
+\end{lemma}
+\begin{proof}
+For $i=1,2$ write $C_i(t)=C(te_i)$ near zero.
+Choose $a>0$ sufficiently small that the matrix
+\[
+ A_i=\int_0^a C_i(t)\dd t
+\]
+is invertible: $a^{-1}A_i\to I$ as $a\downarrow0$, and
+invertibility is open because the determinant is continuous.
+For $h$ in a small interval around zero, the local group law
+gives
+\[
+ C_i(h)A_i=\int_h^{h+a}C_i(t)\dd t.
+\]
+The right side is differentiable even though differentiability
+of $C_i$ was not assumed.  Multiplying by $A_i^{-1}$ first
+shows that $C_i$ is differentiable, and differentiating gives
+\[
+ C_i'(h)=C_i(h)T_i,
+ \qquad T_i=(C_i(a)-I)A_i^{-1}.
+\]
+The derivative of $C_i(h)\exp(-hT_i)$ is zero.  Its value at
+zero is $I$, so $C_i(h)=\exp(hT_i)$ near zero.  The matrix
+exponential and its derivative here are obtained directly
+from its absolutely convergent power series.
+
+Commutativity of addition and the local group law yield
+\[
+ \exp(sT_1)\exp(tT_2)=\exp(tT_2)\exp(sT_1)
+\]
+for small $s,t$.  Differentiate at $s=t=0$ to get
+$T_1T_2=T_2T_1$.  Hence
+\[
+ C(h)=C(h_1e_1)C(h_2e_2)
+     =\exp(h_1T_1)\exp(h_2T_2)
+     =\exp(h_1T_1+h_2T_2).
+\]
+The last equality follows by multiplying the exponential
+series and using the binomial formula for commuting matrices.
+Those series converge locally uniformly with all derivatives,
+which also proves real analyticity on the whole plane.
+\end{proof}
+
+\begin{lemma}[Zero sets of real analytic functions]
+\label{ext:analytic-zero}
+\lean{Auto.ext_analytic_zero,Auto.ext_analytic_zero_config}
+\leanok
+Let $F:U\to\R$ be real analytic on a connected open set
+$U\subset\R^d$, where $d=1,2,$ or $3$.  If $F$ vanishes
+on a set of positive Lebesgue measure, it vanishes identically.
+In particular, a real analytic function on
+$\R^2\times(\R/(2\pi\Z))$ which vanishes on a set of positive
+product measure is identically zero.
+\end{lemma}
+\begin{proof}
+Let $Z_\infty$ be the set of points at which all partial
+derivatives of $F$, including $F$ itself, vanish.  This set
+is closed in $U$ by continuity of the derivatives.  It is
+also open: the convergent Taylor series at one of its points
+is zero, so $F$ is identically zero in a neighborhood, where
+all of its derivatives vanish as well.  Connectedness shows
+that $Z_\infty$ is either empty or all of $U$.  In the latter
+case the assertion is proved.
+
+Suppose therefore that $F$ is not identically zero.  At
+every point $x$ some Taylor coefficient is nonzero.  If the
+first nonzero homogeneous term has degree $k$, it takes a
+nonzero value in some direction $v$, so
+$\partial_v^kF(x)\ne0$.  For $k=0$ this simply means
+$F(x)\ne0$.  By continuity there is a ball about $x$ on
+which this derivative never vanishes.  On every line
+parallel to $v$ intersecting the ball, the restriction of
+$F$ has at most $k$ zeros.  Otherwise repeated Rolle's
+theorem would give a zero of its $k$th derivative on that
+interval.  Fubini, after an orthogonal change of coordinates,
+therefore shows that the zero set of $F$ in the ball has
+$d$-dimensional measure zero.  A countable subcover of these
+balls covers $U$, so the entire zero set has measure zero,
+contradicting the hypothesis.
+
+For the final assertion, lift the periodic angular variable
+to $\theta\in\R$.  This gives a real analytic function on
+the connected space $\R^3$.  A positive-measure zero set in
+the quotient has a positive-measure lift in one angular
+period.  Apply the result just proved to the lifted function.
+\end{proof}
+
+
+\section{Finite words, binary density, and tilings}\label{sec:comb-prelim}
+
+The elementary combinatorial material in this section supplies the binary
+base case and the tiling step of the density argument.  The organization
+of the tiling proof follows the uniform-measure argument of
+Dodos, Kanellopoulos, and Tyros~\cite{DKT}; every ingredient needed here is proved
+below.
+
+\begin{definition}[Words, subspaces, and uniform density]\label{cj:def-words}
+\lean{Auto.unifDensity,Auto.subspacePts,Auto.relDensity,Auto.binEmb,Auto.binaryCube,Auto.binaryFace,Auto.concatW,Auto.suffixFiber,Auto.ContainsSubspace,Auto.ContainsLine}
+For a positive integer $k$, let $[k]=\{1,\ldots,k\}$.
+For $k\ge2$ and $n\ge0$, let
+$[k]^n$ be the set of words of length $n$ over $[k]$; $[k]^0$ consists
+of the empty word.  Write $\mu_{k,n}(A)=|A|/k^n$ for uniform density.
+The concatenation of words $x$ and $y$ is denoted by $x\frown y$.
+
+An $m$-dimensional combinatorial subspace of $[k]^n$ is specified by
+pairwise disjoint, nonempty coordinate sets $I_1,\ldots,I_m$ and by
+fixed letters on their complement.  Its coordinate map
+$\phi:[k]^m\longrightarrow[k]^n$ puts the letter $a_j$ on every
+coordinate in $I_j$ and the specified fixed letters elsewhere.  The
+subspace is $V=\phi([k]^m)$.  We order the variable sets by their least
+coordinates when a definite choice of coordinate map is required.
+A one-dimensional subspace is called a \emph{combinatorial line}.
+For $A\subseteq[k]^n$, put
+$\mu_V(A)=|A\cap V|/|V|$.
+If $V\subseteq[3]^n$, its \emph{binary face} is
+$V^{(2)}=\phi([2]^m)$; fixed letters of $V$ may still equal $3$.
+For $x\in[k]^\ell$, the suffix fiber of $A\subseteq[k]^n$ at $x$ is
+\[
+ A_x=\{y\in[k]^{n-\ell}:x\frown y\in A\}.
+\]
+\end{definition}
+
+\begin{lemma}[Subspace bookkeeping]\label{cj:bookkeeping}
+\lean{Auto.cj_bookkeeping_card,Auto.cj_bookkeeping_comp,Auto.cj_bookkeeping_concat,Auto.cj_bookkeeping_count_subspaces,Auto.cj_bookkeeping_count_lines}
+\leanok
+An $m$-dimensional subspace has $k^m$ points.  The image of an
+$r$-dimensional subspace under the coordinate map of an
+$m$-dimensional subspace is an $r$-dimensional subspace.  Concatenating
+subspaces of dimensions $r$ and $s$ gives a subspace of dimension $r+s$.
+There are at most $(k+m)^n$ $m$-dimensional subspaces of $[k]^n$ and
+at most $(k+1)^n$ lines.
+\end{lemma}
+\begin{proof}
+Each variable set is nonempty, so its common letter can be read from
+any one of its coordinates.  Thus the coordinate map is injective.
+Under composition, each new variable set is a union of distinct old
+variable sets; these unions remain nonempty and disjoint.  Fixed
+parameters simply turn the corresponding old variable sets into fixed
+coordinates.  Concatenation places the two collections of variable
+sets in disjoint coordinate intervals.  Finally, encode a subspace
+by a word over $[k]\cup\{v_1,\ldots,v_m\}$, with $v_j$ marking its
+$j$th variable set.  Each subspace has such an encoding among the
+$(k+m)^n$ possible words.  Taking $m=1$ gives the line bound.
+\end{proof}
+
+\begin{lemma}[Binary density theorem]\label{cj:binary}
+\lean{Auto.C_cj_binary,Auto.cj_binary}
+\leanok
+For $0<\alpha\le1$, set
+\[
+ H_2(\alpha)=2\lceil\alpha^{-2}\rceil.
+\]
+If $n\ge H_2(\alpha)$ and $A\subseteq[2]^n$ has
+$\mu_{2,n}(A)\ge\alpha$, then $A$ contains a combinatorial line.
+\end{lemma}
+\begin{proof}
+Identify a word $x$ with the set $S(x)$ of coordinates carrying the
+letter $2$.  Two distinct words form a binary combinatorial line
+exactly when one of their associated sets is contained in the other.
+Indeed, the variable set of the line is the difference of the two
+sets.  A line-free family therefore corresponds to an antichain
+$\mathcal A$ of subsets of $[n]$.
+
+Choose a uniformly random permutation of $[n]$ and take its chain of
+initial segments, including the empty set and $[n]$.  The probability
+that this chain contains a specified $j$-element set is
+$\binom nj^{-1}$.  A chain meets an antichain at most once, so taking
+expectations gives
+\[
+ \sum_{S\in\mathcal A}\binom n{|S|}^{-1}\le1,
+ \qquad
+ |\mathcal A|\le\binom n{\lfloor n/2\rfloor}.
+\]
+The binomial coefficients are maximal at the middle because
+$\binom n{j+1}/\binom nj=(n-j)/(j+1)$.
+For $n=2r$, their normalized maximum satisfies
+\[
+ \frac{\binom{2r}r}{2^{2r}}
+ =\prod_{j=1}^r\left(1-\frac1{2j}\right)
+ \le \exp\left(-\frac12\sum_{j=1}^r\frac1j\right)
+ \le(r+1)^{-1/2}.
+\]
+Here $1-t\le e^{-t}$ and
+$\sum_{j=1}^r j^{-1}\ge\int_1^{r+1}t^{-1}\dd t$; the displayed
+bound is also valid when $r=0$.  For $n=2r+1$, the normalized maximum
+is $(2r+1)/(2r+2)$ times that for $2r$, and is no larger.
+Consequently a line-free subset of $[2]^n$ has density at most
+$(\lfloor n/2\rfloor+1)^{-1/2}$.  When
+$n\ge2\lceil\alpha^{-2}\rceil$, this last quantity is strictly less
+than $\alpha$, a contradiction.
+\end{proof}
+
+\begin{lemma}[Multidimensional binary density theorem]\label{cj:binary-multi}
+\lean{Auto.C_cj_binary_multi,Auto.cj_binary_multi}
+\leanok
+For every integer $m\ge1$ and $0<\alpha\le1$, there is an integer
+$B(m,\alpha)$ such that every $A\subseteq[2]^n$ with
+$n\ge B(m,\alpha)$ and $\mu_{2,n}(A)\ge\alpha$ contains an
+$m$-dimensional subspace.  One possible recursive choice is
+\[
+ B(1,\alpha)=H_2(\alpha),
+\]
+\[
+ \begin{split}
+ M&=H_2(\alpha/2),\\
+ B(m+1,\alpha)&=M+B\left(m,\frac{\alpha}{2\,3^M}\right).
+ \end{split}
+\]
+\end{lemma}
+\begin{proof}
+The case $m=1$ is Lemma~\ref{cj:binary}.  Suppose the assertion is
+known for $m$, and split a word of length $n$ into a prefix $x$ of
+length $n-M$ and a suffix of length $M$.  The average suffix-fiber
+density is at least $\alpha$.  The prefixes whose fibers have density
+at least $\alpha/2$ have density at least $\alpha/2$: if their density
+is $p$, the average is at most $p+\alpha/2$.
+Every such fiber contains a line by the choice of $M$.
+Choose one line from each of these fibers.  There are at most $3^M$
+possible lines by Lemma~\ref{cj:bookkeeping}, so some fixed line
+$L\subseteq[2]^M$ lies in every fiber above a set $C$ of prefixes of
+density at least $\alpha/(2\,3^M)$.  The induction hypothesis gives
+an $m$-dimensional subspace $U\subseteq C$.  Then
+$U\frown L\subseteq A$ is an $(m+1)$-dimensional subspace.
+\end{proof}
+
+\begin{lemma}[Uniform lower bounds for prefix fibers]\label{cj:fiber}
+\lean{Auto.C_cj_fiber,Auto.cj_fiber}
+\leanok
+For $k\ge2$, $m\ge1$, and $0<\varepsilon<1$, define
+\[
+ P(k,m,\varepsilon)
+ =m\left(\left\lceil\frac{k^m-1}{\varepsilon}\right\rceil+2\right).
+\]
+If $n\ge P(k,m,\varepsilon)$ and $A\subseteq[k]^n$, there are
+$\ell<n$ and an $m$-dimensional subspace $U\subseteq[k]^\ell$ such
+that
+\[
+ \mu_{k,n-\ell}(A_u)\ge\mu_{k,n}(A)-\varepsilon
+ \qquad(u\in U).
+\]
+\end{lemma}
+\begin{proof}
+Put $\alpha=\mu_{k,n}(A)$, $K=k^m$, and
+$\rho=\varepsilon/(K-1)$; let $J=\lceil1/\rho\rceil$.
+We construct a fixed prefix a block of $m$ coordinates at a time.
+Initially the prefix is empty and its suffix fiber has density
+$\alpha$.  At stage $j$, suppose the chosen prefix has length $jm$
+and its remaining fiber has density $a_j\ge\alpha+j\rho$.
+Split that remaining fiber according to its next $m$ coordinates.
+There are $K$ child fibers whose densities average to $a_j$.
+If every child has density at least $\alpha-\varepsilon$, the desired
+$U$ is obtained by appending all $[k]^m$ to the current prefix, and
+we stop.
+
+Otherwise one child has density less than
+$\alpha-\varepsilon\le a_j-\varepsilon$.  The sum of the other
+$K-1$ densities is therefore greater than
+$(K-1)a_j+\varepsilon$.  At least one of those children has density
+greater than $a_j+\rho$.  Select its $m$-letter word as the next
+fixed block.  This establishes the induction hypothesis for stage
+$j+1$.
+
+The process cannot fail to stop at all stages $0,\ldots,J$, since
+$J+1$ failures would produce a fiber of density greater than
+$\alpha+(J+1)\rho>1$.  The assumed dimension permits all these
+stages: at stage $j\le J$ the length
+$\ell=(j+1)m$ is at most $(J+1)m<n$.
+Thus the terminal prefix subspace and all of its suffix fibers are
+well defined and have the stated property.
+\end{proof}
+
+\begin{lemma}[A binary face in a dense ternary cube]\label{cj:binary-face}
+\lean{Auto.C_cj_binary_face,Auto.cj_binary_face}
+\leanok
+For $d\ge1$ and $0<\alpha\le1$, put
+\[
+ M=B(d,\alpha/2),\qquad
+ F_2(d,\alpha)=P(3,M,\alpha/2).
+\]
+If $n\ge F_2(d,\alpha)$ and $A\subseteq[3]^n$ has
+$\mu_{3,n}(A)\ge\alpha$, there is a $d$-dimensional ternary
+subspace $V$ such that $V^{(2)}\subseteq A$.
+\end{lemma}
+\begin{proof}
+By Lemma~\ref{cj:fiber}, there are $\ell<n$ and an
+$M$-dimensional $U\subseteq[3]^\ell$ such that every suffix fiber
+above $U$ has density at least $\alpha/2$.  The same is true above
+$U^{(2)}$.  Averaging first over $u\in U^{(2)}$ and then over suffixes
+shows that some suffix $y$ satisfies
+\[
+ \frac{|\{u\in U^{(2)}:u\frown y\in A\}|}{2^M}\ge\alpha/2.
+\]
+Via the coordinate map of $U$, this is a subset of $[2]^M$ of density
+at least $\alpha/2$.  Lemma~\ref{cj:binary-multi} gives a
+$d$-dimensional binary subspace in this subset.  Its encoding uses
+fixed letters $1,2$ and $d$ variables.  Allow those variables also
+to take the letter $3$, compose with the coordinate map of $U$, and
+append $y$.  Lemma~\ref{cj:bookkeeping} shows that the result is a
+$d$-dimensional ternary subspace, and its binary face is contained
+in $A$ by construction.
+\end{proof}
+
+\begin{definition}[Insensitive sets]\label{cj:insensitive}
+\lean{Auto.InsEquiv,Auto.IsInsensitive,Auto.IsInsensitiveIn}
+For $i\in\{1,2\}$, two words in $[3]^n$ are
+\emph{$(i,3)$-equivalent} if, at each coordinate, either their letters
+are equal or both letters belong to $\{i,3\}$.  A set
+$D\subseteq[3]^n$ is \emph{$(i,3)$-insensitive} if it is a union of
+these equivalence classes.  A subset of a subspace is called
+$(i,3)$-insensitive in that subspace when its inverse image under the
+coordinate map is $(i,3)$-insensitive.
+\end{definition}
+
+\begin{lemma}[Elementary properties of insensitivity]\label{cj:insensitive-facts}
+\lean{Auto.cj_insensitive_facts_union,Auto.cj_insensitive_facts_inter,Auto.cj_insensitive_facts_compl,Auto.cj_insensitive_facts_fix,Auto.cj_insensitive_facts_preimage,Auto.cj_insensitive_facts_face}
+\leanok
+Unions, intersections, and complements of $(i,3)$-insensitive sets
+are $(i,3)$-insensitive.  Fixing any collection of coordinates
+preserves insensitivity on the remaining coordinates.  The inverse
+image of an $(i,3)$-insensitive set under any subspace coordinate map
+is $(i,3)$-insensitive.  Finally, if $D$ is $(i,3)$-insensitive and
+$V^{(2)}\subseteq D$, then $V\subseteq D$.
+\end{lemma}
+\begin{proof}
+The first assertions follow because membership is constant on each
+equivalence class.  Fixing coordinates restricts that equivalence
+relation to the unfixed coordinates.  For a subspace coordinate map,
+changing a parameter between $i$ and $3$ changes all coordinates of
+its variable set between those same two letters, so equivalent
+parameter words have equivalent images.
+For the final assertion, take a point of $V$ and replace every
+parameter equal to $3$ by $i$.  The resulting point lies in
+$V^{(2)}$ and is $(i,3)$-equivalent to the original point.  Its
+membership in $D$ therefore implies membership of the original point.
+\end{proof}
+
+\begin{lemma}[Tiling one insensitive set]\label{cj:tile-one}
+\lean{Auto.C_cj_tile_one,Auto.cj_tile_one}
+\leanok
+For every $d\ge1$ and $0<\varepsilon\le1$ there is an integer
+$T_1(d,\varepsilon)$ with the following property.  If
+$n\ge T_1(d,\varepsilon)$, $i\in\{1,2\}$, and
+$D\subseteq[3]^n$ is $(i,3)$-insensitive, there is a finite family
+$\mathcal V$ of pairwise disjoint $d$-dimensional subspaces, all
+contained in $D$, such that
+\[
+ \mu_{3,n}\left(D\setminus\bigcup_{V\in\mathcal V}V\right)
+ \le\varepsilon.
+\]
+A valid choice is obtained from
+\[
+ \beta=\varepsilon/2,\quad M=F_2(d,\beta),\quad Q=(3+d)^M,
+ \quad \vartheta=\frac{\beta}{Q}\,3^{d-M}
+\]
+by setting
+\[
+ L=\lceil\vartheta^{-1}\rceil+1,
+ \qquad T_1(d,\varepsilon)=LM.
+\]
+\end{lemma}
+\begin{proof}
+We remove subspaces greedily, using successive blocks of $M$
+coordinates from right to left.  The invariant is the following:
+after $t$ blocks have been used, the unremoved set $R_t\subseteq D$
+has the property that, for every suffix $y\in[3]^{tM}$, its prefix
+section
+\[
+ (R_t)^y=\{x\in[3]^{n-tM}:x\frown y\in R_t\}
+\]
+is $(i,3)$-insensitive on its $n-tM$ coordinates.  This holds for
+$t=0$, with $R_0=D$.
+
+If $\mu_{3,n}(R_t)\le\varepsilon$, stop.  Otherwise assume $t<L$
+and write a word as $x\frown z\frown y$, with respective lengths
+$n-(t+1)M$, $M$, and $tM$.  For a pair $(x,y)$, put
+\[
+ E_{x,y}=\{z\in[3]^M:x\frown z\frown y\in R_t\}.
+\]
+The invariant and Lemma~\ref{cj:insensitive-facts} imply that
+$E_{x,y}$ is $(i,3)$-insensitive.  Its average density, as $(x,y)$
+ranges uniformly over the indicated product, is
+$\mu_{3,n}(R_t)>2\beta$.  Hence the pairs with
+$\mu_{3,M}(E_{x,y})\ge\beta$ have product density at least $\beta$:
+if that density is $p$, the average is at most $p+\beta$.
+
+For each such pair, Lemma~\ref{cj:binary-face} supplies a
+$d$-dimensional subspace whose binary face lies in $E_{x,y}$.
+Lemma~\ref{cj:insensitive-facts} puts the entire subspace in
+$E_{x,y}$.  There are at most $Q$ possible subspaces by
+Lemma~\ref{cj:bookkeeping}.  Consequently some fixed
+$d$-dimensional $W\subseteq[3]^M$ has
+\[
+ S=\{(x,y):x\frown W\frown y\subseteq R_t\}
+\]
+of product density at least $\beta/Q$.  Remove every set
+$x\frown W\frown y$ for $(x,y)\in S$.  These sets are pairwise
+disjoint $d$-dimensional subspaces: different pairs have different
+fixed prefix or suffix, and $W$ varies only in the middle block.
+They are all in $R_t$, so they are disjoint from all subspaces removed
+at earlier stages.  The density removed at this stage is
+\[
+ \frac{|S|3^d}{3^n}
+ =\frac{|S|}{3^{n-M}}\,3^{d-M}
+ \ge\vartheta.
+\]
+
+It remains to check the invariant; the residual need not be
+insensitive on \emph{all} its coordinates.  For a fixed old suffix
+$y$, define
+\[
+ S_y=\{x:(x,y)\in S\}
+ =\bigcap_{z\in W}\{x:x\frown z\frown y\in R_t\}.
+\]
+Each set in this intersection is an insensitive prefix section by
+the induction hypothesis, so $S_y$ is insensitive.  For any fixed
+new suffix $z\frown y$, the section of $R_{t+1}$ is
+\[
+ \{x:x\frown z\frown y\in R_{t+1}\}
+ =\begin{cases}
+   \{x:x\frown z\frown y\in R_t\}\setminus S_y,&z\in W,\\
+   \{x:x\frown z\frown y\in R_t\},&z\notin W.
+  \end{cases}
+\]
+Both alternatives are $(i,3)$-insensitive.  This proves the invariant
+for the next stage, including when the remaining prefix has length
+zero.
+
+All $L$ stages would be possible dimensionally, since $n\ge LM$.
+If the algorithm performed $L$ removal stages without stopping, it
+would remove total density at least $L\vartheta>1$, which is
+impossible.  It therefore stops with residual density at most
+$\varepsilon$.  The collection of all removed subspaces is the
+required finite family.  If the initial density is already at most
+$\varepsilon$, the empty family suffices.
+\end{proof}
+
+\begin{lemma}[Tiling an intersection of two insensitive sets]\label{cj:tile-two}
+\lean{Auto.C_cj_tile_two,Auto.cj_tile_two}
+\leanok
+For $d\ge1$ and $0<\varepsilon\le1$, put
+\[
+ M=T_1(d,\varepsilon/2),\qquad
+ T_2(d,\varepsilon)=T_1(M,\varepsilon/2).
+\]
+If $n\ge T_2(d,\varepsilon)$, $D_1\subseteq[3]^n$ is
+$(1,3)$-insensitive, and $D_2\subseteq[3]^n$ is
+$(2,3)$-insensitive, then $D=D_1\cap D_2$ contains a finite family
+$\mathcal V$ of pairwise disjoint $d$-dimensional subspaces such that
+\[
+ \mu_{3,n}\left(D\setminus\bigcup_{V\in\mathcal V}V\right)
+ \le\varepsilon.
+\]
+\end{lemma}
+\begin{proof}
+Apply Lemma~\ref{cj:tile-one} to $D_1$, with target dimension $M$
+and error $\varepsilon/2$.  This gives pairwise disjoint
+$M$-dimensional subspaces $W\subseteq D_1$ whose union misses at
+most $\varepsilon/2$ of the ambient density of $D_1$.
+Inside each $W$, the pullback of $D_2\cap W$ is
+$(2,3)$-insensitive by Lemma~\ref{cj:insensitive-facts}.
+Its ambient dimension is $M=T_1(d,\varepsilon/2)$, so a second
+application of Lemma~\ref{cj:tile-one} tiles it by $d$-dimensional
+subspaces, leaving relative density at most $\varepsilon/2$ in $W$.
+
+All resulting subspaces are contained in $D_1\cap D_2$ and are
+pairwise disjoint, since the outer subspaces $W$ are disjoint.
+The part of $D$ outside their union consists of a subset of the
+uncovered portion of $D_1$, together with the residuals inside the
+outer subspaces.  Its ambient density is therefore at most
+\[
+ \frac{\varepsilon}{2}
+ +\sum_W\mu_{3,n}(W)\,\frac{\varepsilon}{2}
+ \le\varepsilon.
+\]
+This proves the assertion.
+\end{proof}
+
+
+
+\subsection{Equal-slices averaging and the three-letter theorem}
+
+The remaining argument specializes the density-increment method of
+\cite{Polymath} to three letters.  Its two changes of probability measure
+are proved below by direct counting.  Thus no Ramsey theorem for
+parameter sets, and no density Hales--Jewett theorem, is used as an input.
+
+\begin{definition}[Equal-slices probability and total variation]\label{cj:equal-slices}
+\lean{Auto.equalSlices,Auto.dTV}
+Retain the uniform probability $\mu_{k,n}$ from
+Definition~\ref{cj:def-words}.  For $k\in\{2,3\}$ and $n\ge0$,
+the \emph{equal-slices probability} $\nu_{k,n}$ is obtained
+by first choosing uniformly a vector $(a_1,\ldots,a_k)$ of nonnegative
+integers with $a_1+\cdots+a_k=n$, and then choosing uniformly a word
+having exactly $a_j$ occurrences of the letter $j$ for every $j$.
+For $n=0$ both measures give mass one to the empty word.
+
+For probabilities $P,Q$ on a finite set $X$, put
+\[
+ d_{\mathrm{TV}}(P,Q)=\frac12\sum_{x\in X}|P(\{x\})-Q(\{x\})|.
+\]
+For integers $a\ge0$ and $r\ge0$, the falling factorial is
+$(a)_r=a(a-1)\cdots(a-r+1)$, with $(a)_0=1$ and $(a)_r=0$ if
+$r>a$.
+\end{definition}
+
+\begin{lemma}[Elementary counting and total variation]\label{cj:probability-facts}
+\lean{Auto.cj_probability_facts_atom,Auto.cj_probability_facts_binary_face_mass,Auto.cj_probability_facts_tv_function,Auto.cj_probability_facts_mixture}
+\leanok
+If $x\in[k]^n$ has $a_j$ occurrences of $j$, then
+\begin{equation}\label{eq:cj-equal-atom}
+ \nu_{k,n}(\{x\})
+ =\binom{n+k-1}{k-1}^{-1}\binom{n}{a_1,\ldots,a_k}^{-1}
+ =\frac{(k-1)!\,a_1!\cdots a_k!}{(n+k-1)!}.
+\end{equation}
+In particular,
+\begin{equation}\label{eq:cj-binary-face-mass}
+ \nu_{3,n}([2]^n)=\frac{2}{n+2}.
+\end{equation}
+For any $0\le h\le1$ on a finite set,
+\begin{equation}\label{eq:cj-tv-function}
+ |\mathbb E_P h-\mathbb E_Qh|\le d_{\mathrm{TV}}(P,Q).
+\end{equation}
+Moreover, if $P=\sum_j a_jP_j$, where $a_j\ge0$ and $\sum_j a_j=1$,
+then
+\[
+ d_{\mathrm{TV}}(P,Q)\le\sum_j a_jd_{\mathrm{TV}}(P_j,Q).
+\]
+\end{lemma}
+\begin{proof}
+A vector of $k$ nonnegative integers summing to $n$ is specified by
+placing $k-1$ separators among a row of $n$ indistinguishable marks.
+There are $\binom{n+k-1}{k-1}$ possibilities.  There are
+$n!/(a_1!\cdots a_k!)$ words with a prescribed count vector, proving
+\eqref{eq:cj-equal-atom}.  Exactly $n+1$ of the
+$\binom{n+2}{2}$ count vectors for three letters have $a_3=0$;
+this gives \eqref{eq:cj-binary-face-mass}.
+
+The signed masses $P(\{x\})-Q(\{x\})$ sum to zero.  Their positive
+sum and the absolute value of their negative sum are therefore both
+$d_{\mathrm{TV}}(P,Q)$.  Multiplication by numbers in $[0,1]$ makes
+the resulting sum lie between the negative and positive sums.  This
+proves \eqref{eq:cj-tv-function}.  The last assertion follows by
+applying the triangle inequality inside the defining finite sum.
+\end{proof}
+
+\begin{definition}[Random coordinate restriction]\label{cj:restriction}
+\lean{Auto.restrictMap,Auto.restrictPre}
+Let $n\ge r$.  Choose an injection $\iota:[r]\longrightarrow[n]$
+uniformly among the $(n)_r$ injections.  For a word $y$ on the
+complement of its image, define
+\[
+ \phi_{\iota,y}:[k]^r\longrightarrow[k]^n
+\]
+by putting the $j$th input letter in coordinate $\iota(j)$ and putting
+the prescribed letters $y$ in all remaining coordinates.  Its image
+is a coordinate subspace, hence a combinatorial subspace in the sense
+of Definition~\ref{cj:def-words}.  For $A\subseteq[k]^n$, write
+$A_{\iota,y}=\phi_{\iota,y}^{-1}(A)$.
+\end{definition}
+
+\begin{lemma}[Inserting a fixed number of letters into uniform background]
+\label{cj:transfer-uniform}
+\lean{Auto.cj_transfer_uniform}
+\leanok
+Fix $k\in\{2,3\}$, $r\ge1$, and $\zeta>0$.  There is
+$N=N(k,r,\zeta)\ge r$ such that the following holds for every $n\ge N$.
+Choose $\iota$ as in Definition~\ref{cj:restriction}, give the
+remaining coordinates independent uniform letters, and independently
+choose $w\in[k]^r$ with any probability distribution $\lambda$.
+The law of $\phi_{\iota,y}(w)$ is within $\zeta$ in total variation
+of $\mu_{k,n}$.  The same $N$ works for every $\lambda$.
+\end{lemma}
+\begin{proof}
+First take $\lambda$ to be concentrated on a single word $w$, and
+let $c_j$ be the number of its letters equal to $j$.  For an output
+word $z$, let $a_j$ be the number of its letters equal to $j$.
+There are $\prod_j(a_j)_{c_j}$ injections whose specified letters
+agree with $z$.  Once the injection has been chosen, the probability
+that the remaining uniform letters agree with $z$ is $k^{-(n-r)}$.
+The density of the output law with respect to $\mu_{k,n}$ is consequently
+\begin{equation}\label{eq:cj-uniform-likelihood}
+ L_{n,w}(z)=k^r\frac{\prod_{j=1}^k(a_j)_{c_j}}{(n)_r}.
+\end{equation}
+It lies in $[0,k^r]$, because the injections counted in the numerator
+are some of the $(n)_r$ possible injections.
+
+For a uniform random $z$, the random variable $a_j$ is the sum of
+$n$ independent indicators, each having mean $1/k$.  Expanding the
+square and using independence gives
+\[
+ \mathbb E a_j=\frac nk,
+ \qquad
+ \mathbb E\left(a_j-\frac nk\right)^2
+       =n\frac1k\left(1-\frac1k\right).
+\]
+For every $\tau>0$, the elementary inequality
+$\one_{\{|X|>\tau\}}\le |X|^2/\tau^2$ therefore yields
+\[
+ \mathbb P\left(\left|\frac{a_j}{n}-\frac1k\right|>\tau\right)
+ \le\frac{k-1}{k^2n\tau^2}.
+\]
+Thus all $a_j/n$ approach $1/k$ in probability.  Since $r$ and the
+$c_j$ are fixed, divide the numerator and denominator of
+\eqref{eq:cj-uniform-likelihood} by $n^r$ to see that $L_{n,w}$
+approaches $1$ in probability.  This also follows directly by writing
+each factor as $a_j/n-s/n$ and each denominator factor as $1-s/n$.
+For any $u>0$,
+\[
+ \mathbb E_{\mu_{k,n}}|L_{n,w}-1|
+ \le u+(k^r+1)\,
+       \mathbb P_{\mu_{k,n}}(|L_{n,w}-1|>u).
+\]
+First let $n$ increase and then let $u$ decrease to zero.  It follows
+that the total variation distance, which is one half of this
+expectation, tends to zero.
+
+There are only $k^r$ choices of $w$.  Choose a single $N$ that works
+for every one of them.  Any distribution $\lambda$ gives a mixture
+of these output laws, so the mixture inequality of
+Lemma~\ref{cj:probability-facts} proves the assertion.
+\end{proof}
+
+\begin{lemma}[Inserting letters into equal-slices background]
+\label{cj:transfer-equal}
+\lean{Auto.cj_transfer_equal,Auto.cj_transfer_equal_average}
+\leanok
+Let $m\ge r\ge1$.  Choose $\iota:[r]\to[m]$ uniformly, choose
+$y$ on the remaining $m-r$ coordinates with probability
+$\nu_{3,m-r}$, and independently choose $w\in[3]^r$ with any
+distribution.  If $P$ is the law of $\phi_{\iota,y}(w)$, then
+\begin{equation}\label{eq:cj-equal-transfer}
+ d_{\mathrm{TV}}(P,\nu_{3,m})
+ \le 1-\frac{(m-r+1)(m-r+2)}{(m+1)(m+2)}
+ \le\frac{2r}{m+1}\le\frac{3r}{m}.
+\end{equation}
+In particular, if $w$ is uniform, then for every $H\subseteq[3]^m$,
+\begin{equation}\label{eq:cj-average-uniform-slice}
+ \left|\mathbb E_{\iota,y}
+       \mu_{3,r}(H_{\iota,y})-\nu_{3,m}(H)\right|
+ \le\frac{3r}{m}.
+\end{equation}
+\end{lemma}
+\begin{proof}
+Fix $w$, with letter counts $c_1,c_2,c_3$, and let $z$ have
+letter counts $a_1,a_2,a_3$.  If any $a_j<c_j$, the output cannot
+be $z$.  Otherwise its probability is
+\[
+ \frac{\prod_{j=1}^3(a_j)_{c_j}}{(m)_r}
+ \frac{2!\,\prod_{j=1}^3(a_j-c_j)!}{(m-r+2)!}.
+\]
+Divide this by the equal-slices atom from
+\eqref{eq:cj-equal-atom}.  All the factorials depending on the
+$a_j$ cancel.  The resulting density is
+\[
+ L_w(z)=C_{m,r}\,\one_{\{a_j\ge c_j\text{ for all }j\}},
+ \qquad
+ C_{m,r}=\frac{(m+2)_r}{(m)_r}
+ =\frac{(m+1)(m+2)}{(m-r+1)(m-r+2)}.
+\]
+Since this density has integral one, the indicated event has
+$\nu_{3,m}$-probability $C_{m,r}^{-1}$.  Its total variation distance
+from $\nu_{3,m}$ is exactly $1-C_{m,r}^{-1}$: the positive part of
+$L_w-1$ and the negative part have that same integral.
+The bound for arbitrary $w$-distributions follows by taking mixtures.
+Finally,
+\[
+ 1-C_{m,r}^{-1}
+   =\frac{r(2m-r+3)}{(m+1)(m+2)}
+   \le\frac{2r}{m+1}.
+\]
+Equation~\eqref{eq:cj-average-uniform-slice} is
+\eqref{eq:cj-tv-function} applied to the indicator of $H$.
+\end{proof}
+
+\begin{definition}[Collapsing the third letter]\label{cj:collapse}
+\lean{Auto.collapse,Auto.collapseSet,Auto.collapseBoth,Auto.binaryTrace}
+For $i\in\{1,2\}$ and $x\in[3]^m$, let $x^{3\to i}\in[2]^m$
+be obtained by replacing every $3$ by $i$.  For $B\subseteq[2]^m$,
+put
+\[
+ C_i(B)=\{x\in[3]^m:x^{3\to i}\in B\},
+ \qquad C(B)=C_1(B)\cap C_2(B).
+\]
+\end{definition}
+
+\begin{lemma}[A quantitative supply of binary pairs]\label{cj:binary-pairs}
+\lean{Auto.cj_binary_pairs_insensitive,Auto.cj_binary_pairs_bound,Auto.cj_binary_pairs_forbidden}
+\leanok
+Let $B\subseteq[2]^m$ and $b=\nu_{2,m}(B)$.  Each $C_i(B)$ is
+$(i,3)$-insensitive, and
+\begin{equation}\label{eq:cj-pair-bound}
+ \nu_{3,m}(C(B))\ge\frac{b^2}{2}.
+\end{equation}
+If $A\subseteq[3]^m$ contains no combinatorial line and
+$B=A\cap[2]^m$, then
+\begin{equation}\label{eq:cj-forbidden-third}
+ A\cap C(B)\subseteq[2]^m.
+\end{equation}
+\end{lemma}
+\begin{proof}
+Changing any occurrences of $i$ and $3$ leaves $x^{3\to i}$
+unchanged.  This proves the asserted insensitivity.
+
+Choose a uniform permutation $\pi$ of $[m]$.  For $0\le s\le m$,
+let $u_s(\pi)$ have letter $1$ at
+$\pi(1),\ldots,\pi(s)$ and letter $2$ elsewhere.  If $s$ is chosen
+uniformly from $\{0,\ldots,m\}$, then $u_s(\pi)$ has law
+$\nu_{2,m}$: its number of ones is uniform, and conditional on that
+number their positions are uniform.  Set
+\[
+ h(\pi)=\frac1{m+1}\sum_{s=0}^m\one_B(u_s(\pi)).
+\]
+Then $\mathbb E_\pi h=b$.  For independent uniform ranks $s,t$,
+\[
+ \mathbb P(u_s(\pi),u_t(\pi)\in B)
+ =\mathbb E_\pi h(\pi)^2\ge b^2,
+\]
+because $\mathbb E(h-b)^2\ge0$.
+
+Put $a=\min(s,t)$ and $c=\max(s,t)$.  Make a ternary word $z$
+by giving the first $a$ positions in the order $\pi$ letter $1$,
+the next $c-a$ positions letter $3$, and the remaining positions
+letter $2$.  Its two collapsed words are precisely $u_a(\pi)$ and
+$u_c(\pi)$.  Hence the probability that $z\in C(B)$ is at least
+$b^2$.
+
+For $a<c$, the count vector $(a,m-c,c-a)$ has probability
+$2/(m+1)^2$ under this construction; for $a=c$ it has probability
+$1/(m+1)^2$.  Under $\nu_{3,m}$ every count vector has probability
+$2/((m+1)(m+2))$.  Conditional on a count vector, both constructions
+are uniform on its words.  Therefore the probability of every word
+under the constructed law is at most
+$(m+2)/(m+1)$ times its equal-slices probability.  Consequently
+\[
+ \nu_{3,m}(C(B))\ge\frac{m+1}{m+2}b^2\ge\frac{b^2}{2}.
+\]
+Finally, if $z\in A\cap C(B)$ has at least one $3$, the words
+$z^{3\to1},z^{3\to2},z$ form a combinatorial line, with variable
+set equal to the positions of the $3$'s.  All three words belong
+to $A$, a contradiction.  This proves
+\eqref{eq:cj-forbidden-third}.
+\end{proof}
+
+\begin{proposition}[A three-letter density increment]
+\label{cj:density-increment}
+\lean{Auto.C_cj_density_increment,Auto.cj_density_increment}
+\leanok
+For every $0<\delta\le1$ there is $h(\delta)>0$ with the following
+property.  For every integer $d\ge1$ there is an integer
+$N(d,\delta)\ge d$ such that, whenever $n\ge N(d,\delta)$ and
+$A\subseteq[3]^n$ has uniform density $\alpha\ge\delta$ and
+contains no combinatorial line, some $d$-dimensional combinatorial
+subspace $V$ satisfies
+\[
+ \frac{|A\cap V|}{|V|}\ge\alpha+h(\delta).
+\]
+One may take $h(\delta)=\delta^4/65536$.
+\end{proposition}
+\begin{proof}
+Fix $\delta$ and $d$.  Set
+\begin{equation}\label{eq:cj-increment-constants}
+ \theta=\frac{\delta^2}{64},\qquad
+ t=\frac{\delta\theta}{8},\qquad
+ \kappa=\frac t8,\qquad
+ \varepsilon=\frac{\delta\kappa}{8},\qquad
+ h=\frac\varepsilon2=\frac{\delta^4}{65536}.
+\end{equation}
+In particular, $\kappa\le\delta/4$ and
+$\varepsilon\le\delta/4$.
+
+Use Lemma~\ref{cj:tile-two} to choose $r\ge d$ so that every
+intersection of a $(1,3)$-insensitive set and a $(2,3)$-insensitive
+set in $[3]^r$ can be covered by disjoint $d$-dimensional
+combinatorial subspaces contained in the intersection, with uncovered
+uniform measure at most $t/8$.  Choose $m\ge3r$ so large that
+\begin{equation}\label{eq:cj-dimension-choices}
+ \frac{3r}{m}\le\min\left(\frac\varepsilon2,\frac t8\right),
+ \qquad
+ \frac{2}{m+2}\le\frac{\delta\theta}{2}.
+\end{equation}
+Finally choose $N(d,\delta)\ge m$ so that
+Lemma~\ref{cj:transfer-uniform}, with $k=3$, $r=m$ and error
+$\varepsilon$, holds for all $n\ge N(d,\delta)$.
+All these choices depend on $d$ and $\delta$, and not on $A$ or
+its actual density $\alpha$.
+
+Let $n\ge N(d,\delta)$ and let $A$ satisfy the hypotheses.
+Choose a random coordinate restriction $\phi:[3]^m\to[3]^n$
+with uniform letters in the fixed coordinates, and put
+\[
+ a(\phi)=\nu_{3,m}(\phi^{-1}(A)),\qquad
+ b(\phi)=\nu_{2,m}(\phi^{-1}(A)\cap[2]^m).
+\]
+Apply Lemma~\ref{cj:transfer-uniform} first with inserted-word
+law $\nu_{3,m}$ and then with inserted-word law $\nu_{2,m}$,
+viewed as a probability on $[3]^m$ supported on $[2]^m$.
+It gives
+\begin{equation}\label{eq:cj-two-averages}
+ \mathbb E a\ge\alpha-\varepsilon,
+ \qquad
+ \mathbb E b\ge\alpha-\varepsilon.
+\end{equation}
+
+Suppose first that some restriction $\phi$ has
+$a(\phi)\ge\alpha+\varepsilon$.  Inside its copy of $[3]^m$,
+choose a random $r$-coordinate restriction with equal-slices
+background, as in Lemma~\ref{cj:transfer-equal}.  By
+\eqref{eq:cj-average-uniform-slice} and
+\eqref{eq:cj-dimension-choices}, the average uniform density of
+$\phi^{-1}(A)$ on these $r$-dimensional subspaces is at least
+$\alpha+\varepsilon/2$.  One of them has at least this density.
+Partition that subspace by fixing $r-d$ of its free coordinates.
+The resulting $d$-dimensional subspaces have equal size, so one
+has density at least $\alpha+\varepsilon/2=\alpha+h$.
+Composing its coordinate maps with $\phi$ gives the required
+subspace of the original cube.
+
+It remains to handle the case in which every restriction satisfies
+$a<\alpha+\varepsilon$.  Let
+$p=\mathbb P(a<\alpha-\kappa)$.  From
+\eqref{eq:cj-two-averages} and the upper bound on $a$,
+\[
+ \alpha-\varepsilon
+ \le\mathbb E a
+ \le p(\alpha-\kappa)+(1-p)(\alpha+\varepsilon).
+\]
+It follows that
+\[
+ p\le\frac{2\varepsilon}{\kappa+\varepsilon}
+      \le\frac{2\varepsilon}{\kappa}=\frac\delta4.
+\]
+On the other hand, if $q=\mathbb P(b\ge\delta/4)$, then
+$0\le b\le1$ and \eqref{eq:cj-two-averages} give
+\[
+ \delta-\varepsilon
+ \le\mathbb E b\le q+(1-q)\frac\delta4,
+ \qquad
+ q\ge\frac{3\delta/4-\varepsilon}{1-\delta/4}
+       \ge\frac\delta2.
+\]
+Thus there is a restriction for which
+\begin{equation}\label{eq:cj-good-face}
+ \nu_{3,m}(A')\ge\alpha-\kappa,
+ \qquad
+ \nu_{2,m}(A'\cap[2]^m)\ge\frac\delta4,
+ \qquad A'=\phi^{-1}(A).
+\end{equation}
+A combinatorial line in $A'$ would map to one in $A$, so $A'$ is
+also line-free.
+
+Set $B=A'\cap[2]^m$ and
+$C_i=C_i(B)$, $C=C_1\cap C_2$ as in
+Definition~\ref{cj:collapse}.  Lemma~\ref{cj:binary-pairs} and
+\eqref{eq:cj-good-face} imply
+\[
+ \nu_{3,m}(C)\ge\frac{(\delta/4)^2}{2}
+ =\frac{\delta^2}{32}\ge\theta.
+\]
+Since $A'$ is line-free,
+\eqref{eq:cj-forbidden-third} gives
+\begin{equation}\label{eq:cj-small-intersection}
+ \nu_{3,m}(A'\cap C)
+ \le\frac{2}{m+2}
+ \le\frac{\delta\theta}{2}
+ \le\frac\alpha2\nu_{3,m}(C).
+\end{equation}
+For the next calculation write $\nu=\nu_{3,m}$ and
+$\beta=\alpha-\kappa$.  We have $0<\beta\le1$.  The total
+$\beta$-excess of $A'$ is nonnegative by
+\eqref{eq:cj-good-face}.  Removing $C$ and using
+\eqref{eq:cj-small-intersection}, we obtain
+\begin{align*}
+ \nu(A'\cap C^c)-\beta\nu(C^c)
+ &=[\nu(A')-\beta]-[\nu(A'\cap C)-\beta\nu(C)]\\
+ &\ge(\alpha/2-\kappa)\nu(C)
+ \ge\frac{\delta\theta}{4}=2t.
+\end{align*}
+The complement of $C$ is the disjoint union
+\[
+ D^{(1)}=C_1^c,
+ \qquad
+ D^{(2)}=C_1\cap C_2^c.
+\]
+Each of these is an intersection of a $(1,3)$-insensitive set and
+a $(2,3)$-insensitive set; for $D^{(1)}$ the second set is the whole
+cube.  Because the excesses add over this partition, one of the two
+sets, denoted by $D$, satisfies
+\begin{equation}\label{eq:cj-structured-excess}
+ \nu(A'\cap D)-\beta\nu(D)\ge t.
+\end{equation}
+
+Choose a random $r$-coordinate restriction $\psi:[3]^r\to[3]^m$
+with equal-slices background.  Write $A''=\psi^{-1}(A')$ and
+$D'=\psi^{-1}(D)$ for its two traces.  Applying
+Lemma~\ref{cj:transfer-equal} separately to $A'\cap D$ and $D$,
+and using $\beta\le1$, shows that the expected value of
+\[
+ \mu_{3,r}(A''\cap D')-\beta\mu_{3,r}(D')
+\]
+is at least $t-2(3r/m)\ge3t/4$.  Fix a restriction for which
+this bound holds.  The two insensitivities defining $D$ are
+preserved by coordinate restriction, so $D'$ has the required
+form for the tiling lemma.  Since $\kappa=t/8$,
+\begin{equation}\label{eq:cj-uniform-excess}
+ \mu_{3,r}(A''\cap D')-\alpha\mu_{3,r}(D')
+ \ge\frac{3t}{4}-\kappa\mu_{3,r}(D')
+ \ge\frac{5t}{8}\ge\frac t2.
+\end{equation}
+
+By the choice of $r$, there are disjoint $d$-dimensional subspaces
+$V_1,\ldots,V_s$ contained in $D'$ whose union $U$ leaves
+$\mu_{3,r}(D'\setminus U)\le t/8$.  Subtracting the contribution
+of this remainder from \eqref{eq:cj-uniform-excess} gives
+\[
+ \mu_{3,r}(A''\cap U)-\alpha\mu_{3,r}(U)\ge\frac{3t}{8}.
+\]
+In particular $U$ is nonempty.  The left side is
+\[
+ \sum_{j=1}^s\mu_{3,r}(V_j)
+       \left(\frac{|A''\cap V_j|}{|V_j|}-\alpha\right).
+\]
+As $\sum_j\mu_{3,r}(V_j)=\mu_{3,r}(U)\le1$, at least one tile
+has relative density at least $\alpha+3t/8$.  This is at least
+$\alpha+h$, because $h=\delta t/128\le3t/8$.
+The image of that tile under $\phi\circ\psi$ is a
+$d$-dimensional combinatorial subspace of $[3]^n$ with the same
+relative density.  This proves the proposition.
+\end{proof}
+
+\begin{theorem}[Density Hales--Jewett for three letters]\label{cj:dhj3}
+\lean{Auto.cj_dhj3}
+\leanok
+For every $0<\delta\le1$ there is an integer $H_3(\delta)$ such
+that, for every $n\ge H_3(\delta)$, each set $A\subseteq[3]^n$
+with $|A|\ge\delta3^n$ contains a combinatorial line.
+\end{theorem}
+\begin{proof}
+Fix $\delta$ and let $h=h(\delta)>0$ be supplied by
+Proposition~\ref{cj:density-increment}.  Choose an integer $K$
+with $Kh>1$, put $n_0=1$, and recursively choose
+\[
+ n_{j+1}=N(n_j,\delta)\qquad(0\le j<K).
+\]
+Set $H_3(\delta)=n_K$.  First suppose $n=n_K$ and that $A$ is
+line-free with density at least $\delta$.  Apply the proposition
+with target dimension $n_{K-1}$.  Identifying the resulting
+subspace with $[3]^{n_{K-1}}$, the trace of $A$ is still line-free
+and its density has increased by at least $h$.  Apply the
+proposition again with target dimension $n_{K-2}$.  Continue in
+this way.  Composing the coordinate descriptions of combinatorial
+subspaces preserves their dimensions and sends their combinatorial
+lines to combinatorial lines of the original cube.  Therefore all
+$K$ applications are legitimate, and the final trace has density
+at least $\delta+Kh>1$, which is impossible.
+
+For $n>n_K$, partition $[3]^n$ into coordinate subspaces of
+dimension $n_K$ by fixing the other coordinates.  Their relative
+$A$-densities average to $\mu_{3,n}(A)$, so some trace has density
+at least $\delta$.  The case just proved gives a line in that
+trace, hence in $A$.
+\end{proof}
+
+
+\section{Geometry, forms, and elementary estimates}\label{sec:prelim}
+
+\begin{definition}[Triangle coordinates]\label{def:geometry}
+\lean{Auto.J,Auto.M,Auto.Lv,Auto.Ang,Auto.u,Auto.v,Auto.σ,Auto.μinc,Auto.proj,Auto.FCMeasure.sigma}
+Fix real numbers $\alpha,\beta$ with $\beta\ne0$ and set
+\[
+ J=\begin{pmatrix}0&-1\\1&0\end{pmatrix},\qquad
+ M=\alpha I+\beta J,\qquad
+ L_0=0,\quad L_1=I,\quad L_2=M.
+\]
+Let $\mathbb T=\R/(2\pi\Z)$,
+$u_\theta=(\cos\theta,\sin\theta)$, and $v_\theta=Ju_\theta$.
+We write $\dd\sigma(\theta)=\dd\theta/(2\pi)$ and also use
+$\sigma$ for its pushforward to the unit circle.
+The configuration space is $\R^2\times\mathbb T$, with
+$p=(x,\theta)$, $\dd\mu(p)=\dd x\dd\sigma(\theta)$, and
+\[
+ \pi_jp=x+L_ju_\theta\qquad(j=0,1,2).
+\]
+All measurable functions are represented by Borel versions when
+pointwise compositions are needed; equalities of functions in
+$L^p$ are understood almost everywhere.
+\end{definition}
+
+\begin{lemma}[Similarities and normalization]\label{lem:geometry}
+\lean{Auto.lem_geometry_differences,Auto.lem_geometry_commute,Auto.lem_geometry_normalization,Auto.lem_geometry_measurePreserving}
+\leanok
+Each $L_i-L_j$, $i\ne j$, is an invertible similarity.  The matrix
+$M$ commutes with every rotation.  Every ordered noncollinear
+triangle is a translate of a rotation of a positive multiple of
+$\{0,e_1,Me_1\}$ for a matrix $M$ of the form in
+Definition~\ref{def:geometry}.  For each $j$ the map
+$(x,\theta)\mapsto(\pi_j(x,\theta),\theta)$ preserves $\mu$.
+\end{lemma}
+\begin{proof}
+For real $a,b$,
+$(aI+bJ)^T(aI+bJ)=(a^2+b^2)I$.  Apply this to $M$ and $M-I$,
+and also to $I$ and the negatives of these matrices.  The condition
+$\beta\ne0$ ensures invertibility of both $M$ and $M-I$.
+Every planar rotation is $\cos t\,I+\sin t\,J$, which commutes
+with $M$.  Given vertices $q_0,q_1,q_2$, put
+$\ell=|q_1-q_0|>0$ and choose a rotation $U$ with
+$Ue_1=(q_1-q_0)/\ell$.  Write
+$\ell^{-1}U^{-1}(q_2-q_0)=(\alpha,\beta)$.  Noncollinearity is
+exactly $\beta\ne0$, and
+$\{q_0,q_1,q_2\}=q_0+\ell U\{0,e_1,Me_1\}$.
+The last assertion follows from translation invariance of
+Lebesgue measure in $x$, separately for each $\theta$.
+\end{proof}
+
+\begin{definition}[Counting form and its endpoint norms]\label{def:form}
+\lean{Auto.FCMeasure,Auto.form,Auto.endNorm,Auto.formNorm,Auto.FCMeasure.tv,Auto.FCMeasure.dil}
+For a finite complex Borel measure $\nu$ on $\R^2$ set
+\[
+ \Lambda_\nu(f_0,f_1,f_2)
+  =\int_{\R^2}\int_{\R^2}
+    \prod_{j=0}^2 f_j(x+L_ju)\dd x\dd\nu(u)
+\]
+whenever the integral is absolutely convergent against $|\nu|$.
+For $i\in\{0,1,2\}$ let
+\[
+ \|\Lambda_\nu\|_i
+   =\sup_{\|f_i\|_\infty\le1,\ \|f_j\|_2\le1\ (j\ne i)}
+          |\Lambda_\nu(f_0,f_1,f_2)|,
+ \qquad \|\Lambda_\nu\|=\|\Lambda_\nu\|_2.
+\]
+The total variation norm of $\nu$ is $\|\nu\|_{\TV}=|\nu|(\R^2)$.
+For $s>0$, $\nu_s$ is the pushforward under $u\mapsto su$.
+An $L^1$ function is identified with the measure having that density.
+\end{definition}
+
+\begin{lemma}[Basic endpoint bounds and scaling]\label{lem:form-basic}
+\lean{Auto.lem_form_basic_integrable,Auto.lem_form_basic_bound,Auto.lem_form_basic_scaling,Auto.lem_form_basic_ae,Auto.lem_form_basic_translate}
+\leanok
+For each endpoint permutation the defining integral is absolutely
+convergent and
+\[
+ |\Lambda_\nu(f_0,f_1,f_2)|
+ \le\|\nu\|_{\TV}\|f_i\|_\infty\prod_{j\ne i}\|f_j\|_2,
+ \qquad
+ \|\Lambda_{\nu_s}\|_i=\|\Lambda_\nu\|_i.
+\]
+The form does not depend on the choice of almost-everywhere versions
+of its inputs.  Simultaneously translating all inputs leaves the
+form unchanged.
+\end{lemma}
+\begin{proof}
+For fixed $u$, bound the $i$th factor by its essential supremum
+and apply Cauchy--Schwarz to the other two translated factors in
+$x$.  Their $L^2$ norms are unchanged by translation.  Integrate
+this bound against $|\nu|$.  The same argument, or Fubini applied
+to a null set in any one translated variable, proves independence
+of versions.
+
+For the scaling assertion put $p_i=\infty$ and $p_j=2$ for
+$j\ne i$, with $1/\infty=0$, and define
+$U_s^{(p)}f(x)=s^{-2/p}f(x/s)$.  These are isometries on the
+indicated spaces.  The substitutions $x=sy$ and $u=sv$ give
+\[
+ \Lambda_{\nu_s}(U_s^{(p_0)}f_0,U_s^{(p_1)}f_1,
+                   U_s^{(p_2)}f_2)=\Lambda_\nu(f_0,f_1,f_2),
+\]
+because $\sum_j1/p_j=1$.  Take the supremum and then apply the
+same argument with $s^{-1}$.  A common translation is removed
+by a translation of $x$.
+\end{proof}
+
+\begin{lemma}[Convolution as translations of the inputs]\label{lem:convolution-translate}
+\lean{Auto.lem_convolution_translate,Auto.lem_convolution_translate_norm,Auto.lem_convolution_translate_general}
+\leanok
+For finite measures $\nu,\kappa$ and endpoint inputs,
+\begin{equation}\label{eq:convolution-translate}
+ \Lambda_{\nu*\kappa}(f_0,f_1,f_2)
+ =\int\Lambda_\nu\big(f_0,f_1(\cdot+w),f_2(\cdot+Mw)\big)
+       \dd\kappa(w).
+\end{equation}
+Consequently
+$\|\Lambda_{\nu*\kappa}\|_i
+ \le\|\kappa\|_{\TV}\|\Lambda_\nu\|_i$.
+More generally, any translation-invariant norm bound for the
+inputs of $\Lambda_\nu$ is inherited by $\Lambda_{\nu*\kappa}$,
+with the extra factor $\|\kappa\|_{\TV}$.
+\end{lemma}
+\begin{proof}
+In the convolution integral replace the displacement $u$ by
+$v+w$.  The three vertices become $x$, $x+v+w$, and
+$x+Mv+Mw$.  Fubini is justified by the absolute bound of
+Lemma~\ref{lem:form-basic}, first against $|\nu|$ and then
+against $|\kappa|$.  This proves the identity.  Translations
+preserve each input norm, which proves the stated consequences
+whenever the corresponding absolute integral or continuous
+extension is defined.
+\end{proof}
+
+\begin{definition}[Exponential and frequency-scale notation]\label{def:fourier}
+\lean{Auto.e,Auto.scaleR}
+Write $\e(t)=\exp(2\pi it)$, keeping the Fourier convention of
+Definition~\ref{ext:fourier-convention}.  For a function $h$ and
+$R>0$, put $h_R(u)=R^2h(Ru)$.
+\end{definition}
+
+\begin{lemma}[Fourier representation]\label{lem:fourier-form}
+\lean{Auto.lem_fourier_form,Auto.lem_fourier_form_multiplier}
+\leanok
+For Schwartz inputs and a finite measure $\nu$,
+\begin{align*}
+ \Lambda_\nu(f_0,f_1,f_2)
+  =\iint &\widehat f_0(-\xi_1-\xi_2)
+        \widehat f_1(\xi_1)\widehat f_2(\xi_2)\\
+   &\hspace{12mm}\cdot\widehat\nu(-\xi_1-M^T\xi_2)
+             \dd\xi_1\dd\xi_2.
+\end{align*}
+In particular, if $\psi$ is smooth, compactly supported, and even,
+the form with kernel $\sigma*(\check\psi)_R$ has multiplier
+$\widehat\sigma(b)\psi(b/R)$, where $b=\xi_1+M^T\xi_2$.
+\end{lemma}
+\begin{proof}
+Apply Fourier inversion from Lemma~\ref{ext:fourier} to the last two inputs and integrate the
+first input in $x$.  The resulting phase in $u$ is $\e(u\cdot b)$,
+so its integral is $\widehat\nu(-b)$.  Absolute integrability
+follows, for example, from
+$\|f_0\|_1
+  \|\widehat f_1\|_1\|\widehat f_2\|_1\|\nu\|_{\TV}<\infty$.
+For the last assertion use symmetry of $\sigma$, evenness of
+$\psi$, and the convolution identity obtained directly by Fubini.
+The substitution $v=Ru$ in the Fourier integral gives
+$\widehat{h_R}(\xi)=\widehat h(\xi/R)$, supplying the stated scale.
+\end{proof}
+
+\begin{lemma}[Density of the circle difference measure]\label{lem:circle-difference}
+\lean{Auto.lem_circle_difference}
+\leanok
+If $N$ is an invertible planar similarity, the pushforward of
+$\sigma\otimes\sigma$ under
+$(\theta,\varphi)\mapsto N(u_\theta-u_\varphi)$ has a
+nonnegative density $w_N\in L^1(\R^2)$ with integral one.
+\end{lemma}
+\begin{proof}
+The absolute Jacobian of this map is
+$|\det N|\,|\det(v_\theta,v_\varphi)|
+ =|\det N|\,|\sin(\varphi-\theta)|$.
+It is nonzero except on the two one-dimensional sets
+$\varphi=\theta$ and $\varphi=\theta+\pi$ modulo $2\pi$,
+which have zero product measure.  The complement has a countable
+cover by open sets on which the map is a diffeomorphism onto its
+image, by the inverse function theorem and second countability.
+Partition this complement into measurable pieces subordinate to
+that cover.  On each piece the change-of-variables theorem shows
+that the pushforward is absolutely continuous.  Their countable
+sum is absolutely continuous as well, and the omitted set has
+zero measure.  The Radon--Nikodym density is nonnegative and
+has integral equal to the original mass, namely one.
+\end{proof}
+
+\begin{lemma}[Weighted circle compactness and small-set control]\label{lem:circle-compact}
+\lean{Auto.circleOp,Auto.lem_circle_compact_small,Auto.lem_circle_compact}
+\leanok
+Let $N$ be an invertible planar similarity and $W$ a measurable
+function with $|W|\le1$.  Define
+\[
+ Tf(z)=\int W(z,\theta)f(z+Nu_\theta)\dd\sigma(\theta).
+\]
+There is a nondecreasing function $\omega_N:[0,\infty)\to[0,1]$,
+with $\omega_N(s)\to0$ as $s\downarrow0$, independent of $W$,
+such that
+\[
+ \|\sqrt e\,T\|_{L^2\to L^2}\le\omega_N(\|e\|_1)
+ \quad\text{if }0\le e\le1,\ e\in L^1.
+\]
+If $W(z,\theta)=0$ for $z$ outside a bounded set, then $T$ is
+compact on $L^2(\R^2)$.
+\end{lemma}
+\begin{proof}
+Cauchy--Schwarz in the probability measure $\sigma$ and translation
+invariance give $\|T\|\le1$.
+Its adjoint is
+\[
+ T^*g(y)=\int\overline{W(y-Nu_\varphi,\varphi)}
+                         g(y-Nu_\varphi)\dd\sigma(\varphi).
+\]
+Consequently
+\begin{align*}
+ TT^*g(z)=\iint &W(z,\theta)
+  \overline{W(z+Nu_\theta-Nu_\varphi,\varphi)}\\
+ &\hspace{7mm}\cdot g(z+Nu_\theta-Nu_\varphi)
+                   \dd\sigma(\theta)\dd\sigma(\varphi).
+\end{align*}
+By Lemma~\ref{lem:circle-difference} this is an integral operator
+with a measurable kernel $K(z,y)$ satisfying
+$|K(z,y)|\le w_N(y-z)$.  One precise way to obtain the kernel is
+to push forward the weighted measure in $(z,\theta,\varphi)$
+under $(z,\theta,\varphi)\mapsto(z,z+Nu_\theta-Nu_\varphi)$;
+its total variation is bounded by
+$w_N(y-z)\dd z\dd y$, so Radon--Nikodym applies on bounded
+$z$ sets and then consistently on all of $\R^2$.
+The resulting identity first holds in pairings with bounded compactly
+supported tests.  The domination by $w_N$ and
+Lemma~\ref{ext:young} extend it to $L^2$ by density.
+
+For $H>0$ split the kernel according to $w_N(y-z)\le H$ and
+$w_N(y-z)>H$.  In the first part the kernel of
+$\sqrt e\,TT^*\sqrt e$ is bounded in modulus by
+$H\sqrt{e(z)e(y)}$, a positive rank-one kernel of operator
+norm $H\|e\|_1$.  In the second part, Young's inequality and
+$\sqrt e\le1$ bound the operator norm by
+$\|w_N\one_{\{w_N>H\}}\|_1$.  Thus
+\begin{equation}\label{eq:circle-modulus}
+ \|\sqrt e\,T\|^2
+  \le H\|e\|_1+\|w_N\one_{\{w_N>H\}}\|_1.
+\end{equation}
+Take the minimum with one and then the infimum over $H>0$ of
+the square root of the right side.  The resulting modulus is
+nondecreasing.  It tends to zero because the second term can
+first be made small by increasing $H$, and the first can then
+be made small by decreasing $\|e\|_1$.
+
+If $W$ has bounded $z$ support $X$, both variables of $K$ are
+in $X$.  The part with $w_N\le H$ is a bounded kernel on
+$X\times X$, hence is compact by Lemma~\ref{ext:compact-facts}.
+The remaining part has norm tending to zero as $H\to\infty$.
+The same lemma makes their operator-norm limit $TT^*$ compact.
+Lemma~\ref{ext:ttstar} now gives compactness of $T$.
+\end{proof}
+
+\begin{lemma}[The trilinear $L^2$ estimate]\label{lem:triple-l2}
+\lean{Auto.lem_triple_l2,Auto.lem_triple_l2_sigma}
+\leanok
+There is a constant $C_M$ such that
+\begin{equation}\label{eq:triple-l2}
+ |\Lambda_\sigma(f_0,f_1,f_2)|
+     \le C_M\prod_{j=0}^2\|f_j\|_2.
+\end{equation}
+The integral is absolutely convergent for these inputs.
+For every finite measure $\kappa$, the same assertions hold
+for $\sigma*\kappa$ with the additional factor
+$\|\kappa\|_{\TV}$.
+\end{lemma}
+\begin{proof}
+Consider $F(\theta,\varphi)=Mu_\varphi-u_\theta$.  At
+$(\theta_0,\theta_0)$ its derivative has columns
+$-v_{\theta_0}$ and $Mv_{\theta_0}$, whose determinant has
+absolute value $|\beta|>0$.  There is a sufficiently small
+interval $I$ about each $\theta_0$ on which $F$ is one-to-one
+on $I\times I$ and its absolute Jacobian is bounded below.
+For completeness, choose $I$ so that $DF$ differs from the
+invertible matrix $DF(\theta_0,\theta_0)$ by less than half
+its least singular value.  Integrating this difference along
+segments in $I\times I$ proves injectivity and the lower
+Jacobian bound.  Compactness of the circle supplies a finite
+partition into intervals with these properties.
+
+For such an interval let
+$B_I(f_1,f_2)(x)=\int_I f_1(x+u_\theta)
+ f_2(x+Mu_\theta)\dd\sigma(\theta)$.
+Initially take bounded compactly supported inputs.  Expand
+$\|B_I\|_2^2$, take absolute values, and apply Cauchy--Schwarz
+on $(x,\theta,\varphi)$ to the factors
+\[
+ |f_1(x+u_\theta)f_2(x+Mu_\varphi)|,
+ \qquad |f_1(x+u_\varphi)f_2(x+Mu_\theta)|.
+\]
+The two resulting square integrals are identical by interchanging
+$\theta$ and $\varphi$.  It follows that
+\begin{align*}
+ \|B_I(f_1,f_2)\|_2^2
+ &\le\int_{I^2}\int
+      |f_1(x+u_\theta)|^2|f_2(x+Mu_\varphi)|^2
+                 \dd x\dd\sigma(\theta)\dd\sigma(\varphi)\\
+ &=\int |f_1(y)|^2
+       \int_{I^2}|f_2(y+F(\theta,\varphi))|^2
+                     \dd\sigma(\theta)\dd\sigma(\varphi)\dd y\\
+ &\le C_M\|f_1\|_2^2\|f_2\|_2^2.
+\end{align*}
+The last inequality is the change of variables through $F$.
+Sum the $L^2$ norms over the finite partition and pair with
+$f_0$ by Cauchy--Schwarz.  Applying the same bound to absolute
+values, followed by monotone approximation, proves both absolute
+convergence and the estimate for arbitrary $L^2$ inputs.
+Finally use the identity and translation argument in
+Lemma~\ref{lem:convolution-translate}, first for absolute
+values against $|\kappa|$.
+\end{proof}
+
+\begin{lemma}[Small support in an $L^2$ input]\label{lem:small-support}
+\lean{Auto.lem_small_support}
+\leanok
+There is a nondecreasing modulus $\omega_M(s)\to0$ as
+$s\downarrow0$ with the following property.  Suppose $i,j,k$
+are distinct, $f_i\in L^\infty$, $f_j,f_k\in L^2$, and
+$f_j$ is supported on a measurable set of area at most $s$.
+Then, for every finite measure $\kappa$,
+\[
+ |\Lambda_{\sigma*\kappa}(f_0,f_1,f_2)|
+ \le\|\kappa\|_{\TV}\omega_M(s)
+              \|f_i\|_\infty\|f_j\|_2\|f_k\|_2.
+\]
+The assertion for $\sigma$ is included by taking
+$\kappa=\delta_0$.
+\end{lemma}
+\begin{proof}
+For $\sigma$, bound the $i$th input by its supremum and set
+$z=x+L_ju_\theta$.  The remaining integral is bounded by
+\[
+ \|f_i\|_\infty\int |f_j(z)|
+   \left(\int |f_k(z+(L_k-L_j)u_\theta)|
+                          \dd\sigma(\theta)\right)\dd z.
+\]
+Since $f_j$ is supported on a set $A$ of measure at most $s$,
+Cauchy--Schwarz and Lemma~\ref{lem:circle-compact}, with
+$e=\one_A$, bound this by
+$\omega_{L_k-L_j}(s)\|f_i\|_\infty\|f_j\|_2\|f_k\|_2$.
+Take the maximum over the six possible edge maps, which are
+invertible similarities by Lemma~\ref{lem:geometry}.  For a
+convolution by $\kappa$, translate the inputs as in
+Lemma~\ref{lem:convolution-translate}; the small support is
+merely translated and its area is unchanged.  Integrate the
+bound against $|\kappa|$.
+\end{proof}
+
+\begin{remark}\label{rem:moduli}
+The symbol $\omega_M$ may be increased by a constant depending
+only on $M$ whenever finitely many of the edge moduli are
+combined.  It will always be nondecreasing and tend to zero
+at zero.  All constants denoted by $C_M$ may change from one
+inequality to the next.  These conventions do not assert any
+quantitative rate of decay.
+\end{remark}
+
+
+\section{Finite-dimensional scalar kernels}
+
+\begin{definition}[Degrees and cores]\label{rig:def-core}
+\lean{Auto.degree,Auto.IsCoreData,Auto.IsCore}
+Let $X_0,X_1,X_2\subset\R^2$ be bounded measurable sets, and let
+$E\subset\R^2\times \mathbb T$ be measurable, with
+$\pi_j(p)\in X_j$ for almost every $p\in E$ and every $j$.
+The degree of $z\in\R^2$ at vertex $j$ is
+\[
+ d_{j,E}(z)=\int_{\mathbb T}
+ \one_E(z-L_ju_\theta,\theta)\dd\sigma(\theta).
+\]
+The data $(E;X_0,X_1,X_2)$ form a \emph{core of degree $c$} if
+$\mu(E)>0$ and $d_{j,E}\ge c>0$ almost everywhere on $X_j$, for every $j$.
+Sets and their defining relations may throughout be modified on null sets.
+\end{definition}
+
+\begin{lemma}[Integration along a vertex]\label{rig:degree-integration}
+\lean{Auto.rig_degree_integration,Auto.rig_degree_integration_bounds,Auto.rig_degree_integration_total,Auto.rig_degree_integration_null}
+For every nonnegative measurable function $g$ on $\R^2$,
+\[
+ \int_E g(\pi_jp)\dd\mu(p)
+ =\int_{\R^2}g(z)d_{j,E}(z)\dd z.
+\]
+In particular, $0\le d_{j,E}\le1$,
+$\int d_{j,E}=\mu(E)$, and pullback by $\pi_j$ sends planar null sets
+to $\mu$-null sets.
+\end{lemma}
+\begin{proof}
+Apply Tonelli's theorem, and at fixed $\theta$ make the translation
+$z=x+L_ju_\theta$. Its Jacobian is one. The bound on the degree follows
+because $\sigma$ is a probability measure. Taking $g=1$ gives its integral,
+and taking $g$ to be the indicator of a null set gives the last assertion.
+\end{proof}
+
+\begin{lemma}[Extraction of a positive-degree core]\label{rig:prune}
+\lean{Auto.rig_prune}
+If $\mu(E)>0$, then for every
+\[
+ 0<c<\frac{\mu(E)}{\sum_{j=0}^2|X_j|}
+\]
+there are measurable $Y_j\subset X_j$ and $F\subset E$ such that
+$(F;Y_0,Y_1,Y_2)$ is a core of degree $c$. Moreover,
+\[
+ \mu(E\setminus F)\le c\sum_{j=0}^2|X_j|.
+\]
+\end{lemma}
+\begin{proof}
+Set $E^{(0)}=E$ and $X_j^{(0)}=X_j$. Having defined these objects at
+step $m$, delete
+\[
+ V_j^{(m)}=\{z\in X_j^{(m)}:d_{j,E^{(m)}}(z)<c\},
+ \qquad X_j^{(m+1)}=X_j^{(m)}\setminus V_j^{(m)},
+\]
+and let
+\[
+ E^{(m+1)}=E^{(m)}\cap
+ \bigcap_{j=0}^2\pi_j^{-1}(X_j^{(m+1)}).
+\]
+By Lemma~\ref{rig:degree-integration} and the union bound,
+\[
+ \mu(E^{(m)}\setminus E^{(m+1)})
+ \le\sum_j\int_{V_j^{(m)}}d_{j,E^{(m)}}(z)\dd z
+ \le c\sum_j|V_j^{(m)}|.
+\]
+For each $j$, the deleted vertex sets are disjoint as $m$ varies.
+Consequently the sets
+$Y_j=\bigcap_mX_j^{(m)}$ and $F=\bigcap_mE^{(m)}$ satisfy the stated loss
+bound. Its right-hand side is smaller than $\mu(E)$, so $\mu(F)>0$.
+For almost every $z\in Y_j$, survival at every step gives
+$d_{j,E^{(m)}}(z)\ge c$ for every $m$. Continuity of the integral under
+decreasing bounded integrands gives
+$d_{j,F}(z)=\lim_m d_{j,E^{(m)}}(z)\ge c$.
+\end{proof}
+
+\begin{definition}[The scalar incidence operator]\label{rig:def-kernel}
+\lean{Auto.HE,Auto.incidenceOp,Auto.kernelSpace}
+On a core $(E;X_0,X_1,X_2)$ let
+\[
+ \mathcal H_E=\bigoplus_{j=0}^2L^2(X_j;\R),\qquad
+ D_E:\mathcal H_E\longrightarrow L^2(E,\mu),\qquad
+ D_E f=\sum_{j=0}^2 f_j\circ\pi_j,
+ \qquad K_E=\ker D_E.
+\]
+The norm on $\mathcal H_E$ is the square root of the sum of the three
+squared $L^2$ norms. Each component is extended by zero when regarded as
+a function on all of $\R^2$.
+\end{definition}
+
+\begin{lemma}[Finite-dimensionality and a distance estimate]\label{rig:kernel-gap}
+\lean{Auto.rig_kernel_gap_finiteDimensional,Auto.rig_kernel_gap}
+For every core $E$, the space $K_E$ is finite dimensional. There is
+$C_E<\infty$ such that
+\[
+ \operatorname{dist}_{\mathcal H_E}(f,K_E)
+ \le C_E\norm{D_Ef}_{L^2(E,\mu)}\qquad(f\in\mathcal H_E).
+\]
+The same constant is valid for every translate of $E$ in the base variable.
+\end{lemma}
+\begin{proof}
+The inequality $|a_0+a_1+a_2|^2\le3\sum_j|a_j|^2$, followed by
+Lemma~\ref{rig:degree-integration}, shows that $\norm{D_E}\le\sqrt3$.
+That lemma also identifies the blocks of $D_E^*D_E$. The diagonal block
+at vertex $j$ is multiplication by $d_{j,E}$. For $i\ne j$ the block is
+\[
+ T_{ji}f_i(z)=\int_{\mathbb T}
+ \one_E(z-L_ju_\theta,\theta)
+ f_i(z+(L_i-L_j)u_\theta)\dd\sigma(\theta),\qquad z\in X_j.
+\]
+Its weight has absolute value at most one and bounded support in $z$.
+Each $L_i-L_j$ is a nonzero similarity, so
+Lemma~\ref{lem:circle-compact} makes every off-diagonal block compact.
+
+Write $D_E^*D_E=A+K$, where $A$ is the diagonal multiplication operator
+and $K$ is compact and self-adjoint. If $E$ has degree $c$, then
+$cI\le A\le I$. Thus
+\[
+ B=A^{-1/2}D_E^*D_EA^{-1/2}=I+A^{-1/2}KA^{-1/2}
+\]
+is a nonnegative compact perturbation of the identity.
+Lemma~\ref{ext:compact-gap} implies that $\ker B$ is finite
+dimensional and that some $\gamma>0$ satisfies
+\[
+ \langle Bg,g\rangle\ge
+ \gamma\operatorname{dist}(g,\ker B)^2.
+\]
+Here $\ker B=A^{1/2}K_E$. Substituting $g=A^{1/2}f$ and using
+$\norm{A^{1/2}(f-k)}\ge\sqrt c\norm{f-k}$ for $k\in K_E$ gives
+\[
+ \norm{D_Ef}_2^2\ge\gamma c\operatorname{dist}(f,K_E)^2.
+\]
+It also proves finite-dimensionality of $K_E$.
+Base translation induces unitary identifications of both Hilbert spaces
+and intertwines the incidence operators, so it preserves this estimate.
+\end{proof}
+
+\begin{lemma}[Uniform integrability of kernel elements]\label{rig:kernel-ui}
+\lean{Auto.rig_kernel_ui}
+There is a nondecreasing function $\omega:[0,\infty)\to[0,\infty)$,
+depending only on $M$, with $\omega(s)\to0$ as $s\downarrow0$, such that
+the following holds. On any core $G$ of degree $t>0$, if $f\in K_G$,
+$0\le e\le1$, and $e\in L^1(\R^2)$, then
+\[
+ \norm{\sqrt e\,f_j}_2
+ \le C_Mt^{-1}\omega(\norm e_1)\norm f_{\mathcal H_G}
+ \qquad(j=0,1,2).
+\]
+The modulus is independent of the core and of its vertex sets.
+\end{lemma}
+\begin{proof}
+Take $\omega$ to be the maximum of the finitely many moduli supplied
+by Lemma~\ref{lem:circle-compact} for $L_i-L_j$, $i\ne j$.
+The $j$th block of $D_G^*D_Gf=0$ reads
+\[
+ d_{j,G}f_j=-\sum_{i\ne j}T_{ji}f_i.
+\]
+Multiplication by $\sqrt e$, the lower bound $d_{j,G}\ge t$ on the
+support of $f_j$, and that lemma give
+\[
+ t\norm{\sqrt e\,f_j}_2
+ \le\sum_{i\ne j}\norm{\sqrt e\,T_{ji}f_i}_2
+ \le\omega(\norm e_1)\sum_{i\ne j}\norm{f_i}_2.
+\]
+The last sum is bounded by $\sqrt2\norm f_{\mathcal H_G}$.
+\end{proof}
+
+\begin{lemma}[Stability under removal of a small set]\label{rig:kernel-stability}
+\lean{Auto.rig_kernel_stability}
+Fix a core $(E;X_0,X_1,X_2)$ of degree $c$ and a number $t>0$.
+There is $\eta_0>0$ such that, whenever
+$(F;Y_0,Y_1,Y_2)$ is a core of degree $t$, with
+$F\subset E$, $Y_j\subset X_j$, and $\mu(E\setminus F)<\eta_0$,
+the restriction map
+\[
+ R:K_E\longrightarrow K_F,\qquad Rf=(f_j|_{Y_j})_{j=0}^2,
+\]
+is an isomorphism. The threshold may be chosen using only
+$c,t,C_E$, and the fixed modulus in Lemma~\ref{rig:kernel-ui}; in
+particular, the same threshold works after a base translation.
+\end{lemma}
+\begin{proof}
+Set $\eta=\mu(E\setminus F)$. Restriction takes $K_E$ to $K_F$ because
+$F\subset E$. Every incidence of a vertex in $X_j\setminus Y_j$ is
+absent from $F$. Therefore
+\[
+ c|X_j\setminus Y_j|
+ \le\int_{X_j\setminus Y_j}d_{j,E}(z)\dd z\le\eta.
+\]
+Applying Lemma~\ref{rig:kernel-ui} on $E$, with
+$e=\one_{X_j\setminus Y_j}$, proves
+\[
+ \sum_j\norm{f_j\one_{X_j\setminus Y_j}}_2^2
+ \le C_Mc^{-2}\omega(\eta/c)^2\norm f_{\mathcal H_E}^2
+ \qquad(f\in K_E).
+\]
+For sufficiently small $\eta$, this makes $R$ injective.
+
+For the reverse dimension inequality, extend $f\in K_F$ by zero to
+$\widetilde f\in\mathcal H_E$. Define
+$e_j=d_{j,E\setminus F}$, so $0\le e_j\le1$ and $\int e_j=\eta$.
+Since $D_E\widetilde f=0$ almost everywhere on $F$,
+\begin{align*}
+ \norm{D_E\widetilde f}_2^2
+ &\le3\sum_j\int_{E\setminus F}|\widetilde f_j(\pi_jp)|^2\dd\mu(p)\\
+ &=3\sum_j\norm{\sqrt{e_j}\,\widetilde f_j}_2^2
+ \le C_Mt^{-2}\omega(\eta)^2\norm f_{\mathcal H_F}^2.
+\end{align*}
+Lemma~\ref{rig:kernel-gap} now gives
+\[
+ \operatorname{dist}(\widetilde f,K_E)
+ \le C_MC_Et^{-1}\omega(\eta)\norm f_{\mathcal H_F}.
+\]
+Choose $\eta_0$ so that the coefficient is less than one. The orthogonal
+projection of the zero extension onto $K_E$ is then injective on $K_F$:
+if its value were zero, the displayed inequality would force $f=0$.
+Both kernels are finite dimensional by Lemma~\ref{rig:kernel-gap}.
+The two injections imply equality of their dimensions, and the already
+injective restriction is consequently surjective. The stated dependence
+of the threshold follows from the estimates just proved.
+\end{proof}
+
+\section{Analytic pieces and measurable rigidity}
+
+\begin{lemma}[A common core for nearby translates]\label{rig:common-core}
+\lean{Auto.rig_common_core}
+Let $E$ be a core of degree $c$, and define
+\[
+ E_h=\{(x,\theta):(x+h,\theta)\in E\},
+ \qquad \eta(h)=\mu(E\setminus E_h).
+\]
+For all sufficiently small $h\in\R^2$, there is a core
+$(F_h;Y_{0,h},Y_{1,h},Y_{2,h})$ of degree $c/4$, with
+\[
+ F_h\subset E\cap E_h,\qquad
+ Y_{j,h}\subset X_j\cap(X_j-h),
+\]
+such that
+\[
+ \mu(E\setminus F_h)=\mu(E_h\setminus F_h)\le4\eta(h),
+ \qquad |X_j\setminus Y_{j,h}|\longrightarrow0\quad(h\to0).
+\]
+\end{lemma}
+\begin{proof}
+Translation continuity in $L^1(\R^2\times \mathbb T)$ gives
+$\mu(E\triangle E_h)\to0$; in particular $\eta(h)\to0$.
+Start with $E\cap E_h$ on the original vertex sets $X_j$, and perform
+the deletion process from Lemma~\ref{rig:prune} at threshold $t=c/4$.
+Write $V_j$ for the union of the deleted vertices and
+$V=\sum_j|V_j|$. If $L$ denotes the measure of further incidences removed
+after the initial removal of $E\setminus E_h$, the same accounting as
+in that lemma gives $L\le tV$.
+On the other hand, the degrees in the original core yield
+\[
+ cV\le\sum_j\int_{V_j}d_{j,E}(z)\dd z
+ \le3\mu(E\setminus F_h)=3(\eta(h)+L).
+\]
+Every removed configuration is counted at most three times in this sum.
+Thus $cV\le3\eta(h)+3cV/4$, so
+$V\le12\eta(h)/c$ and
+$\mu(E\setminus F_h)\le\eta(h)+(c/4)V\le4\eta(h)$.
+For small $h$ this is less than $\mu(E)$, and the surviving set is a
+positive-measure core. Surviving vertices have positive degree in
+$E\cap E_h$, so their sets may be taken inside
+$X_j\cap(X_j-h)$ up to null sets. Since $\mu(E_h)=\mu(E)$, the two
+displayed configuration losses are equal. The bound on $V$ proves the
+convergence of the vertex losses.
+\end{proof}
+
+\begin{lemma}[Translation matrices]\label{rig:translation-matrices}
+\lean{Auto.rig_translation_matrices}
+Let $\phi^1,\ldots,\phi^d$ be an orthonormal basis of $K_E$, and write
+\[
+ \Phi_j(z)=(\phi_j^1(z),\ldots,\phi_j^d(z)),
+\]
+with the components extended by zero. For sufficiently small $h$ there
+are sets $Y_{j,h}$ as in Lemma~\ref{rig:common-core} and matrices
+$C(h)\in\operatorname{GL}_d(\R)$ such that
+\[
+ \Phi_j(z+h)=\Phi_j(z)C(h)
+ \quad\text{for almost every }z\in Y_{j,h}.
+\]
+On a sufficiently small neighborhood of zero these matrices form a
+continuous local homomorphism:
+\[
+ C(0)=I,\qquad C(h+k)=C(h)C(k)
+\]
+whenever $h,k,h+k$ lie in that neighborhood.
+\end{lemma}
+\begin{proof}
+The case $d=0$ is vacuous, so assume $d\ge1$.
+The translated rows $\Phi_j(\,\cdot+h)$ give an orthonormal basis for
+$K_{E_h}$. By Lemmas~\ref{rig:common-core} and
+\ref{rig:kernel-stability}, restriction identifies both $K_E$ and
+$K_{E_h}$ with $K_{F_h}$ for all sufficiently small $h$. The threshold
+for $E_h$ is the same as for $E$. Two bases of the same finite-dimensional
+space differ by a unique invertible matrix, which defines $C(h)$ and
+gives the asserted row identities.
+
+Orthonormality says
+\[
+ \sum_j\int_{X_j}\Phi_j(z)^{\mathsf T}\Phi_j(z)\dd z=I.
+\]
+Consequently
+$A_h=\sum_j\int_{Y_{j,h}}\Phi_j^{\mathsf T}\Phi_j\to I$, by absolute
+continuity of the integrals and the vertex-loss estimate. Multiplying
+the row identity on the left by $\Phi_j(z)^{\mathsf T}$ and integrating
+gives
+\[
+ A_hC(h)=\sum_j\int_{Y_{j,h}}
+ \Phi_j(z)^{\mathsf T}\Phi_j(z+h)\dd z.
+\]
+The right-hand side minus $A_h$ tends to zero by Cauchy--Schwarz and
+$L^2$ translation continuity of each row. Hence $C(h)\to I$ as $h\to0$.
+
+To verify composition, set
+\[
+ Z_j=Y_{j,h}\cap(Y_{j,k}-h)\cap Y_{j,h+k}.
+\]
+For almost every $z\in Z_j$, the three row identities give
+\[
+ \Phi_j(z)C(h+k)=\Phi_j(z+h+k)
+ =\Phi_j(z+h)C(k)=\Phi_j(z)C(h)C(k).
+\]
+The complements of $Z_j$ in $X_j$ have measure tending to zero as
+$h,k\to0$. Indeed, besides the three vertex losses, it is enough to
+allow for $|X_j\triangle(X_j-h)|$, which tends to zero by translation
+continuity of the indicator of $X_j$.
+Thus the Gram matrix $\sum_j\int_{Z_j}\Phi_j^{\mathsf T}\Phi_j$ is
+invertible for all sufficiently small $h,k$. Multiplying and integrating
+the last row identity yields $C(h+k)=C(h)C(k)$.
+In particular $C(0)=I$ and $C(-h)=C(h)^{-1}$ where defined.
+Continuity at any nearby $h_0$ follows from continuity at zero and
+$C(h_0+h)=C(h_0)C(h)$.
+\end{proof}
+
+\begin{proposition}[Analytic pieces for a scalar kernel]\label{rig:pieces}
+\lean{Auto.rig_pieces}
+Every positive-measure core $E$ has a measurable subset $E'\subset E$
+of positive measure such that each component of an orthonormal basis of
+$K_E$, evaluated at its vertex, agrees on $E'$ with a real analytic
+function defined on all of $\R^2$.
+\end{proposition}
+\begin{proof}
+If $K_E=\{0\}$, the conclusion is vacuous and we take $E'=E$.
+Otherwise apply Lemma~\ref{ext:matrix-group} to the local homomorphism
+of Lemma~\ref{rig:translation-matrices}.  It gives commuting matrices
+$T_1,T_2$ and an everywhere real analytic function
+\[
+ P(h)=\exp(h_1T_1+h_2T_2)
+\]
+which equals $C(h)$ near zero.  Use the rows $\Phi_j$ from
+Lemma~\ref{rig:translation-matrices}, taking finite Borel
+representatives for them, and write $z_j=\pi_jp$.
+The translation identity implies
+\[
+ \Phi_j(z_j)=\Phi_j(z_j-h_j)P(h_j)
+\]
+whenever $z_j\in Y_{j,h_j}+h_j$, apart from a planar null set.
+Lemma~\ref{rig:degree-integration} shows that the exceptional
+configurations in $E$ have measure at most
+\[
+ |X_j\setminus(Y_{j,h_j}+h_j)|
+ \le |X_j\triangle(X_j+h_j)|+|X_j\setminus Y_{j,h_j}|,
+\]
+which tends to zero as $h_j\to0$.
+Choose a ball $B$ centered at zero so small that, for every triple
+$(h_0,h_1,h_2)\in B^3$, all three row identities hold simultaneously
+on a subset of $E$ of measure at least $\mu(E)/2$.
+
+The set of $(p,h_0,h_1,h_2)$ satisfying these identities is jointly
+measurable: this uses the Borel representatives and the explicit
+continuous function $P$, not any measurable choice of the cores.
+Its measure in $E\times B^3$ is at least $\mu(E)|B|^3/2>0$.
+For each fixed $p$ make the change of variables
+$b_j=z_j-h_j$, $j=0,1,2$, in the six translation variables.
+The Jacobian has absolute value one. Fubini's theorem gives a fixed
+triple $(b_0,b_1,b_2)$ for which the set of configurations satisfying
+\[
+ \Phi_j(z_j)=\Phi_j(b_j)P(z_j-b_j),\qquad j=0,1,2,
+\]
+has positive $\mu$-measure. Take this set to be $E'$.
+For each $j$, the row-valued function
+$z\mapsto\Phi_j(b_j)P(z-b_j)$ is real analytic on all of $\R^2$.
+Its components supply the required analytic representatives.
+\end{proof}
+
+\begin{lemma}[Rigidity for analytic fields]\label{rig:analytic-rigidity}
+\lean{Auto.rig_analytic_rigidity}
+Let $a_j:\R^2\to\R^2$ be real analytic and suppose that, for every
+$(x,\theta)\in\R^2\times \mathbb T$,
+\[
+ \sum_{j=0}^2a_j(x+L_ju_\theta)=0,
+ \qquad
+ v_\theta\cdot
+ \bigl(a_1(x+u_\theta)+M^{\mathsf T}a_2(x+Mu_\theta)\bigr)=0.
+\]
+Then
+\[
+ a_1(x+u_\theta)+M^{\mathsf T}a_2(x+Mu_\theta)=0
+ \qquad\text{for every }(x,\theta).
+\]
+\end{lemma}
+\begin{proof}
+Fix the notation
+\[
+ A=a_0(x),\quad B=a_1(x+u_\theta),\quad
+ C=a_2(x+Mu_\theta),\quad u=u_\theta,\quad v=Ju.
+\]
+Since $u,v$ are an orthonormal basis, the second hypothesis says that
+$B+M^{\mathsf T}C=tu$ for a smooth real scalar function $t=t(x,\theta)$.
+Combining this with $A+B+C=0$ gives
+\begin{equation}\label{rig:algebraic-identities}
+ (M^{\mathsf T}-I)C=A+tu,
+ \qquad -(M^{\mathsf T}-I)B=M^{\mathsf T}A+tu.
+\end{equation}
+Put $K=Da_0(x)$, with column-vector convention for the derivative,
+and define
+\[
+ X_1=\partial_\theta-v\cdot\nabla_x,
+ \qquad X_2=\partial_\theta-Mv\cdot\nabla_x.
+\]
+The chain rule gives $X_1B=0$ and $X_2C=0$.
+Applying $X_1$ to the second identity in
+\eqref{rig:algebraic-identities}, and $X_2$ to the first, yields
+\begin{equation}\label{rig:transport-identities}
+ (X_1t)u+tv=M^{\mathsf T}Kv,
+ \qquad (X_2t)u+tv=KMv.
+\end{equation}
+Take the inner product of the second identity with $v$. Since
+$u\cdot v=0$ and $|v|=1$, it gives
+\[
+ t(x,\theta)=v^{\mathsf T}KMv.
+\]
+In particular $t(x,\theta+\pi)=t(x,\theta)$.
+In the expanded versions of \eqref{rig:transport-identities}, the
+two spatial transport terms
+$(v\cdot\nabla_xt)u$ and $(Mv\cdot\nabla_xt)u$ are unchanged by
+$\theta\mapsto\theta+\pi$. The terms
+$\partial_\theta(tu)$, $M^{\mathsf T}Kv$, and $KMv$ change sign.
+Subtracting each equation at $\theta+\pi$ from the equation at $\theta$
+therefore gives
+\[
+ \partial_\theta(tu)=M^{\mathsf T}Kv=KMv.
+\]
+As $v$ ranges over the unit circle, this proves
+$M^{\mathsf T}K=KM$. Integration in $\theta$ gives
+$tu=KMu+c(x)$. Both $tu$ and $KMu$ change sign under
+$\theta\mapsto\theta+\pi$, so $c(x)=0$.
+
+Thus $KM$ sends every line through the origin into itself. A real
+linear map on $\R^2$ with this property is scalar: applying it to
+$e_1,e_2,e_1+e_2$ shows that its two diagonal eigenvalues agree.
+Hence $KM=\lambda(x)I$. Since $M$ is invertible, $K$ commutes with $M$.
+The identity $M^{\mathsf T}K=KM$ consequently becomes
+\[
+ (M^{\mathsf T}-M)K=0.
+\]
+But $M^{\mathsf T}-M=-2\beta J$ is invertible because $\beta\ne0$.
+It follows that $K=0$, and then $t=0$. Therefore
+$B+M^{\mathsf T}C=tu=0$, as required.
+\end{proof}
+
+\begin{theorem}[Measurable stationarity forces zero displacement frequency]
+\label{rig:exact}
+\lean{Auto.rig_exact}
+Let $(E;X_0,X_1,X_2)$ be a core of positive degree, and let
+$a_j\in L^2(X_j;\R^2)$ satisfy, for almost every $p=(x,\theta)\in E$,
+\[
+ \sum_{j=0}^2a_j(\pi_jp)=0,
+ \qquad
+ v_\theta\cdot
+ \bigl(a_1(\pi_1p)+M^{\mathsf T}a_2(\pi_2p)\bigr)=0.
+\]
+Then
+\[
+ a_1(\pi_1p)+M^{\mathsf T}a_2(\pi_2p)=0
+ \qquad\text{for almost every }p\in E.
+\]
+\end{theorem}
+\begin{proof}
+Suppose instead that the asserted vector is nonzero on a measurable
+set $G\subset E$ of positive measure. By Lemma~\ref{rig:prune}, $G$
+contains a positive-measure core $F$ on bounded vertex subsets.
+Restrict the fields to these subsets. Each of the two scalar-coordinate
+triples of the fields belongs to $K_F$ by the first stationary equation.
+Express these triples in an orthonormal basis of $K_F$ and apply
+Proposition~\ref{rig:pieces}. On a subset $F'\subset F$ of positive
+measure, the fields at their vertices agree with real analytic fields
+$\widetilde a_j:\R^2\to\R^2$.
+
+The two stationary expressions for these analytic fields are real
+analytic on the connected real analytic manifold $\R^2\times \mathbb T$.
+They vanish on $F'$, except on a null set.
+Lemma~\ref{ext:analytic-zero}, applied to each scalar component on
+$\R^2\times\mathbb T$, shows that both stationary equations hold
+everywhere for the fields $\widetilde a_j$.
+Lemma~\ref{rig:analytic-rigidity} makes their displacement-frequency
+vector identically zero. On $F'$ it equals the displacement-frequency
+vector of the original fields, which was nonzero almost everywhere
+because $F'\subset G$. This contradiction proves the theorem.
+\end{proof}
+
+
+\section{Translation correlations and local cancellation}
+
+\begin{definition}[Admissible sequences and translates]\label{ann:sequence}
+\lean{Auto.IsAdmissibleSeq,Auto.annT,Auto.annWeakStar}
+Fix a bounded box $Q\subset\R^2$ and a constant $C<\infty$.
+An admissible sequence consists of $R_n\to\infty$ and complex-valued
+functions $f_{j,n}$, $j\in\{0,1,2\}$, such that
+\[
+ |f_{j,n}|\le\one_Q,\qquad \operatorname{Lip}(f_{j,n})\le CR_n.
+\]
+For $s\in\R^2$ write
+\[
+ T^s_{j,n}(z)=f_{j,n}(z+s/R_n).
+\]
+Weak-* convergence on a vertex space or on configuration space means
+convergence against every $L^1$ test function on that space.
+\end{definition}
+
+\begin{lemma}[Simultaneous correlation limits]\label{ann:extract}
+\lean{Auto.ann_extract}
+Every admissible sequence has a subsequence with the following properties.
+For all real shifts $s,t,s_0,s_1,s_2\in\R^2$, the limits
+\begin{align*}
+ T^s_{j,n}\overline{T^t_{j,n}}&\stackrel{*}{\rightharpoonup}
+ k_j(z;s,t),\\
+ \prod_{j=0}^2T^{s_j}_{j,n}(\pi_jp)
+ &\stackrel{*}{\rightharpoonup}h(p;s_0,s_1,s_2)
+\end{align*}
+exist. The limits have representatives that are continuous in all shift
+variables off a fixed null set in the respective underlying space.
+They are bounded by one, and their Lipschitz constants in the shifts
+are bounded in terms of $C$. The three-point convergence also holds
+when the shifts $s_j$ are replaced by bounded measurable functions of $p$.
+\end{lemma}
+\begin{proof}
+First take all shifts in $\mathbb Q^2$. There are countably many
+two-point and three-point products. Each is bounded by one in
+$L^\infty$. Lemma~\ref{ext:weakstar} gives all these limits on one
+subsequence by its countable diagonal construction.
+For example,
+\[
+ |T^s_{j,n}(z)-T^t_{j,n}(z)|\le C|s-t|.
+\]
+The elementary product estimate therefore gives uniform Lipschitz
+bounds for every correlation as a function of its shifts. These
+inequalities pass to the weak-* limits. Since there are only
+countably many rational shifts, they hold simultaneously outside
+one null set. Complete the rational shift variables by continuity
+at every point outside that set. The same inequalities, tested
+against an arbitrary $L^1$ function, show that the original products
+converge weak-* at every real choice of shifts.
+
+The resulting limit functions are jointly measurable: they are
+measurable in the underlying variable at rational shifts and are
+continuous in the shift variables. For bounded measurable shifts,
+round each coordinate to a rational grid of mesh $\varepsilon$.
+The rounded shifts take finitely many values. Convergence for them
+follows by testing on their measurable level sets. Both the original
+products and their limits change by at most $O_C(\varepsilon)$ when
+the shifts are rounded. Letting $\varepsilon\downarrow0$ proves the
+last assertion.
+\end{proof}
+
+\begin{lemma}[Measurable spectral measures]\label{ann:spectral}
+\lean{Auto.ann_spectral}
+For a subsequence as in Lemma~\ref{ann:extract}, there are measurable
+kernels of finite positive Borel measures $z\mapsto\nu_{j,z}$ on
+$\R^2$, of mass at most one, such that
+\[
+ k_j(z;s,t)=\int_{\R^2}\e((s-t)\cdot\xi)\,\dd\nu_{j,z}(\xi)
+\]
+for almost every $z$ and all $s,t\in\R^2$.
+\end{lemma}
+\begin{proof}
+For fixed $s,t$, changing variables by $z\mapsto z+t/R_n$ in a
+compactly supported test function shows that
+\[
+ k_j(z;s,t)=k_j(z;s-t,0)
+\]
+almost everywhere. Translation continuity of the test in $L^1$
+justifies this assertion. Take rational shifts first and then use
+Lemma~\ref{ann:extract} to obtain one exceptional null set for all
+real shifts. Write $c_{j,z}(s)=k_j(z;s,0)$.
+
+For any finite family of rational shifts $s_a$ and rational complex
+coefficients $c_a$, the nonnegative functions
+\[
+ \left|\sum_a c_aT^{s_a}_{j,n}(z)\right|^2
+\]
+have weak-* limit
+$\sum_{a,b}c_a\overline{c_b}c_{j,z}(s_a-s_b)$. It is nonnegative
+almost everywhere. Countability and continuity extend this conclusion
+to all shifts and coefficients on one common full-measure set.
+Thus $c_{j,z}$ is a Lipschitz positive-definite function there,
+by the shift bound in Lemma~\ref{ann:extract}.
+Theorem~\ref{ext:bochner} supplies a finite positive measure $\nu_{j,z}$
+with the asserted Fourier representation. Its mass is
+$c_{j,z}(0)$, which lies in $[0,1]$. Set $\nu_{j,z}=0$ on the
+exceptional set.
+
+For each shift $s$, $z\mapsto c_{j,z}(s)$ is measurable.
+Set it equal to zero on the same exceptional set.
+Lemma~\ref{ext:measurable-spectral} now proves that
+$z\mapsto\nu_{j,z}(B)$ is measurable for every Borel set $B$,
+which is the kernel assertion.
+\end{proof}
+
+\begin{definition}[Polynomial translates]\label{ann:polynomials}
+\lean{Auto.charE,Auto.trigPoly,Auto.tensorPoly,Auto.polyTranslate,Auto.tensorTranslate}
+Write $e_s(\xi)=\e(s\cdot\xi)$. A trigonometric polynomial on
+$\R^2$ is a finite complex linear combination of the functions $e_s$.
+For $a=\sum_s c_se_s$ put
+\[
+ F_{j,n}[a](z)=\sum_s c_s T^s_{j,n}(z).
+\]
+For a finite sum of elementary tensors
+$G=\sum_{d=1}^D b_d\otimes c_d$, with $b_d,c_d$ trigonometric
+polynomials, put
+\[
+ G_n(p)=\sum_{d=1}^D
+ F_{1,n}[b_d](\pi_1p)F_{2,n}[c_d](\pi_2p).
+\]
+When $p$ is fixed, abbreviate $\nu_j=\nu_{j,\pi_jp}$.
+\end{definition}
+
+\begin{lemma}[Factorization of two-vertex quadratic correlations]
+\label{ann:factor}
+\lean{Auto.ann_factor_one,Auto.ann_factor_two}
+For the notation of Definition~\ref{ann:polynomials},
+\begin{align*}
+ |F_{0,n}[a](\pi_0p)|^2
+ &\stackrel{*}{\rightharpoonup}\int|a|^2\,\dd\nu_0,\\
+ |G_n(p)|^2
+ &\stackrel{*}{\rightharpoonup}
+ \int|G|^2\,\dd(\nu_1\otimes\nu_2).
+\end{align*}
+\end{lemma}
+\begin{proof}
+The first assertion follows by expanding the square and using
+Lemma~\ref{ann:spectral}. Pullback by $\pi_0(x,\theta)=x$ preserves
+the required convergence, by integration of the test in $\theta$.
+
+For the second assertion, first consider a term in the expansion
+of $|G_n|^2$. It has the form
+\[
+ A_n(\pi_1p)B_n(\pi_2p),
+\]
+where $A_n$ and $B_n$ are products of two polynomial translates.
+Their one-vertex weak-* limits $A$ and $B$ are the corresponding
+integrals against $\nu_{1,z}$ and $\nu_{2,z}$.
+Take a bounded compactly supported measurable test $\varphi(p)$.
+In coordinates $z=x+u_\theta$, its pairing with the displayed
+product is
+\[
+ \int A_n(z)\,(T_\varphi B_n)(z)\,\dd z,
+ \qquad
+ T_\varphi b(z)=\int
+ \varphi(z-u_\theta,\theta)b(z+(M-I)u_\theta)\,\dd\sigma(\theta).
+\]
+The weight of $T_\varphi$ is bounded and has bounded support in $z$.
+Since $M-I$ is a nonzero similarity, Lemma~\ref{lem:circle-compact}
+implies that $T_\varphi$ is compact on $L^2$.
+Only fixed bounded vertex boxes enter this integral. On these
+boxes the uniformly bounded sequences $A_n,B_n$ converge weakly
+in $L^2$ to $A,B$. Lemma~\ref{ext:compact-facts} gives strong convergence of
+$T_\varphi B_n$ to $T_\varphi B$, so the pairing converges to
+$\int A\,T_\varphi B$. This is exactly the pairing of
+$A(\pi_1p)B(\pi_2p)$ with $\varphi$.
+
+Summing the finitely many expanded terms gives
+\[
+ \sum_{d,e}
+ \left(\int b_d\overline{b_e}\,\dd\nu_1\right)
+ \left(\int c_d\overline{c_e}\,\dd\nu_2\right)
+ =\int|G|^2\,\dd(\nu_1\otimes\nu_2).
+\]
+Uniform boundedness of the products extends convergence from
+bounded compactly supported tests to all $L^1$ tests.
+\end{proof}
+
+\begin{lemma}[The limiting bilinear correlation form]\label{ann:form}
+\lean{Auto.ann_form}
+For almost every configuration $p$, there is a complex bilinear form
+\[
+ \ell_p:L^2(\nu_0)\times L^2(\nu_1\otimes\nu_2)\longrightarrow\C
+\]
+such that
+\begin{equation}\label{ann:cs}
+ |\ell_p(a,G)|\le
+ \|a\|_{L^2(\nu_0)}\|G\|_{L^2(\nu_1\otimes\nu_2)}.
+\end{equation}
+For trigonometric polynomials and their finite tensor sums,
+$\ell_p(a,G)$ is the weak-* limit of
+$F_{0,n}[a](\pi_0p)G_n(p)$. In particular,
+\[
+ \ell_p(e_{s_0},e_{s_1}\otimes e_{s_2})
+ =h(p;s_0,s_1,s_2).
+\]
+\end{lemma}
+\begin{proof}
+Expand $F_{0,n}[a]G_n$ into three-point products and apply
+Lemma~\ref{ann:extract} to define its limit on the polynomial
+spaces. For every measurable configuration set $B$ of finite measure,
+Cauchy--Schwarz gives
+\[
+ \left|\int_B F_{0,n}[a](\pi_0p)G_n(p)\,\dd\mu(p)\right|
+ \le
+ \left(\int_B |F_{0,n}[a](\pi_0p)|^2\,\dd\mu\right)^{1/2}
+ \left(\int_B |G_n|^2\,\dd\mu\right)^{1/2}.
+\]
+Pass to the limit using Lemma~\ref{ann:factor}.  Write
+$l(p)=\ell_p(a,G)$, $a_0(p)=\|a\|_{L^2(\nu_0)}^2$, and
+$b_0(p)=\|G\|_{L^2(\nu_1\otimes\nu_2)}^2$ for the resulting
+three measurable functions.  For every complex number $q$,
+Cauchy--Schwarz followed by $2uv\le u^2+v^2$ gives
+\[
+ \int_B\bigl(|q|^2a_0+b_0-2\operatorname{Re}(ql)\bigr)\dd\mu
+ \ge0.
+\]
+For each rational complex $q$ the integrand is therefore nonnegative
+almost everywhere: otherwise a bounded subset of its negative set
+would contradict this inequality.  Remove the union of the resulting
+countably many null sets and then use continuity in $q$.
+The inequality holds for all $q$ at each remaining point.
+If $a_0>0$, minimize the quadratic expression in $q$ to obtain
+$|l|^2\le a_0b_0$; if $a_0=0$, varying $q$ forces $l=0$.
+This proves \eqref{ann:cs} without a differentiation theorem.
+Initially use rational shifts and rational complex coefficients,
+so that one null set suffices.
+The continuity of the limits in the shifts, and the Fourier
+representation in Lemma~\ref{ann:spectral}, extend the inequality
+to all polynomials and all finite tensor sums.
+
+Characters with rational shifts span a dense subspace of
+$L^2(\nu_j)$ by Lemma~\ref{ext:fourier-uniqueness}.
+Their tensor products are dense in $L^2(\nu_1\otimes\nu_2)$ as well.
+Indeed, if $H$ is orthogonal to every $e_s\otimes e_t$ with
+$s,t\in\Q^2$, then for each $s$ the function
+\[
+ \xi_2\longmapsto\int H(\xi_1,\xi_2)
+                       \overline{e_s(\xi_1)}\dd\nu_1(\xi_1)
+\]
+belongs to $L^2(\nu_2)$ by Cauchy--Schwarz and is orthogonal to
+every rational character.  It is zero almost everywhere.  Countability
+of $s$ and Fubini show that almost every section $H(\cdot,\xi_2)$
+is orthogonal to every rational character in $L^2(\nu_1)$; hence
+$H=0$ almost everywhere.  Inequality
+\eqref{ann:cs} therefore gives the unique bounded bilinear
+extension. It also shows that its definition is independent of
+all polynomial or tensor representations.
+\end{proof}
+
+\begin{lemma}[Infinitesimal translation and rotation invariance]
+\label{ann:invariance}
+\lean{Auto.ann_invariance}
+Outside a fixed null set of configurations, for every
+$s\in\R^2$, $h\in\R$, $a\in L^2(\nu_0)$, and
+$G\in L^2(\nu_1\otimes\nu_2)$,
+\begin{equation}\label{ann:inv}
+ \ell_p(a,G)=
+ \ell_p\bigl(e_sa,
+ (e_{s+h v_\theta}\otimes e_{s+hMv_\theta})G\bigr).
+\end{equation}
+\end{lemma}
+\begin{proof}
+Begin with polynomial arguments and fixed parameters $s,h$.
+Translate the configuration by
+\[
+ (x,\theta)\longmapsto(x+s/R_n,\theta+h/R_n).
+\]
+This transformation preserves $\dd x\,\dd\sigma(\theta)$.
+For a compactly supported continuous test, the resulting change
+in the test tends to zero in $L^1$. Taylor expansion gives
+\[
+ L_ju_{\theta+h/R_n}-L_ju_\theta
+ =hL_jv_\theta/R_n+O_M(h^2/R_n^2).
+\]
+Multiplication by the Lipschitz bound $CR_n$ shows that the
+resulting error in every input tends to zero. Thus the transformed
+product has the same weak-* limit as the original product, and
+its limiting shifts at the three vertices are respectively
+$s$, $s+hv_\theta$, and $s+hMv_\theta$ in addition to the original
+polynomial shifts. The variable-shift assertion of
+Lemma~\ref{ann:extract} identifies its limit and proves
+\eqref{ann:inv} for the polynomial arguments.
+
+Take rational polynomial data and rational $s,h$ first. Their
+countability gives one exceptional null set. At each remaining
+$p$, characters vary continuously in $L^2$ of each finite spectral
+measure, by dominated convergence. Inequality~\eqref{ann:cs}
+therefore extends the identity to real $s,h$, to all polynomial
+data, and finally by density to both Hilbert spaces. Character
+multipliers have norm one throughout this extension.
+\end{proof}
+
+\begin{lemma}[Atoms of one-dimensional projections]\label{ann:fibers}
+\lean{Auto.annH,Auto.ann_fibers,Auto.ann_fibers_hyperplane}
+Let $z\mapsto\nu_z$ be a measurable kernel of finite positive
+measures on $\R^2$, of mass at most one, and let $N$ be invertible.
+For almost every $(z,\theta)$, every positive-mass fiber of
+\[
+ \xi\longmapsto (Nv_\theta)\cdot\xi
+\]
+is concentrated at a single point atom of $\nu_z$.
+Consequently, for almost every configuration $p$, the restriction of
+$\nu_1\otimes\nu_2$ to
+\begin{equation}\label{ann:hyperplane}
+ H_p=\{(\xi_1,\xi_2):
+ v_\theta\cdot\xi_1+Mv_\theta\cdot\xi_2=0\}
+\end{equation}
+is concentrated on countably many pairs of point atoms.
+\end{lemma}
+\begin{proof}
+For distinct $\xi,\xi'$, the equation
+$(Nv_\theta)\cdot(\xi-\xi')=0$ holds at only two angles modulo
+$2\pi$. Lemma~\ref{ext:kernel-integration} makes
+$\dd z\dd\nu_z(\xi)\dd\nu_z(\xi')$ a sigma-finite measure.
+Tonelli with the independent angular measure therefore gives, for almost every
+$(z,\theta)$,
+\[
+ \iint\one_{\{\xi\ne\xi',\,
+ (Nv_\theta)\cdot(\xi-\xi')=0\}}
+ \,\dd\nu_z(\xi)\,\dd\nu_z(\xi')=0.
+\]
+For completeness, integrate first over bounded sets of $z$ and
+then exhaust $\R^2$. On a positive-mass fiber the product measure
+is thus supported on the diagonal. A finite positive measure
+with this property is a point mass: otherwise some Borel subset
+has measure strictly between zero and the total mass, and its
+product with its complement gives positive off-diagonal mass.
+
+Apply this conclusion to $N=I$ at vertex $1$ and to $N=M$ at
+vertex $2$. The map $(x,\theta)\mapsto(\pi_jp,\theta)$ preserves
+measure, so the conclusions hold for almost every $p$ simultaneously.
+Let $\eta_1$ and $\eta_2$ be the pushforwards of $\nu_1$ and
+$\nu_2$ by $v_\theta\cdot\xi$ and $Mv_\theta\cdot\xi$.
+The product mass of $H_p$ is
+\[
+ \sum_{t:\,\eta_1(\{t\})>0}
+ \eta_1(\{t\})\eta_2(\{-t\}).
+\]
+Only countably many terms can be positive: a finite measure has
+finitely many atoms of mass at least $1/n$ for each $n\ge1$.
+By the first part,
+each positive term is carried by one pair of point atoms.
+This proves the assertion about the restricted measure, not just
+its total mass.
+\end{proof}
+
+\begin{lemma}[Countably many measurable selectors cover all atoms]
+\label{ann:selectors}
+\lean{Auto.ann_selectors}
+For a measurable kernel $z\mapsto\nu_z$ of finite positive Borel
+measures on $\R^2$, there is a countable family of measurable maps
+$a_m:\R^2\to\R^2$ such that every point atom of every nonzero
+$\nu_z$ occurs among the values $a_m(z)$.
+\end{lemma}
+\begin{proof}
+Where the mass is nonzero, normalize $\nu_z$ to a probability
+measure. For each of its two coordinate marginals and every
+$r\in\mathbb Q\cap(0,1)$, form the quantile
+\[
+ q_{k,r}(z)=\inf\{t\in\R:
+ \nu_z(\{\xi:\xi_k\le t\})/\nu_z(\R^2)\ge r\},
+ \qquad k=1,2.
+\]
+These values are finite, since the normalized distribution functions
+tend to zero and one at the two ends of the real line.
+They are measurable: on the set $m(z)=\nu_z(\R^2)>0$,
+\[
+ \{z:q_{k,r}(z)<a\}
+ =\bigcup_{\substack{t\in\Q\\t<a}}
+   \{z:\nu_z(\{\xi:\xi_k\le t\})\ge r\,m(z)\}.
+\]
+Indeed, the threshold set defining the infimum is an upper interval,
+so it meets $(-\infty,a)$ precisely when it contains a rational point
+less than $a$.  Every set in the displayed union is measurable.
+Take every pair $(q_{1,r},q_{2,s})$ with rational $r,s\in(0,1)$,
+and set these maps to zero where $\nu_z=0$.
+
+If $(a,b)$ is a point atom, then $a$ and $b$ are atoms of the
+respective marginals. At either coordinate the distribution
+function has a positive jump. Every quantile level strictly
+inside that jump returns the coordinate in question. Choose a
+rational level inside each jump. The resulting pair is $(a,b)$.
+It is harmless that other pairs of quantiles need not be atoms.
+\end{proof}
+
+\begin{lemma}[Rigidity for all contributing atomic triples]
+\label{ann:atomic-rigidity}
+\lean{Auto.ann_atomic_rigidity}
+For almost every configuration $p$, every triple of point atoms
+$\xi_j$ of $\nu_{j,\pi_jp}$ satisfying
+\begin{equation}\label{ann:stationarity}
+ \xi_0+\xi_1+\xi_2=0,\qquad
+ v_\theta\cdot(\xi_1+M^T\xi_2)=0
+\end{equation}
+also satisfies $\xi_1+M^T\xi_2=0$.
+\end{lemma}
+\begin{proof}
+Apply Lemma~\ref{ann:selectors} to the three spectral kernels.
+There are countably many triples of the resulting measurable
+vector fields. Fix one such triple $a_0,a_1,a_2$ and let $E$ be
+the measurable set where its values at the vertices satisfy
+\eqref{ann:stationarity} but
+$a_1(\pi_1p)+M^Ta_2(\pi_2p)\ne0$.
+If $\mu(E)>0$, restrict to a positive-measure subset on which
+$x$ and all three field values are bounded. This is possible by
+a countable exhaustion. If the respective bounds are $L$ and $K$,
+take $X_j=\{z:|z|\le L+\|L_j\|,\ |a_j(z)|\le K\}$.
+All vertices of this subset then lie in the bounded measurable sets
+$X_j$, and the fields are bounded on them. Lemma~\ref{rig:prune}
+provides a positive-measure core in this subset. The restrictions
+of the fields to its vertex sets are square integrable, and they
+satisfy the stationary equations there. Theorem~\ref{rig:exact}
+forces $a_1(\pi_1p)+M^Ta_2(\pi_2p)=0$ almost everywhere on that
+core, a contradiction. Hence $\mu(E)=0$.
+
+Remove the union of these exceptional sets over the countable
+family of triples. At every remaining configuration, each triple
+of point atoms is represented by a triple of the selectors, so
+the asserted implication holds for all atomic triples at once.
+\end{proof}
+
+\begin{lemma}[Invariance under displacement smoothing]
+\label{ann:displacement}
+\lean{Auto.ann_displacement}
+For almost every configuration $p$ and every $y\in\R^2$,
+\[
+ \ell_p(1,e_y\otimes e_{My})=\ell_p(1,1).
+\]
+\end{lemma}
+\begin{proof}
+Fix $p$ outside all the exceptional sets in the preceding lemmas.
+In \eqref{ann:inv}, put $s=0$ and average $h$ over $[0,H]$.
+The resulting multiplier on the second Hilbert space is
+\[
+ \frac1H\int_0^H
+ \e\bigl(h(v_\theta\cdot\xi_1+Mv_\theta\cdot\xi_2)\bigr)\,\dd h.
+\]
+It is bounded by one and converges pointwise to $\one_{H_p}$.
+Dominated convergence gives strong convergence after multiplication
+by any $G\in L^2(\nu_1\otimes\nu_2)$.
+Boundedness of $\ell_p$ therefore gives
+\begin{equation}\label{ann:restrict-H}
+ \ell_p(a,G)=\ell_p(a,\one_{H_p}G).
+\end{equation}
+
+By Lemma~\ref{ann:fibers}, the measure on $H_p$ is carried by
+countably many pairs of point atoms. For one such pair
+$(\xi_1,\xi_2)$, let $E_{\xi_1,\xi_2}$ be the indicator of that
+point in the product frequency space. Put $h=0$ in
+\eqref{ann:inv} and average $s$ over $[0,H]^2$.
+The scalar character contributed by this second argument can be
+moved into the first argument by bilinearity. Strong dominated
+convergence in $L^2(\nu_0)$ then gives
+\[
+ \ell_p(a,E_{\xi_1,\xi_2})
+ =\ell_p\bigl(a\one_{\{-\xi_1-\xi_2\}},E_{\xi_1,\xi_2}\bigr).
+\]
+This is zero unless $\xi_0=-\xi_1-\xi_2$ is a point atom of
+$\nu_0$. In the remaining case the three atoms satisfy
+\eqref{ann:stationarity}, so Lemma~\ref{ann:atomic-rigidity}
+gives $\xi_1+M^T\xi_2=0$. Consequently
+\[
+ e_y(\xi_1)e_{My}(\xi_2)
+ =\e\bigl(y\cdot(\xi_1+M^T\xi_2)\bigr)=1.
+\]
+Approximate $\one_{H_p}G$ by its restrictions to finitely many
+of the atomic pairs. The approximation converges in the product
+$L^2$ space, and \eqref{ann:cs} passes the preceding identity to
+the limit. Thus, in fact,
+\[
+ \ell_p(a,(e_y\otimes e_{My})G)=\ell_p(a,G)
+\]
+for every $a,G,y$. Taking $a=1$ and $G=1$ proves the assertion.
+\end{proof}
+
+\begin{proposition}[Cancellation for bounded Lipschitz inputs]
+\label{ann:local}
+\lean{Auto.ann_local}
+Let $\Psi\in L^1(\R^2)$ satisfy $\int\Psi=0$, and put
+$\Psi_R(u)=R^2\Psi(Ru)$. For every bounded box $Q$ and every
+$C<\infty$,
+\[
+ \sup_{\substack{|f_j|\le\one_Q\\
+                  \operatorname{Lip}(f_j)\le CR}}
+ |\Lambda_{\sigma*\Psi_R}(f_0,f_1,f_2)|\longrightarrow0
+ \qquad (R\to\infty).
+\]
+\end{proposition}
+\begin{proof}
+It suffices to consider an arbitrary sequence of admissible
+inputs with $R_n\to\infty$ and find a subsequence on which the
+forms tend to zero. Otherwise a sequence on which their absolute
+values are bounded below would contradict that property.
+Take the subsequence and correlation forms constructed above.
+Choose $w\in C_c(\R^2)$ with $w=1$ on $Q$. The convolution
+identity in Lemma~\ref{lem:convolution-translate} gives
+\begin{align*}
+ &\Lambda_{\sigma*\Psi_{R_n}}(f_{0,n},f_{1,n},f_{2,n})\\
+ &\quad=\int\Psi(y)\int
+ w(x)f_{0,n}(x)
+ f_{1,n}(x+u_\theta+y/R_n)
+ f_{2,n}(x+Mu_\theta+My/R_n)\,\dd\mu(p)\,\dd y.
+\end{align*}
+For each fixed $y$ the inner integral tends, by
+Lemma~\ref{ann:form}, to
+\[
+ \int w(x)\ell_p(1,e_y\otimes e_{My})\,\dd\mu(p).
+\]
+All these integrals are bounded by $\|w\|_1$, independently of
+$n,y$. Dominated convergence with $\Psi\in L^1$ is therefore
+applicable. Lemma~\ref{ann:displacement} makes the limit independent
+of $y$, and $\int\Psi=0$ makes the resulting expression zero.
+\end{proof}
+
+\section{Localization and a global annular estimate}
+
+\begin{lemma}[From bounded local inputs to endpoint operator norms]
+\label{ann:localize}
+\lean{Auto.ann_localize}
+Let $\mu_n=\sigma*\kappa_n$, where
+$\sup_n\|\kappa_n\|_{\mathrm{TV}}<\infty$, and suppose that for
+some fixed $U<\infty$,
+\[
+ |\mu_n|(\{u:|u|>U\})\longrightarrow0.
+\]
+Let $P_n$ be convolution by measures supported in the closed unit
+ball, with uniformly bounded total variation. Suppose that for
+every fixed triple $\chi_0,\chi_1,\chi_2\in C_c^\infty(\R^2)$,
+\begin{equation}\label{ann:bounded-local-hyp}
+ \sup_{\|f_j\|_\infty\le1}
+ |\Lambda_{\mu_n}(\chi_0P_nf_0,\chi_1P_nf_1,\chi_2P_nf_2)|
+ \longrightarrow0.
+\end{equation}
+Then the form
+$\Lambda_{\mu_n}(P_nf_0,P_nf_1,P_nf_2)$ has operator norm
+tending to zero on every permutation of
+$L^2\times L^2\times L^\infty$.
+\end{lemma}
+\begin{proof}
+Choose a nonnegative smooth partition of unity
+$\sum_{q\in\mathbb Z^2}\chi_{0,q}(x)=1$, where the functions
+are translates of one compactly supported function. For $j=1,2$
+choose fixed compactly supported smooth cutoffs, between zero
+and one, whose translates $\chi_{j,q}$ equal one at $x+L_ju$
+whenever $x\in\operatorname{supp}\chi_{0,q}$ and $|u|\le U$.
+Thus
+\[
+ 0\le\sum_q\prod_{j=0}^2\chi_{j,q}(x+L_ju)\le1,
+\]
+and this sum is one when $|u|\le U$.
+The total-variation endpoint estimate of
+Lemma~\ref{lem:form-basic} bounds the error in inserting this
+sum by
+\[
+ o_n(1)\|f_i\|_\infty\prod_{j\ne i}\|f_j\|_2
+\]
+for any fixed placement $i$ of the bounded input. The uniform
+convolution bounds for $P_n$ have been absorbed into the error.
+
+For each localized term, restrict the two $L^2$ inputs to boxes
+$B_j+q$ containing the closed unit neighborhoods of the supports
+of $\chi_{j,q}$. This restriction is exact because the convolution
+measure defining $P_n$ is supported in the unit ball. Denote
+their local $L^2$ norms by $r_{j,q}$. If either is zero, the term
+is zero. Otherwise divide the two restricted inputs by these
+norms, and divide the bounded input by its global supremum norm.
+It is enough to bound the resulting localized expression when
+the two local $L^2$ norms and the global $L^\infty$ norm are one.
+
+Fix $T\ge1$. For either normalized $L^2$ input $g$, write
+\[
+ g=g\one_{\{|g|\le T\}}+g\one_{\{|g|>T\}}.
+\]
+The second term has $L^2$ norm at most one and is supported on
+a set of area at most $T^{-2}$. In a form containing this term,
+expand its convolution under $P_n$ as an integral of translates.
+Each translated term, after multiplication by the cutoff, still
+has support of area at most $T^{-2}$ and $L^2$ norm at most one.
+Lemma~\ref{lem:small-support}, including its assertion for
+$\sigma*\kappa_n$, gives an error
+\[
+ C\omega_M(T^{-2})
+\]
+uniformly in $n$ and $q$. The other projected $L^2$ input and the
+projected bounded input have uniformly bounded norms. The same
+argument removes the large part of the other $L^2$ input, with
+the same type of bound.
+
+The two remaining inputs have absolute value at most $T$.
+Hypothesis~\eqref{ann:bounded-local-hyp} now bounds the normalized
+localized form by
+\[
+ C\omega_M(T^{-2})+T^2\varepsilon_n,
+ \qquad \varepsilon_n\longrightarrow0.
+\]
+The number $\varepsilon_n$ is independent of $q$: simultaneous
+translation of the inputs and cutoffs reduces each $q$ to the
+same fixed cutoff triple, since $P_n$ and $\Lambda_{\mu_n}$
+commute with simultaneous translations.
+
+Restore the local norms. If $j,k$ are the two $L^2$ indices,
+Cauchy--Schwarz and bounded overlap of the boxes give
+\[
+ \sum_q r_{j,q}r_{k,q}
+ \le\left(\sum_q r_{j,q}^2\right)^{1/2}
+      \left(\sum_q r_{k,q}^2\right)^{1/2}
+ \le C\|f_j\|_2\|f_k\|_2.
+\]
+This also justifies the sum of localized forms. First let
+$n\to\infty$ with $T$ fixed, and then let $T\to\infty$.
+The small-support modulus tends to zero, which proves the
+claimed endpoint norm convergence for this placement. The
+argument applies to each of the three choices of $i$.
+\end{proof}
+
+\begin{corollary}[Global cancellation on one annulus]\label{ann:global}
+\lean{Auto.ann_global}
+Let $\psi\in C_c^\infty(\R^2)$ be supported in a compact
+annulus disjoint from the origin. Put
+\[
+ K_R=\sigma*\bigl(R^2\check\psi(R\,\cdot)\bigr).
+\]
+For every fixed $0<C_0<\infty$ there is a function $a(R)\to0$,
+with $0\le a(R)\le\|\check\psi\|_1$, such that whenever
+$f_i\in L^\infty$ and $f_j\in L^2$ for $j\ne i$, and all three
+inputs have Fourier supports in $\overline{B(0,C_0R)}$,
+\[
+ |\Lambda_{K_R}(f_0,f_1,f_2)|
+ \le a(R)\|f_i\|_\infty\prod_{j\ne i}\|f_j\|_2,
+ \qquad i=0,1,2.
+\]
+For the bounded input, Fourier support is understood through the
+test-function condition in Definition~\ref{ext:bounded-support}.
+\end{corollary}
+\begin{proof}
+Choose a Schwartz function $p$ whose Fourier transform is one
+on a neighborhood of $\overline{B(0,C_0)}$. Then
+$p_R=R^2p(R\,\cdot)$ reproduces each of the specified inputs
+by Lemma~\ref{ext:reproduction}, applied at scale $R$.
+
+Choose $\chi\in C_c^\infty(B(0,1))$ equal to one near zero and
+put $q_R=\chi p_R$. Rapid decay gives
+\[
+ \|q_R-p_R\|_1=o(1),\qquad
+ \sup_R\|q_R\|_1<\infty,\qquad
+ \|\nabla q_R\|_1=O(R).
+\]
+Apply Lemma~\ref{ann:localize} along an arbitrary sequence
+$R_n\to\infty$ with $P_nf=q_{R_n}*f$ and
+$\mu_n=K_{R_n}$. Its convolution factor
+$\kappa_n=R_n^2\check\psi(R_n\,\cdot)$ has bounded $L^1$ norm.
+Moreover,
+\[
+ |K_{R_n}|(\{|u|>2\})
+ \le\int_{|y|>1}R_n^2|\check\psi(R_ny)|\,\dd y
+ \longrightarrow0.
+\]
+For fixed smooth compactly supported cutoffs and bounded inputs,
+the functions $\chi_jP_nf_j$ have common bounded support,
+uniformly bounded magnitude, and Lipschitz constants $O(R_n)$.
+The integral of $\check\psi$ is $\psi(0)=0$, so
+Proposition~\ref{ann:local} proves the hypothesis
+\eqref{ann:bounded-local-hyp}. The localized lemma consequently
+gives endpoint norm convergence with $q_R$ in all input slots.
+
+Finally replace $q_R$ by $p_R$ in the three slots. Young's
+inequality gives an operator difference at most
+$\|q_R-p_R\|_1=o(1)$ on both $L^2$ and $L^\infty$.
+The uniform total-variation bound on $K_R$ and
+Lemma~\ref{lem:form-basic} show that the replacement costs
+$o(1)$ in each endpoint form norm. Since $p_R$ reproduces the
+inputs, this proves the stated estimate. Take $a(R)$ to be the
+maximum of the actual restricted endpoint norms over the three
+placements. The total-variation bound gives
+$a(R)\le\|\check\psi\|_1$, and the argument proves $a(R)\to0$.
+\end{proof}
+
+
+\section{Summation over frequency annuli}\label{tail:section}
+
+Throughout this section, the annular estimate of Corollary~\ref{ann:global}
+is used for each of the three choices of the bounded input. All constants below
+may depend on $M$ and on the smooth functions fixed in this section.
+
+\begin{definition}[Annular kernels]\label{tail:annular-definition}
+\lean{Auto.tailPsi,Auto.tailQ,Auto.tailK,Auto.tailForm}
+Fix a real radial function $\chi\in C_c^\infty(\R^2)$ which equals one
+on $B(0,1)$ and vanishes outside $B(0,2)$. Define
+\[
+ \psi(b)=\chi(b/2)-\chi(b),\qquad
+ q_R(u)=R^2\check\chi(Ru),\qquad
+ k_r(u)=r^2\check\psi(ru).
+\]
+Thus $\psi$ is supported in $\{1\le |b|\le4\}$ and
+$\int q_R=\chi(0)=1$. Write
+\[
+ \Lambda_r=\Lambda_{\sigma*k_r}.
+\]
+The identities $k_r=q_{2r}-q_r$ and
+$\|k_r\|_1=\|\check\psi\|_1$ hold for every $r>0$.
+\end{definition}
+
+\begin{lemma}[Frequency representation with compact spectral supports]
+\label{tail:fourier}
+\lean{Auto.tail_fourier}
+Suppose that $f_0,f_1,f_2\in L^2(\R^2)$ have compact Fourier supports.
+Then
+\begin{align*}
+ \Lambda_r(f_0,f_1,f_2)
+  =\iint &\widehat f_0(-\xi_1-\xi_2)
+          \widehat f_1(\xi_1)\widehat f_2(\xi_2)\\
+     &\hspace{10mm}\cdot\widehat\sigma(\xi_1+M^T\xi_2)
+          \psi\big((\xi_1+M^T\xi_2)/r\big)
+                \dd\xi_1\dd\xi_2.
+\end{align*}
+The double integral is absolutely convergent.
+\end{lemma}
+\begin{proof}
+For Schwartz functions, this is Lemma~\ref{lem:fourier-form}, applied
+with the kernel $\sigma*k_r$ of Definition~\ref{tail:annular-definition}.
+
+For fixed $\xi_2$, Cauchy--Schwarz gives
+\[
+ \int |\widehat f_0(-\xi_1-\xi_2)\widehat f_1(\xi_1)|\dd\xi_1
+ \le \|f_0\|_2\|f_1\|_2.
+\]
+The compact support and the $L^2$ integrability of $\widehat f_2$ imply
+$\widehat f_2\in L^1$. Consequently the absolute value of the double
+integral is bounded by
+\[
+ \|\widehat\sigma\psi(\cdot/r)\|_\infty
+       \|f_0\|_2\|f_1\|_2\|\widehat f_2\|_1.
+\]
+Approximate the three Fourier transforms by smooth compactly supported
+functions, with all approximants supported in fixed compact enlargements
+of their original supports. They converge in $L^2$ and, for the third
+input, also in $L^1$. The displayed bound passes the Fourier integral to
+the limit. Lemma~\ref{lem:triple-l2}, applied after convolution with
+$k_r$, passes the physical-space form to the same limit.
+\end{proof}
+
+\begin{definition}[Common frequency coordinates]\label{tail:coordinates}
+\lean{Auto.tailA,Auto.tailT}
+Put $A=M^T$ and define invertible linear maps
+\[
+ T_0=(A-I)^{-1},\qquad T_1=-A^{-1},\qquad T_2=I.
+\]
+For a frequency triple with $\xi_0+\xi_1+\xi_2=0$, write
+$z_j=T_j\xi_j$ and $b=\xi_1+A\xi_2$.
+\end{definition}
+
+\begin{lemma}[Frequency separation and modulation invariance]
+\label{tail:separation}
+\lean{Auto.tailV,Auto.tail_separation_identities,Auto.tail_separation_comparable,Auto.tail_separation_modulation,Auto.tail_separation_translate}
+For the coordinates of Definition~\ref{tail:coordinates},
+\[
+ z_0-z_2=-(A-I)^{-1}b,\quad
+ z_1-z_2=-A^{-1}b,\quad
+ z_1-z_0=A^{-1}(A-I)^{-1}b.
+\]
+In particular, whenever $\psi(b/r)\ne0$, every pairwise distance
+$|z_i-z_j|$ is bounded above and below by positive multiples of $r$.
+For $w\in\R^2$ set
+\[
+ v_0=(A-I)w,\qquad v_1=-Aw,\qquad v_2=w.
+\]
+Replacing each $f_j(x)$ by $\e(-v_j\cdot x)f_j(x)$ leaves
+$\Lambda_\nu(f_0,f_1,f_2)$ unchanged for every finite measure $\nu$.
+This replacement translates all three $z$-frequency supports by $-w$.
+\end{lemma}
+\begin{proof}
+Substitute $\xi_0=-\xi_1-\xi_2$ in the definition of $z_0$ and
+subtract. The matrices $A$ and $A-I$, and hence their inverses,
+commute. This gives the three displayed identities. Each matrix on the
+right is invertible, so each norm is comparable to $|b|$. The support
+condition in Definition~\ref{tail:annular-definition} gives
+$r\le|b|\le4r$.
+
+The modulation factors in the integrand of the form multiply to
+\[
+ \e\big(-x\cdot(v_0+v_1+v_2)-u\cdot(v_1+M^Tv_2)\big)=1.
+\]
+Indeed both vectors in parentheses vanish. Finally
+$T_jv_j=w$ for every $j$, so the asserted translation of supports
+follows from the Fourier transform of a modulation.
+\end{proof}
+
+\begin{definition}[Smooth frequency partitions and spectral mass]
+\label{tail:partition-definition}
+\lean{Auto.latticePt,Auto.tailP,Auto.tailSquare,Auto.tailMu,Auto.tailContributing}
+Choose a nonnegative $\varphi\in C_c^\infty(\R^2)$ with
+$\sum_{q\in\mathbb Z^2}\varphi(z-q)=1$. Fix a closed square
+$Q_*$ containing its support. For a small fixed $h>0$, define
+\[
+ \widehat{P_{j,q,r}f}(\xi)
+    =\varphi\big(T_j\xi/(hr)-q\big)\widehat f(\xi).
+\]
+Let $Q_{q,r}=hr(q+Q_*)$. For a fixed triple of $L^2$
+inputs define the finite positive measure
+\[
+ \mu=\sum_{j=0}^2(T_j)_*
+          \big(|\widehat f_j(\xi)|^2\dd\xi\big).
+\]
+A triple $(q_0,q_1,q_2)$ is called contributing at scale $r$ if there
+are frequencies $\xi_j$ with $\sum_j\xi_j=0$, with
+$T_j\xi_j\in Q_{q_j,r}$ for all $j$, and with
+$\psi((\xi_1+A\xi_2)/r)\ne0$.
+\end{definition}
+
+\begin{lemma}[Properties of the smooth partition]\label{tail:partition}
+\lean{Auto.tail_partition}
+The parameter $h$ can be chosen depending only on $M$ and $\varphi$ so
+that the following statements hold uniformly in $r>0$.
+\begin{enumerate}
+\item The square family $\{Q_{q,r}\}$ has bounded overlap. The three
+squares in every contributing triple have mutual distance at least
+$d r$ and their union has diameter at most $D r$, for fixed $d,D>0$.
+Every square in a specified slot occurs in at most $K$ contributing
+triples.
+\item There is a constant $C$ such that
+\[
+ \|P_{j,q,r}f_j\|_2^2\le C\mu(Q_{q,r}),\qquad
+ \|P_{j,q,r}f_j\|_\infty\le C\|f_j\|_\infty,
+ \qquad
+ \sum_q\|P_{j,q,r}f_j\|_2^2\le C\|f_j\|_2^2.
+\]
+\item For $L^2$ inputs the following expansion is absolutely convergent:
+\[
+ \Lambda_r(f_0,f_1,f_2)
+  =\sum_{(q_0,q_1,q_2)\,\mathrm{contributing}}
+     \Lambda_r(P_{0,q_0,r}f_0,P_{1,q_1,r}f_1,P_{2,q_2,r}f_2).
+\]
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+The square side length is a fixed multiple of $hr$, and its centers
+form a lattice of mesh $hr$. This proves bounded overlap. By
+Lemma~\ref{tail:separation}, the witnessing points of a contributing
+triple have pairwise distances between $c_Mr$ and $C_Mr$. Choose $h$
+small enough that the diameters of the support squares are less than
+$c_Mr/4$. Every pair of entire squares is then separated by a positive
+multiple of $r$, and the union lies in a ball of radius a fixed multiple
+of $r$. Once one square is fixed, the centers of either of its partners
+lie within $O_M(r)$. There are only $O_{M,h}(1)$ lattice centers in this
+region, which bounds the number of partner pairs.
+
+Plancherel gives the first $L^2$ bound, since the multiplier vanishes
+outside $T_j^{-1}Q_{q,r}$ and has uniformly bounded magnitude. The same
+argument followed by the bounded-overlap estimate proves the sum of
+squares bound. A translation, dilation, and fixed invertible linear
+change of variables in frequency show that the convolution kernel of
+$P_{j,q,r}$ has $L^1$ norm independent of $q$ and $r$. Young's inequality
+gives the $L^\infty$ estimate.
+
+Put $u_{j,q}=\|P_{j,q,r}f_j\|_2$. By the convolved version of
+Lemma~\ref{lem:triple-l2}, each summand has absolute value at most
+$C u_{0,q_0}u_{1,q_1}u_{2,q_2}$. The constant is independent of $r$
+because $\|k_r\|_1$ is fixed. The bounded partner count and
+Cauchy--Schwarz yield
+\begin{align*}
+ \sum_{\mathrm{contributing}}u_{0,q_0}u_{1,q_1}u_{2,q_2}
+ &\le \Big(\sup_q u_{2,q}\Big)
+      \Big(\sum_{\mathrm{contributing}}u_{0,q_0}^2\Big)^{1/2}
+      \Big(\sum_{\mathrm{contributing}}u_{1,q_1}^2\Big)^{1/2}\\
+ &\le C\prod_{j=0}^2\|f_j\|_2.
+\end{align*}
+This proves absolute convergence.
+
+Finite partial partition sums converge to each input in $L^2$, by
+Plancherel and dominated convergence. For finite sums, expand the form
+by trilinearity. Lemma~\ref{tail:fourier} applies to every summand,
+whose Fourier support is compact, and shows that every noncontributing
+term vanishes. Pass to the limit using Lemma~\ref{lem:triple-l2} on
+the left and the just-proved absolute convergence on the right.
+\end{proof}
+
+\begin{lemma}[One frequency triple]\label{tail:one-triple}
+\lean{Auto.tail_one_triple}
+Suppose that $\|f_j\|_2,\|f_j\|_\infty\le B$. For a contributing
+triple let $m\le n\le p$ be the three numbers
+$\mu(Q_{q_j,r})$, in increasing order. For a sufficiently large fixed
+frequency-ball constant in Corollary~\ref{ann:global}, its modulus
+$a(r)$ satisfies
+\[
+ |\Lambda_r(P_{0,q_0,r}f_0,P_{1,q_1,r}f_1,P_{2,q_2,r}f_2)|
+       \le C_B a(r)^{1/2}n p^{1/4}.
+\]
+\end{lemma}
+\begin{proof}
+Lemma~\ref{lem:triple-l2} and Lemma~\ref{tail:partition} first give
+$C(mnp)^{1/2}$. Translate all three $z$-frequency squares by the negative
+of the center of one square. Lemma~\ref{tail:separation} realizes this
+as a form-preserving modulation. Lemma~\ref{tail:partition} shows that
+the translated supports lie in a fixed ball of radius $C_Mr$ in each
+original frequency plane. Apply Corollary~\ref{ann:global}, putting
+the input corresponding to mass $p$ in the bounded slot. Its supremum
+norm is at most $CB$, and the other two $L^2$ norms are at most
+$C\sqrt m$ and $C\sqrt n$. This gives the second bound
+$C_Ba(r)(mn)^{1/2}$.
+
+The minimum of two nonnegative bounds is at most their geometric mean.
+The resulting estimate is
+$C_Ba(r)^{1/2}(mn)^{1/2}p^{1/4}$, which is at most the claimed bound
+because $m\le n$. If a mass is zero, the relevant projected input is
+zero in $L^2$ and the conclusion holds directly.
+\end{proof}
+
+\begin{definition}[An increasing mass functional]\label{tail:mass-definition}
+\lean{Auto.tailH}
+For a finite positive Borel measure $\mu$ on $\R^2$ and $t>0$, put
+\[
+ H(t)=\int_{\R^2}\mu(B(z,t))^{1/4}\dd\mu(z).
+\]
+This is nondecreasing and satisfies
+$0\le H(t)\le\mu(\R^2)^{5/4}$.
+\end{definition}
+
+\begin{lemma}[Geometric mass increment]\label{tail:increment}
+\lean{Auto.tail_increment}
+For the square families and contributing triples of
+Lemma~\ref{tail:partition}, there are fixed constants $0<c<C$ such that
+\[
+ \sum_{\mathrm{contributing}}n p^{1/4}
+       \le C_M\big(H(Cr)-H(cr)\big),
+\]
+where $m\le n\le p$ are the masses of the three squares in each triple.
+\end{lemma}
+\begin{proof}
+Choose $c<d/4$, with $d$ from Lemma~\ref{tail:partition}. For a fixed
+triple, the neighborhoods $N_j=Q_{q_j,r}+B(0,cr)$ are pairwise disjoint.
+Choose a ball $B_*$ containing their union. Since the diameter of that
+union is $O_M(r)$, the constant $C$ can be fixed so that
+$B_*\subset B(z,Cr)$ for every $z$ in any of the three squares.
+At least two of the disjoint neighborhoods have mass at most
+$\mu(B_*)/2$. Select their indices $i,j$.
+
+For $z\in Q_{q_i,r}\cup Q_{q_j,r}$, the smaller ball $B(z,cr)$ is
+contained in the corresponding selected neighborhood. Therefore
+\begin{align*}
+ \mu(B(z,Cr))^{1/4}-\mu(B(z,cr))^{1/4}
+ &\ge (1-2^{-1/4})\mu(B_*)^{1/4}\\
+ &\ge (1-2^{-1/4})p^{1/4}.
+\end{align*}
+The selected squares are disjoint, and their combined mass is at least
+$n$, irrespective of which two indices were selected. Integrating the
+last inequality over their union bounds $n p^{1/4}$ by a fixed multiple
+of that integral.
+
+Sum over contributing triples. Each point belongs to only boundedly
+many support squares, and each square has only boundedly many partner
+pairs. Hence the multiplicity of the selected regions is uniformly
+bounded. The integrand is nonnegative, so the sum is at most a constant
+times its integral over the whole plane, which is $H(Cr)-H(cr)$.
+\end{proof}
+
+\begin{lemma}[Dyadic telescoping of the mass increments]
+\label{tail:telescoping}
+\lean{Auto.tail_telescoping}
+For $0<c<C$, every nondecreasing bounded function $H$ satisfies
+\[
+ \sum_{k=0}^{\infty}
+       \big(H(C2^kR)-H(c2^kR)\big)
+       \le D\sup_{t>0}H(t),
+\]
+provided $H\ge0$ and $D$ is any positive integer with $2^Dc\ge C$.
+\end{lemma}
+\begin{proof}
+By monotonicity, the summand is at most
+$H(c2^{k+D}R)-H(c2^kR)$. In a finite sum over $0\le k\le N$,
+all but the first and last $D$ terms cancel. The terms with a minus
+sign are nonpositive and may be discarded, leaving at most
+$D\sup H$. The original summands are nonnegative, so monotone
+convergence gives the infinite-sum bound.
+\end{proof}
+
+\begin{proposition}[Uniform annular tails]\label{tail:bound}
+\lean{Auto.tail_bound,Auto.tail_bound_tendsto}
+Let $R\ge1$ be dyadic. If $\|f_j\|_2,\|f_j\|_\infty\le B$, then
+\[
+ \sum_{r=2^k\ge R}|\Lambda_r(f_0,f_1,f_2)|
+       \le C_{M,B}\left(\sup_{r\ge R}a(r)\right)^{1/2}.
+\]
+In particular this tail tends to zero as $R\to\infty$, uniformly over
+these inputs.
+\end{proposition}
+\begin{proof}
+Combine the absolutely convergent expansion in
+Lemma~\ref{tail:partition}, the estimate in
+Lemma~\ref{tail:one-triple}, and Lemma~\ref{tail:increment}. At each
+scale the result is
+\[
+ |\Lambda_r(f_0,f_1,f_2)|
+   \le C_{M,B}a(r)^{1/2}\big(H(Cr)-H(cr)\big).
+\]
+The same spectral measure $\mu$ is used at every scale, and Plancherel
+shows that $\mu(\R^2)=\sum_j\|f_j\|_2^2\le3B^2$. Pull out the
+supremum of $a(r)^{1/2}$ and apply Lemma~\ref{tail:telescoping} and
+Definition~\ref{tail:mass-definition}. Finally,
+$a(r)\to0$ implies $\sup_{r\ge R}a(r)\to0$.
+\end{proof}
+
+\section{Approximation of the counting form}\label{tail:approximation-section}
+
+\begin{lemma}[Exhaustion by smooth low frequencies]\label{tail:exhaustion}
+\lean{Auto.tail_exhaustion}
+For every finite measure $\kappa$ and every triple of $L^2$ inputs,
+\[
+ \Lambda_{\sigma*\kappa*q_S}(f_0,f_1,f_2)
+       \longrightarrow\Lambda_{\sigma*\kappa}(f_0,f_1,f_2)
+       \qquad(S\to\infty).
+\]
+\end{lemma}
+\begin{proof}
+Write $q_S(u)=S^2\check\chi(Su)$ and use
+Lemma~\ref{lem:convolution-translate}. Convolution by $q_S$ averages
+simultaneous translations of the inputs at vertices $1$ and $2$ by
+$y/S$ and $My/S$, with weight $\check\chi(y)\dd y$. For each fixed
+$y$, these inputs converge to the originals in $L^2$. The convolved
+version of Lemma~\ref{lem:triple-l2} therefore gives convergence of
+the corresponding form. The absolute value is bounded uniformly in
+$y$ and $S$ by
+\[
+ C_M\|\kappa\|_{\mathrm{TV}}\prod_j\|f_j\|_2.
+\]
+Dominated convergence against $|\check\chi(y)|\dd y$ applies, and
+$\int\check\chi=1$ gives the stated limit. No positivity of
+$\check\chi$ is required.
+\end{proof}
+
+\begin{lemma}[Tails after convolution]\label{tail:convolved-tail}
+\lean{Auto.tail_convolved_tail,Auto.tail_convolved_tail_sum}
+For every finite measure $\kappa$, dyadic $R\ge1$, and inputs with
+$\|f_j\|_2,\|f_j\|_\infty\le B$,
+\[
+ \sum_{r=2^k\ge R}|\Lambda_{\sigma*\kappa*k_r}(f_0,f_1,f_2)|
+  \le C_{M,B}\|\kappa\|_{\mathrm{TV}}
+       \left(\sup_{r\ge R}a(r)\right)^{1/2}.
+\]
+Moreover the sum without absolute values equals
+$\Lambda_{\sigma*\kappa}(f_0,f_1,f_2)
+-\Lambda_{\sigma*\kappa*q_R}(f_0,f_1,f_2)$.
+\end{lemma}
+\begin{proof}
+Lemma~\ref{lem:convolution-translate} expresses each summand as an
+integral against $\kappa$ of $\Lambda_r$ applied to $f_0$ and
+translates of $f_1,f_2$. These translations preserve the two norms.
+Apply Proposition~\ref{tail:bound}, first to finite sums, integrate
+against $|\kappa|$, and then use monotone convergence.
+
+For a finite consecutive dyadic sum the kernel identity in
+Definition~\ref{tail:annular-definition} gives
+\[
+ \sum_{k=0}^{N}\sigma*\kappa*k_{2^kR}
+   =\sigma*\kappa*(q_{2^{N+1}R}-q_R).
+\]
+Apply Lemma~\ref{tail:exhaustion} and the absolute convergence just
+proved to pass to the limit.
+\end{proof}
+
+\begin{proposition}[Smoothing for inputs bounded in both norms]
+\label{tail:bounded-smoothing}
+\lean{Auto.tail_bounded_smoothing}
+Let $\rho\in L^1(\R^2)$ be nonnegative with $\int\rho=1$, and set
+$\rho_\varepsilon(u)=\varepsilon^{-2}\rho(u/\varepsilon)$. For each
+fixed $B<\infty$,
+\[
+ \sup_{\|f_j\|_2,\|f_j\|_\infty\le B}
+ |\Lambda_{\sigma*\rho_\varepsilon-\sigma}(f_0,f_1,f_2)|
+      \longrightarrow0\qquad(\varepsilon\downarrow0).
+\]
+\end{proposition}
+\begin{proof}
+Fix a dyadic $R\ge1$. Apply Lemma~\ref{tail:convolved-tail} to
+$\kappa=\rho_\varepsilon(u)\dd u$ and to $\kappa=\delta_0$.
+Each has total variation one. Thus the two high-frequency tails
+contribute together at most
+\[
+ 2C_{M,B}\left(\sup_{r\ge R}a(r)\right)^{1/2}.
+\]
+Their remaining difference has kernel
+$\sigma*(\rho_\varepsilon*q_R-q_R)$. For fixed $R$, translation
+continuity in $L^1$ and dominated convergence give
+\begin{align*}
+ \|\rho_\varepsilon*q_R-q_R\|_1
+ &\le \int\rho(y)\|q_R(\,\cdot-\varepsilon y)-q_R\|_1\dd y
+       \longrightarrow0.
+\end{align*}
+The integrand is bounded by $2\|q_R\|_1\rho(y)$, so this argument
+requires only the stated $L^1$ assumptions on $\rho$. The total
+variation estimate in Lemma~\ref{lem:form-basic} bounds the low-frequency
+form by $B^3\|\rho_\varepsilon*q_R-q_R\|_1$.
+
+Given a desired error, first choose $R$ sufficiently large to make the
+tail bound small, and then choose $\varepsilon$ sufficiently small to
+make this last term small. The estimates are uniform in the inputs.
+\end{proof}
+
+\begin{theorem}[Uniform smoothing in the endpoint form norm]
+\label{tail:smoothing}
+\lean{Auto.tail_smoothing}
+For every probability density $\rho\in L^1(\R^2)$,
+\[
+ \lim_{\varepsilon\downarrow0}\sup_{s>0}
+      \|\Lambda_{(\sigma*\rho_\varepsilon-\sigma)_s}\|=0.
+\]
+The same conclusion holds for every permutation of the
+$L^2\times L^2\times L^\infty$ norm.
+\end{theorem}
+\begin{proof}
+Take an arbitrary sequence $\varepsilon_n\downarrow0$ and put
+\[
+ \kappa_n=\rho_{\varepsilon_n}(u)\dd u-\delta_0,
+ \qquad \mu_n=\sigma*\kappa_n.
+\]
+Then $\|\kappa_n\|_{\mathrm{TV}}\le2$, and
+\[
+ |\mu_n|(\{|u|>2\})
+   \le\int_{|w|>1}\rho_{\varepsilon_n}(w)\dd w
+   =\int_{|y|>1/\varepsilon_n}\rho(y)\dd y\longrightarrow0.
+\]
+Use Lemma~\ref{ann:localize} with $P_n$ equal to the identity.
+For every fixed triple of smooth compactly supported cutoffs $\chi_j$
+and every $\|f_j\|_\infty\le1$, the functions $\chi_jf_j$ have
+$L^2$ norms at most $\|\chi_j\|_2$ and supremum norms at most
+$\|\chi_j\|_\infty$. Proposition~\ref{tail:bounded-smoothing}
+therefore verifies its localized hypothesis, with a bound $B$ depending
+only on these fixed cutoffs. The lemma gives convergence of the
+endpoint form norm to zero, for each of the three bounded slots.
+Since the sequence $\varepsilon_n$ was arbitrary, convergence holds
+as $\varepsilon\downarrow0$.
+
+Finally, dilation invariance from Lemma~\ref{lem:form-basic} gives
+\[
+ \|\Lambda_{(\sigma*\rho_\varepsilon-\sigma)_s}\|
+       =\|\Lambda_{\sigma*\rho_\varepsilon-\sigma}\|
+       \qquad(s>0).
+\]
+This proves the asserted uniformity in $s$.
+\end{proof}
+
+
+
+\section{From smoothing to triangles}\label{sec:density}
+
+\begin{lemma}[Continuity under small changes of scale]\label{den:continuity}
+\lean{Auto.den_continuity}
+For every endpoint placement $i$,
+\[
+ \lim_{r\to1}\|\Lambda_{\sigma_r-\sigma}\|_i=0.
+\]
+\end{lemma}
+\begin{proof}
+Fix a nonnegative smooth compactly supported probability density
+$\rho$.  For $t>0$ let $k_t=\sigma*\rho_t$, where
+$\rho_t(u)=t^{-2}\rho(u/t)$.  This is an $L^1$ density.
+The identity
+\[
+ \sigma_r-\sigma=(\sigma-k_t)_r+((k_t)_r-k_t)+(k_t-\sigma)
+\]
+and Lemma~\ref{lem:form-basic} give
+\[
+ \|\Lambda_{\sigma_r-\sigma}\|_i
+ \le2\|\Lambda_{\sigma-k_t}\|_i+\|(k_t)_r-k_t\|_1.
+\]
+Here $(k_t)_r(u)=r^{-2}k_t(u/r)$ as a density.  With $t$ fixed,
+the last norm tends to zero by continuity of dilations in $L^1$.
+Theorem~\ref{tail:smoothing} makes the first term arbitrarily
+small as $t\downarrow0$.  Taking these limits in that order
+proves the assertion.
+\end{proof}
+
+\begin{definition}[Density and triangle counts]\label{den:definitions}
+\lean{Auto.squareAt,Auto.upperBanachDensity,Auto.triangleCount,Auto.IsMissed}
+For a Lebesgue measurable set $E\subset\R^2$, its upper Banach
+density is
+\[
+ d^*(E)=\limsup_{L\to\infty}\sup_{z\in\R^2}
+           \frac{|E\cap(z+[0,L]^2)|}{L^2}.
+\]
+For a bounded, compactly supported, nonnegative function $f$ and
+$s>0$, write
+\[
+ D_s(f)=\Lambda_{\sigma_s}(f,f,f)
+       =\int_{\mathbb T}\int_{\R^2}
+          f(x)f(x+su_\theta)f(x+sMu_\theta)
+                                \dd x\dd\sigma(\theta).
+\]
+A scale $s$ is \emph{missed by $E$} if there are no
+$x\in\R^2$, $\theta\in\mathbb T$ for which all three displayed
+vertices belong to $E$.
+\end{definition}
+
+\begin{lemma}[Large dense squares and exact copies]\label{den:dense-squares}
+\lean{Auto.den_dense_squares_exists,Auto.den_dense_squares_borel,Auto.den_dense_squares_missed,Auto.den_dense_squares_copy}
+\leanok
+If $0<\delta<d^*(E)$, there are squares $Q$ of arbitrarily
+large side length for which $|E\cap Q|\ge\delta|Q|$.
+For each such square there is a Borel set $A\subset E\cap Q$
+of the same measure.  If $s$ is missed by $E$, then
+$D_s(\one_A)=0$.  If $D_s(\one_A)>0$, then $A$, and hence
+$E$, contains a translate of a rotation of
+$s\{0,e_1,Me_1\}$.
+\end{lemma}
+\begin{proof}
+Choose $\delta'$ strictly between $\delta$ and $d^*(E)$.
+The definition of limsup supplies arbitrarily large $L$ for
+which the supremum over $z$ of the density in $z+[0,L]^2$
+exceeds $\delta'$.  Approximate this supremum closely enough
+to obtain density at least $\delta$.  Existence of the Borel
+subset follows from completeness and regularity of Lebesgue
+measure.
+
+The integrand defining $D_s(\one_A)$ is a nonnegative Borel
+function.  It is identically zero when the scale is missed.
+If its integral is positive, it equals one at some
+configuration.  The vertices there have the form
+$x+s\{0,u_\theta,Mu_\theta\}$, which is the required rotated
+triangle because $M$ commutes with rotations.
+\end{proof}
+
+\begin{definition}[Word notation for the geometric application]\label{den:lines}
+\lean{Auto.lineVarSet,Auto.subsum}
+For $n\ge1$, use $\mathcal W_n=\{0,1,2\}^n$, obtained from
+$[3]^n$ by the relabeling $j\mapsto j-1$.  Words, combinatorial
+lines, their variable sets, and their fixed letters are as in
+Definition~\ref{cj:def-words}, with this relabeling.
+For positive numbers $\lambda_1,\ldots,\lambda_n$, set
+$s_J=\sum_{j\in J}\lambda_j$.
+\end{definition}
+
+\begin{lemma}[Number of lines]\label{den:line-number}
+\lean{Auto.den_line_number_fixed,Auto.den_line_number}
+\leanok
+For a fixed nonempty $J\subset[n]$ there are $3^{n-|J|}$
+combinatorial lines with variable set $J$.  The total number
+of lines in $\mathcal W_n$ is $4^n-3^n$.
+\end{lemma}
+\begin{proof}
+There are three independent choices for each fixed coordinate.
+Summing over the nonempty variable sets gives
+\[
+ \sum_{J\ne\varnothing}3^{n-|J|}
+   =\sum_{j=1}^n\binom nj3^{n-j}=(3+1)^n-3^n.
+\]
+The variable set and fixed letters are uniquely determined by
+the line, so this sum counts each line once.
+\end{proof}
+
+\begin{lemma}[A weighted lower bound from density Hales--Jewett]
+\label{den:weighted-lower}
+\lean{Auto.den_weighted_lower}
+\leanok
+Let $0<\delta\le1$ and choose
+$n\ge H_3(\delta/4)$ from Theorem~\ref{cj:dhj3}.
+Let $\lambda_1,\ldots,\lambda_n>0$ and put
+\[
+ S=\max(1,\|M\|)\sum_{j=1}^n\lambda_j.
+\]
+Suppose $A$ is a Borel subset of a square $Q$ with
+$|A|\ge\delta|Q|$, and that
+$Q'=Q+[-S,S]^2$ satisfies $|Q'|\le2|Q|$.
+Then, for $f=\one_A$,
+\begin{equation}\label{den:lower-bound}
+ \sum_{\varnothing\ne J\subset[n]}3^{n-|J|}D_{s_J}(f)
+       \ge\frac{\delta}{2}|Q|.
+\end{equation}
+\end{lemma}
+\begin{proof}
+Fix $\theta$.  Put $d_0=0$, $d_1=u_\theta$, and
+$d_2=Mu_\theta$.  For a word $w\in\mathcal W_n$ let
+$a_w(\theta)=\sum_j\lambda_jd_{w_j}$, and define the marked
+fraction
+\[
+ m_\theta(x)=3^{-n}\sum_{w\in\mathcal W_n}
+                     f(x+a_w(\theta)).
+\]
+Every coordinate of $a_w(\theta)$ has absolute value at most
+$S$.  Hence $f(x+a_w(\theta))$ is supported in $Q'$ as a
+function of $x$.  Translation invariance gives
+\[
+ 0\le m_\theta\le1,
+ \qquad \int_{Q'}m_\theta(x)\dd x=|A|\ge\delta|Q|.
+\]
+Let $G_\theta=\{x\in Q':m_\theta(x)\ge\delta/4\}$.
+Splitting the last integral over $G_\theta$ and its complement
+yields
+\[
+ \delta|Q|
+ \le |G_\theta|+\frac{\delta}{4}|Q'|
+ \le |G_\theta|+\frac{\delta}{2}|Q|,
+\]
+so $|G_\theta|\ge\delta|Q|/2$.
+
+At each $x\in G_\theta$, at least $(\delta/4)3^n$ words are
+marked by the condition $f(x+a_w(\theta))=1$.
+Relabeling $\{1,2,3\}$ as $\{0,1,2\}$, Theorem~\ref{cj:dhj3}
+therefore supplies a whole marked line.
+If $\mathcal L_n$ is the finite family of all
+lines, this means
+\[
+ \sum_{\ell\in\mathcal L_n}\prod_{w\in\ell}
+               f(x+a_w(\theta))\ge\one_{G_\theta}(x).
+\]
+Integrate over all $x$; all summands are nonnegative.
+For a line with variable set $J$, let
+$b=\sum_{j\notin J}\lambda_jd_{a_j}$.  Its three offsets
+are $b$, $b+s_Ju_\theta$, and $b+s_JMu_\theta$.
+The translation $y=x+b$ turns its integral into
+\[
+ \int f(y)f(y+s_Ju_\theta)f(y+s_JMu_\theta)\dd y.
+\]
+This expression is independent of the fixed letters.  By
+Lemma~\ref{den:line-number} it occurs $3^{n-|J|}$ times.
+Integrating next in $\theta$ proves
+\eqref{den:lower-bound}.  All functions in this argument are
+Borel, and all exchanges of finite sums and integrals are
+justified by nonnegativity or bounded compact support.
+\end{proof}
+
+\begin{lemma}[Selecting scales with close subsums]\label{den:select-scales}
+\lean{Auto.den_select_scales}
+Let $\mathcal S\subset(0,\infty)$ be unbounded.  Given
+$n\ge1$ and $\tau>0$, one can choose
+$\lambda_1<\cdots<\lambda_n$ in $\mathcal S$ such that,
+for every nonempty $J\subset[n]$ and $k=\max J$,
+\[
+ \|\Lambda_{\sigma_{s_J}-\sigma_{\lambda_k}}\|<\tau.
+\]
+\end{lemma}
+\begin{proof}
+By Lemma~\ref{den:continuity}, choose $\eta>0$ so that
+$1\le r<1+\eta$ implies
+$\|\Lambda_{\sigma_r-\sigma}\|<\tau$.
+Choose any $\lambda_1\in\mathcal S$.  Having chosen the
+previous scales, use unboundedness to choose
+\[
+ \lambda_k>\max\left(\lambda_{k-1},
+                  \eta^{-1}\sum_{j<k}\lambda_j\right)
+      \quad\text{in }\mathcal S.
+\]
+For $k=\max J$ this implies
+\[
+ 1\le\frac{s_J}{\lambda_k}
+    \le1+\frac{\sum_{j<k}\lambda_j}{\lambda_k}<1+\eta.
+\]
+Finally
+$\sigma_{s_J}-\sigma_{\lambda_k}
+  =(\sigma_{s_J/\lambda_k}-\sigma)_{\lambda_k}$,
+so the norm equality in Lemma~\ref{lem:form-basic} gives
+the desired inequality.  When $J=\{1\}$ it is immediate.
+\end{proof}
+
+\begin{theorem}[All sufficiently large planar triangles]\label{den:main}
+\lean{Auto.den_main,Auto.den_main_general}
+If $E\subset\R^2$ is Lebesgue measurable with $d^*(E)>0$,
+then every sufficiently large scale of
+$\{0,e_1,Me_1\}$ has a translate of a rotation contained
+in $E$.  Consequently the same conclusion holds for any
+prescribed noncollinear planar triangle.
+\end{theorem}
+\begin{proof}
+Fix $0<\delta<d^*(E)$.  Let $n$ be the integer in
+Lemma~\ref{den:weighted-lower}.  Suppose for contradiction
+that the set of missed scales is unbounded.  Apply
+Lemma~\ref{den:select-scales} to that set with
+$\tau=\delta/(4\cdot4^n)$ to obtain missed scales
+$\lambda_1<\cdots<\lambda_n$.
+
+These scales determine the finite number
+$S=\max(1,\|M\|)\sum_j\lambda_j$.  By
+Lemma~\ref{den:dense-squares}, choose a square $Q$ of
+sufficiently large side length that
+$|E\cap Q|\ge\delta|Q|$ and $|Q+[-S,S]^2|\le2|Q|$.
+For example, the latter condition holds when its side
+length is at least $2S/(\sqrt2-1)$.  Take a Borel set
+$A\subset E\cap Q$ with $|A|=|E\cap Q|$ and set
+$f=\one_A$.
+
+For every chosen scale, $D_{\lambda_k}(f)=0$, by
+Lemma~\ref{den:dense-squares}.  If $J\ne\varnothing$ and
+$k=\max J$, the endpoint norm bound and the scale selection
+give
+\[
+ 0\le D_{s_J}(f)
+   =|D_{s_J}(f)-D_{\lambda_k}(f)|
+   \le \tau\|f\|_2^2\|f\|_\infty
+   \le\frac{\delta|Q|}{4\cdot4^n}.
+\]
+On summing and using Lemma~\ref{den:line-number},
+\[
+ \sum_{J\ne\varnothing}3^{n-|J|}D_{s_J}(f)
+    \le\frac{(4^n-3^n)\delta|Q|}{4\cdot4^n}
+    <\frac{\delta}{4}|Q|.
+\]
+This contradicts the lower bound $\delta|Q|/2$ in
+Lemma~\ref{den:weighted-lower}.  The missed scales are
+therefore bounded, proving the first assertion.
+
+For a general triangle, use Lemma~\ref{lem:geometry} to write
+$\Delta=q_0+\ell U\{0,e_1,Me_1\}$ with $\ell>0$ and
+$U$ a rotation.  A copy at scale $\lambda\ell$ of the
+normalized triangle is a translated rotated copy of
+$\lambda\Delta$, since products and inverses of planar
+rotations are rotations.  Divide the normalized threshold
+by $\ell$.  This proves the second assertion and the
+introductory geometric conclusion.
+\end{proof}
+
+\section{The Fourier inverse consequence}\label{sec:inverse}
+
+\begin{proposition}[A smooth-kernel Fourier estimate]\label{inv:smooth}
+Suppose $k\in C_c^\infty(\R^2)$ and
+$g\in L^2(\R^2)\cap L^\infty(\R^2)$ with
+$\widehat g\in L^\infty(\R^2)$.  Then
+\[
+ |\Lambda_k(f_0,f_1,g)|
+ \le C_M\|\widehat k\|_1\|\widehat g\|_\infty
+                    \|f_0\|_2\|f_1\|_2
+ \qquad(f_0,f_1\in L^2).
+\]
+\end{proposition}
+\begin{proof}
+First take $f_0,f_1$ Schwartz and let $A=M^T$.
+The function paired with $g$ in the original form is
+\[
+ h(z)=\int k(u)f_0(z-Mu)f_1(z+(I-M)u)\dd u.
+\]
+Because $u$ is restricted to a compact set and the two
+inputs are Schwartz, $h$ is Schwartz.  Fourier pairing with
+the $L^2$ function $g$ is therefore justified by Plancherel.
+The calculation of Lemma~\ref{lem:fourier-form} gives the
+same Fourier expression with $\widehat g(\xi_2)$; it is
+absolutely integrable by the following bound.
+
+Make the change of variables $b=\xi_1+A\xi_2$, retaining
+$\xi_2$.  Its Jacobian is one.  At fixed $b$,
+Cauchy--Schwarz gives
+\begin{align*}
+ &\int\big|\widehat f_0(-b+(A-I)\xi_2)
+              \widehat f_1(b-A\xi_2)\big|\dd\xi_2\\
+ &\qquad\le
+   |\det(A-I)|^{-1/2}|\det A|^{-1/2}
+       \|\widehat f_0\|_2\|\widehat f_1\|_2.
+\end{align*}
+Both matrices are invertible by Lemma~\ref{lem:geometry}.
+Bound $\widehat g$ by its essential supremum and integrate
+against $|\widehat k(-b)|$.  Plancherel proves the estimate
+for Schwartz tests.  Approximate arbitrary $L^2$ tests in
+$L^2$ by Schwartz functions.  The original form converges
+by Lemma~\ref{lem:form-basic}, since $g\in L^\infty$ and
+$k\in L^1$, so the same bound holds in the limit.
+\end{proof}
+
+\begin{corollary}[Fourier inverse estimate]\label{inv:consequence}
+Let $\rho$ be a smooth compactly supported probability
+density and put $k_t=\sigma*\rho_t$.  For
+$g\in L^2\cap L^\infty$ with bounded Fourier transform,
+\begin{align*}
+ \sup_{\|f_0\|_2,\|f_1\|_2\le1}
+       |\Lambda_\sigma(f_0,f_1,g)|
+ &\le \|\Lambda_{\sigma-k_t}\|\,\|g\|_\infty\\
+ &\quad+C_M\|\widehat{k_t}\|_1\|\widehat g\|_\infty.
+\end{align*}
+In particular, if $g_n\in L^2\cap L^\infty$,
+$\sup_n\|g_n\|_\infty<\infty$, and
+$\|\widehat g_n\|_\infty\to0$, then
+\[
+ \sup_{\|f_0\|_2,\|f_1\|_2\le1}
+       |\Lambda_\sigma(f_0,f_1,g_n)|\longrightarrow0.
+\]
+No uniform $L^2$ bound on $g_n$ is needed for this conclusion.
+\end{corollary}
+\begin{proof}
+The convolution $k_t$ is smooth and compactly supported,
+so Proposition~\ref{inv:smooth} applies and
+$\widehat{k_t}\in L^1$.  Split
+$\Lambda_\sigma=\Lambda_{\sigma-k_t}+\Lambda_{k_t}$.
+The first term has its defining endpoint norm, and the
+second has the bound in the proposition.  This proves the
+first assertion.  For the sequence, fix $t$ and take the
+upper limit in $n$.  The second term tends to zero, while
+the first is bounded by
+$\sup_n\|g_n\|_\infty\|\Lambda_{\sigma-k_t}\|$.
+Let $t\downarrow0$ and use Theorem~\ref{tail:smoothing}.
+\end{proof}
+
+\begin{thebibliography}{9}
+\bibitem{FK}
+H. Furstenberg and Y. Katznelson,
+\emph{A density version of the Hales--Jewett theorem},
+J. Anal. Math. \textbf{57} (1991), 64--119.
+\href{https://doi.org/10.1007/BF03041066}{doi:10.1007/BF03041066}.
+
+\bibitem{Polymath}
+D. H. J. Polymath,
+\emph{A new proof of the density Hales--Jewett theorem},
+Ann. of Math. (2) \textbf{175} (2012), 1283--1327.
+\href{https://doi.org/10.4007/annals.2012.175.3.6}{doi:10.4007/annals.2012.175.3.6}.
+
+\bibitem{DKT}
+P. Dodos, V. Kanellopoulos, and K. Tyros,
+\emph{A simple proof of the density Hales--Jewett theorem},
+Int. Math. Res. Not. IMRN \textbf{2014} (2014), no. 12, 3340--3352.
+\href{https://doi.org/10.1093/imrn/rnt041}{doi:10.1093/imrn/rnt041}.
+\end{thebibliography}
+\end{document}
