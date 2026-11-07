@@ -2,15 +2,15 @@
 
 ## Introduction and foundations
 
-Lean file: Auto/IntroductionFoundations/IntroductionFoundations.lean
+Lean file: Auto/Theorems.lean
 
 #### Definitions
 
 
 #### Theorems
 
-\label{intro:density}: [Proof completed] (Lean: Auto.intro_density) (2026-11-06T17:01:48-08:00)
-\label{intro:smoothing}: [Proof completed] (Lean: Auto.intro_smoothing) (2026-11-06T17:01:48-08:00)
+\label{intro:density}: [Proof completed] (Lean: Auto.intro_density) (2026-11-06T19:34:54-08:00)
+\label{intro:smoothing}: [Proof completed] (Lean: Auto.intro_smoothing) (2026-11-06T19:34:54-08:00)
 
 ## Analytic prerequisites with proofs
 

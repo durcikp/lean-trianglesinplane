@@ -275,14 +275,6 @@ theorem den_continuity (α β : ℝ) (hβ : β ≠ 0) (i : Fin 3) :
 
 /-! ### Density and triangle counts (`den:definitions`) -/
 
-/-- The closed square `z + [0,L]²` (part of `\label{den:definitions}`). -/
-def squareAt (z : ℝ²) (L : ℝ) : Set ℝ² := {x | ∀ i, x i ∈ Icc (z i) (z i + L)}
-
-/-- The upper Banach density (`\label{den:definitions}`)
-$$d^*(E)=\limsup_{L\to\infty}\sup_{z\in\R^2}\frac{|E\cap(z+[0,L]^2)|}{L^2}.$$ -/
-def upperBanachDensity (E : Set ℝ²) : ℝ≥0∞ :=
-  limsup (fun L : ℝ => ⨆ z : ℝ², volume (E ∩ squareAt z L) / ENNReal.ofReal (L ^ 2)) atTop
-
 /-- The triangle count (`\label{den:definitions}`)
 $$D_s(f)=\Lambda_{\sigma_s}(f,f,f)=
 \int_{\mathbb T}\int_{\R^2}f(x)f(x+su_\theta)f(x+sMu_\theta)\,dx\,d\sigma(\theta)$$

@@ -159,3 +159,14 @@ These override conflicting instructions above (recorded 2026-11-06T12:53-08:00).
   instructions) and `@[nolint unusedArguments]` (unused manuscript hypotheses of public theorems); unused instance
   arguments of `aux_` lemmas were removed with `omit ... in`. Forced full `lake build`: 0 warnings, 0 errors, 0 infos;
   no placeholders; public statements unchanged; Theorems A and B: [propext, Classical.choice, Quot.sound].
+- Statement files (P13–P15, completed 2026-11-06T19:16:32-08:00): `Auto/Definitions.lean` (imports only Mathlib; canonical home of the 38
+  declarations needed to state Theorems A and B, moved out of the Section 2, 4 and 11 files, which now import it) and
+  `Auto/Theorems.lean` (imports only Mathlib and `Auto.Definitions`; `TheoremA`, `TheoremB` as Props). The folder
+  `Auto/IntroductionFoundations/` was removed; proofs stay in `den_main_general` and `tail_smoothing`. Verified: full
+  build 0 warnings/0 errors; `example : TheoremA := den_main_general …` and `example : TheoremB := tail_smoothing …`
+  compile, with axioms [propext, Classical.choice, Quot.sound].
+- Theorems.lean as theorems (P16, completed 2026-11-06T19:34:54-08:00): \`Auto/Theorems.lean\` now imports the proof files
+  (\`Auto.ApproximationCountingForm.ApproximationCountingForm\`, \`Auto.FromSmoothingTriangles.FromSmoothingTriangles\`) and
+  states Theorems A and B as \`theorem intro_density\` (:= \`den_main_general …\`) and \`theorem intro_smoothing\`
+  (:= \`tail_smoothing …\`); \`TheoremA\`/\`TheoremB\` were removed. Verified: full \`lake build\` 0 warnings/0 errors,
+  \`#lint in Auto\` all checks passed, no \`sorry\`, both theorems depend on [propext, Classical.choice, Quot.sound].

@@ -22,8 +22,11 @@ The manuscript is `blueprint/triangles_in_the_plane_blueprint.tex` (the "bluepri
 - In this Mathlib, `ContDiff ℝ ⊤` means analytic; use `ContDiff ℝ (⊤ : ℕ∞)` for `C^∞`.
 
 ## Section → file map
-1. Introduction and foundations → `Auto/IntroductionFoundations/IntroductionFoundations.lean`
-   (Theorems A and B; imports the later sections).
+1. Introduction and foundations → no section folder (user decision, P15). `Auto/Definitions.lean`
+   (imports only Mathlib) is the canonical home of every definition needed to state Theorems A and B;
+   `Auto/Theorems.lean` (imports Mathlib, `Auto.Definitions` and the proof files of Sections 10 and 11)
+   states and proves them as the theorems `intro_density` (from `den_main_general`) and
+   `intro_smoothing` (from `tail_smoothing`) (user decision, P16).
 2. Analytic prerequisites with proofs → `Auto/AnalyticPrerequisitesProofs/`
    `FourierAnalysisRequiredForm.lean`, `CompactnessFactsCircleOperators.lean`,
    `SpectralMeasuresCorrelationFunctions.lean`, `LocalMatrixGroupsAnalyticZeroSets.lean`.

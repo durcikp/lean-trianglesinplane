@@ -20,7 +20,7 @@ of the blueprint (labels `tail:exhaustion`, `tail:convolved-tail`, `tail:bounded
   sufficiently large frequency-ball constant `C₀`.
 * `ρ_ε` is the density `u ↦ ε⁻² ρ(u/ε)`; `σ * ρ_ε - σ` is
   `(FCMeasure.sigma.conv (FCMeasure.ofDensity ρ_ε)).sub FCMeasure.sigma`, exactly as in
-  `Auto.intro_smoothing`.
+  `Auto.intro_smoothing` (in `Auto/Theorems.lean`).
 -/
 
 open MeasureTheory Real Set Filter Topology

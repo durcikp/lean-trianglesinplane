@@ -32,11 +32,6 @@ noncomputable section
 
 namespace Auto
 
-instance instFactTwoPiPos : Fact (0 < 2 * π) := ⟨Real.two_pi_pos⟩
-
-/-- The circle of angles `ℝ/(2πℤ)`. -/
-abbrev Ang := AddCircle (2 * π)
-
 /-! ### Conventions (`def:fourier`) -/
 
 /-- The character `e(t) = exp(2π i t)` (part of `\label{def:fourier}`). -/
@@ -44,31 +39,12 @@ def e (t : ℝ) : ℂ := Complex.exp (2 * π * t * Complex.I)
 
 /-! ### Triangle parameters (`def:geometry`) -/
 
-/-- The rotation `J(x₁, x₂) = (-x₂, x₁)` (part of `\label{def:geometry}`). -/
-def J : ℝ² →L[ℝ] ℝ² :=
-  LinearMap.toContinuousLinearMap
-    { toFun := fun x => !₂[-x 1, x 0]
-      map_add' := fun x y => by
-        ext i; fin_cases i <;> simp [add_comm]
-      map_smul' := fun c x => by
-        ext i; fin_cases i <;> simp }
-
 @[simp] lemma aux_J_apply_zero (x : ℝ²) : J x 0 = -x 1 := rfl
 @[simp] lemma aux_J_apply_one (x : ℝ²) : J x 1 = x 0 := rfl
-
-/-- The matrix `aI + bJ`, an orientation-preserving similarity when `(a, b) ≠ 0`
-(part of `\label{def:geometry}`). -/
-def simil (a b : ℝ) : ℝ² →L[ℝ] ℝ² := a • ContinuousLinearMap.id ℝ ℝ² + b • J
-
-/-- The triangle matrix `M = αI + βJ` (part of `\label{def:geometry}`). -/
-abbrev M (α β : ℝ) : ℝ² →L[ℝ] ℝ² := simil α β
 
 /-- The transpose `Mᵀ = αI - βJ` of the triangle matrix (part of `\label{def:geometry}`). -/
 @[nolint defsWithUnderscore]
 abbrev aux_MT (α β : ℝ) : ℝ² →L[ℝ] ℝ² := simil α (-β)
-
-/-- The rotation `R_t = (cos t) I + (sin t) J` (part of `\label{def:geometry}`). -/
-abbrev rot (t : ℝ) : ℝ² →L[ℝ] ℝ² := simil (Real.cos t) (Real.sin t)
 
 /-- The vertex maps `(L₀, L₁, L₂) = (0, I, M)` (part of `\label{def:geometry}`). -/
 def Lv (α β : ℝ) : Fin 3 → (ℝ² →L[ℝ] ℝ²) := ![0, ContinuousLinearMap.id ℝ ℝ², M α β]
@@ -80,25 +56,10 @@ def e1 : ℝ² := !₂[1, 0]
 @[nolint defsWithUnderscore]
 def aux_DeltaM (α β : ℝ) : Set ℝ² := {0, e1, M α β e1}
 
-/-- The unit vector `u_θ = (cos θ, sin θ)` for a real angle `θ`. -/
-@[nolint defsWithUnderscore]
-def aux_uR (θ : ℝ) : ℝ² := !₂[Real.cos θ, Real.sin θ]
-
-lemma aux_uR_periodic : Function.Periodic aux_uR (2 * π) := by
-  intro θ; ext i; fin_cases i <;> simp [aux_uR]
-
-/-- The unit vector `u_θ = (cos θ, sin θ)` for `θ ∈ ℝ/(2πℤ)` (part of `\label{def:geometry}`). -/
-def u (θ : Ang) : ℝ² := aux_uR_periodic.lift θ
-
 @[simp] lemma aux_u_coe (θ : ℝ) : u (θ : Ang) = aux_uR θ := rfl
 
 /-- The unit vector `v_θ = J u_θ` (part of `\label{def:geometry}`). -/
 def v (θ : Ang) : ℝ² := J (u θ)
-
-/-- Probability arclength `dσ(θ) = dθ/(2π)` on `ℝ/(2πℤ)` (part of `\label{def:geometry}`). -/
-def σ : Measure Ang := AddCircle.haarAddCircle
-
-instance : IsProbabilityMeasure σ := by unfold σ; infer_instance
 
 /-- The measure `σ_r`, the pushforward of `σ` under `θ ↦ r u_θ`
 (part of `\label{def:geometry}`). -/
@@ -471,18 +432,6 @@ lemma aux_lw_mM_hM (α β : ℝ) : aux_mM α β * aux_hM α β ≤ |β| / 8 := b
 
 /-! ### The derivative of the pair-displacement map -/
 
-/-- First standard basis vector (auxiliary for `lem:triple-l2`). -/
-@[nolint defsWithUnderscore]
-def aux_lw_e0 : ℝ² := EuclideanSpace.single 0 1
-
-/-- Second standard basis vector (auxiliary for `lem:triple-l2`). -/
-@[nolint defsWithUnderscore]
-def aux_lw_e1 : ℝ² := EuclideanSpace.single 1 1
-
-/-- `u_t = cos t e₀ + sin t e₁` (auxiliary for `lem:triple-l2`). -/
-lemma aux_lw_uR_eq : aux_uR = fun t => Real.cos t • aux_lw_e0 + Real.sin t • aux_lw_e1 := by
-  funext t; ext i; fin_cases i <;> simp [aux_uR, aux_lw_e0, aux_lw_e1]
-
 /-- `d/dt u_t = v_t = J u_t` (auxiliary for `lem:triple-l2`). -/
 lemma aux_lw_uR_hasDerivAt (t : ℝ) : HasDerivAt aux_uR (J (aux_uR t)) t := by
   have := ((Real.hasDerivAt_cos t).smul_const aux_lw_e0).add
@@ -491,11 +440,6 @@ lemma aux_lw_uR_hasDerivAt (t : ℝ) : HasDerivAt aux_uR (J (aux_uR t)) t := by
     ext i; fin_cases i <;> simp [aux_lw_e0, aux_lw_e1, aux_uR]
   rw [e, aux_lw_uR_eq]
   exact this
-
-/-- `u` is smooth (auxiliary for `lem:triple-l2`). -/
-lemma aux_lw_uR_contDiff {n : WithTop ℕ∞} : ContDiff ℝ n aux_uR := by
-  rw [aux_lw_uR_eq]
-  exact (Real.contDiff_cos.smul contDiff_const).add (Real.contDiff_sin.smul contDiff_const)
 
 /-- The differential `DH(t,s) w = w₁ M v_s - w₀ v_t` of `aux_Hpair` (auxiliary for
 `lem:triple-l2`, see `aux_sc_lw_pairmap_jacobian`). -/
@@ -1030,13 +974,6 @@ def aux_NM (α β : ℝ) : ℕ := ⌈π / aux_hM α β⌉₊ + 1
 @[nolint defsWithUnderscore]
 def aux_C_pre_LW (α β : ℝ) : ℝ := aux_NM α β / (2 * π) * Real.sqrt (2 / |β|)
 
-/-- `θ ↦ u_θ` is continuous on `ℝ/(2πℤ)` (auxiliary for `lem:triple-l2`). -/
-lemma aux_lw_u_continuous : Continuous u :=
-  continuous_coinduced_dom.mpr (aux_lw_uR_contDiff (n := 0)).continuous
-
-/-- `θ ↦ u_θ` is measurable (auxiliary for `lem:triple-l2`). -/
-lemma aux_lw_u_meas : Measurable u := aux_lw_u_continuous.measurable
-
 /-- Probability arclength as normalized length on `(0, 2π]` (auxiliary for `lem:triple-l2`). -/
 lemma aux_lw_sigma_lintegral (F : Ang → ℝ≥0∞) :
     ∫⁻ θ, F θ ∂σ = (ENNReal.ofReal (2 * π))⁻¹ * ∫⁻ t in Ioc 0 (2 * π), F t := by
@@ -1299,36 +1236,6 @@ theorem lem_geometry_measurePreserving (α β : ℝ) (j : Fin 3) :
     (hsk.comp (Measure.measurePreserving_swap (μ := (volume : Measure ℝ²)) (ν := σ)))
 
 /-! ### Finite complex measures and the counting form (`def:form`) -/
-
-namespace FCMeasure
-
-/-- The uniform probability measure `σ` on the unit circle, as the pushforward of `dθ/(2π)`
-under `θ ↦ u_θ` (part of `\label{def:geometry}`). -/
-def sigma : FCMeasure where
-  Z := Ang
-  m := σ
-  w := fun _ => 1
-  φ := u
-  measurable_φ := aux_lw_u_meas
-  integrable_w := integrable_const 1
-
-end FCMeasure
-
-/-- The counting form (`\label{def:form}`)
-$$\Lambda_\nu(f_0,f_1,f_2)=\int_{\R^2}\int_{\R^2}\prod_{j=0}^2 f_j(x+L_ju)\,dx\,d\nu(u),$$
-with $L_0=0$, $L_1=I$, $L_2=M$.  (Lean's integral returns a junk value when the integral is
-not absolutely convergent.) -/
-def form (α β : ℝ) (ν : FCMeasure) (f₀ f₁ f₂ : ℝ² → ℂ) : ℂ :=
-  ∫ z, (∫ x, f₀ x * f₁ (x + ν.φ z) * f₂ (x + M α β (ν.φ z))) * ν.w z ∂ν.m
-
-/-- The endpoint norm (`\label{def:form}`)
-$\|\Lambda_\nu\|_i=\sup\{|\Lambda_\nu(f_0,f_1,f_2)| : \|f_i\|_\infty\le1,\ \|f_j\|_2\le1\ (j\ne
-i)\}$,
-valued in `ℝ≥0∞`. -/
-def endNorm (α β : ℝ) (ν : FCMeasure) (i : Fin 3) : ℝ≥0∞ :=
-  ⨆ (f : Fin 3 → ℝ² → ℂ) (_ : ∀ j, AEStronglyMeasurable (f j) volume)
-    (_ : eLpNorm (f i) ⊤ volume ≤ 1) (_ : ∀ j, j ≠ i → eLpNorm (f j) 2 volume ≤ 1),
-    ‖form α β ν (f 0) (f 1) (f 2)‖ₑ
 
 /-- The norm $\|\Lambda_\nu\|=\|\Lambda_\nu\|_2$, the `L² × L² × L^∞` operator norm
 (`\label{def:form}`). -/

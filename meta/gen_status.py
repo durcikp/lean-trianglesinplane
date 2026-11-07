@@ -3,7 +3,7 @@ import re, datetime, subprocess
 tex = open('blueprint/triangles_in_the_plane_blueprint.tex').read().split('\n')
 ts = subprocess.check_output(['date', '+%Y-%m-%dT%H:%M:%S%z']).decode().strip()
 files = {
- 'Introduction and foundations': 'Auto/IntroductionFoundations/IntroductionFoundations.lean',
+ 'Introduction and foundations': 'Auto/Theorems.lean',
  'Analytic prerequisites with proofs': 'Auto/AnalyticPrerequisitesProofs/',
  'Fourier analysis in the required form': 'Auto/AnalyticPrerequisitesProofs/FourierAnalysisRequiredForm.lean',
  'The compactness facts used for circle operators': 'Auto/AnalyticPrerequisitesProofs/CompactnessFactsCircleOperators.lean',

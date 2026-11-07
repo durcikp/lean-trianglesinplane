@@ -136,3 +136,10 @@ formalization from the blueprint. Each entry records the date/time and the bluep
 - (2026-11-06T17:04:53-08:00) Resolution of the scope entry above: at the user's request (P8) Section `sec:inverse` ("The Fourier inverse
   consequence", former tex lines 4267–4344, labels `inv:smooth`, `inv:consequence`) was removed from the blueprint, since
   neither Theorem A nor Theorem B uses it; its Status.md entries were removed with it.
+- (2026-11-06T19:16:32-08:00) Deviation by user decision (P13–P15), Section `sec:introduction`: instead of a section folder, the definitions
+  needed to state Theorems A and B live in `Auto/Definitions.lean` and their statements in `Auto/Theorems.lean` as the
+  Props `TheoremA`, `TheoremB` (Prop-valued definitions rather than `theorem`s, since these files import no proofs); the
+  proofs are `den_main_general` and `tail_smoothing`, which inhabit exactly these Props (checked).
+- (2026-11-06T19:34:54-08:00) Resolution of the previous entry (P16): \`Auto/Theorems.lean\` now imports the proof files and states Theorems A and
+  B as \`theorem\`s (\`intro_density\`, \`intro_smoothing\`) instead of Prop-valued definitions; the definitions remain in
+  \`Auto/Definitions.lean\`.
