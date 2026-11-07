@@ -1139,6 +1139,7 @@ Suppose $z\mapsto c_z(s)$ is measurable for each $s\in\mathbb R^2$, and every $c
 Lipschitz and positive definite with $c_z(0)\le1$.  Let $\nu_z$ be the measures supplied by
 Theorem `ext:bochner`.  Then $z\mapsto\nu_z(B)$ is measurable for every Borel set
 $B\subset\mathbb R^2$. -/
+@[nolint unusedArguments]
 theorem ext_measurable_spectral {Z : Type*} [MeasurableSpace Z] (c : Z → ℝ² → ℂ)
     (hmeas : ∀ s, Measurable fun z => c z s) (hL : ∀ z, ∃ L, LipschitzWith L (c z))
     (hpd : ∀ z, IsPositiveDefinite (c z)) (h1 : ∀ z, c z 0 ≤ 1)
@@ -1195,6 +1196,7 @@ def IsMeasurableKernel {X E : Type*} [MeasurableSpace X] [MeasurableSpace E]
 
 /-- Auxiliary (for `ext:kernel-integration`): the Mathlib kernel `ProbabilityTheory.Kernel X E`
 underlying a measurable kernel family `ν` (`IsMeasurableKernel ν`). -/
+@[nolint defsWithUnderscore]
 def aux_toKernel {X E : Type*} [MeasurableSpace X] [MeasurableSpace E] {ν : X → Measure E}
     (hν : IsMeasurableKernel ν) : Kernel X E :=
   ⟨ν, Measure.measurable_of_measurable_coe _ hν.2⟩

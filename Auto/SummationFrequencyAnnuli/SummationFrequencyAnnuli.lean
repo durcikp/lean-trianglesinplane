@@ -42,6 +42,7 @@ namespace Auto
 /-- Auxiliary: the hypotheses on the fixed cutoff `χ` of `\label{tail:annular-definition}`:
 a real radial function $\chi\in C_c^\infty(\mathbb R^2)$ which equals one on $B(0,1)$ and
 vanishes outside $B(0,2)$. -/
+@[nolint defsWithUnderscore]
 def aux_IsTailCutoff (χ : ℝ² → ℝ) : Prop :=
   ContDiff ℝ (⊤ : ℕ∞) χ ∧ (∀ x y : ℝ², ‖x‖ = ‖y‖ → χ x = χ y) ∧
     (∀ b : ℝ², ‖b‖ < 1 → χ b = 1) ∧ (∀ b : ℝ², 2 ≤ ‖b‖ → χ b = 0)
@@ -227,6 +228,7 @@ theorem aux_tail_annular_definition (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff
 /-- Auxiliary: the `L²` Fourier transform $\widehat f$ of an input `f` (Mathlib's `𝓕` on
 `Lp ℂ 2`), as a function; it is `0` if `f ∉ L²` (never used in that case).  Used in
 `Auto.tail_fourier` and `Auto.tailMu`. -/
+@[nolint defsWithUnderscore]
 def aux_l2Fourier (f : ℝ² → ℂ) : ℝ² → ℂ := by
   classical
   exact if hf : MemLp f 2 volume then ⇑(𝓕 (hf.toLp f) : Lp ℂ 2 (volume : Measure ℝ²)) else 0
@@ -316,6 +318,7 @@ theorem aux_tail_form_lip (α β : ℝ) (hβ : β ≠ 0) :
 /-- Auxiliary for `tail:fourier`: the frequency-side trilinear expression
 $\iint G_0(-\xi_1-\xi_2)G_1(\xi_1)G_2(\xi_2)\widehat\sigma(b)\psi(b/r)\,d\xi_1d\xi_2$,
 $b=\xi_1+M^T\xi_2$, appearing in `Auto.tail_fourier`. -/
+@[nolint defsWithUnderscore]
 def aux_tailI (α β : ℝ) (χ : ℝ² → ℝ) (r : ℝ) (G₀ G₁ G₂ : ℝ² → ℂ) : ℂ :=
   ∫ ξ : ℝ² × ℝ², G₀ (-ξ.1 - ξ.2) * G₁ ξ.1 * G₂ ξ.2 *
     (FCMeasure.sigma.fourier (ξ.1 + ContinuousLinearMap.adjoint (M α β) ξ.2) *
@@ -932,10 +935,12 @@ theorem aux_tail_AI_eq (α β : ℝ) : tailA α β - 1 = simil (α - 1) (-β) :=
   constructor <;> simp <;> ring
 
 /-- Auxiliary for `tail:separation`: the coefficients of `T₀ = (A-I)⁻¹`. -/
+@[nolint defsWithUnderscore]
 def aux_tailT0c (α β : ℝ) : ℝ × ℝ :=
   ((α - 1) / ((α - 1) ^ 2 + β ^ 2), β / ((α - 1) ^ 2 + β ^ 2))
 
 /-- Auxiliary for `tail:separation`: the coefficients of `A⁻¹`. -/
+@[nolint defsWithUnderscore]
 def aux_tailAinvc (α β : ℝ) : ℝ × ℝ := (α / (α ^ 2 + β ^ 2), β / (α ^ 2 + β ^ 2))
 
 /-- Auxiliary for `tail:separation`: `(A - I)⁻¹` as a similarity. -/
@@ -1114,6 +1119,7 @@ def latticePt (q : Fin 2 → ℤ) : ℝ² := (EuclideanSpace.equiv (Fin 2) ℝ).
 /-- Auxiliary: the hypotheses on the fixed data of `\label{tail:partition-definition}`:
 a nonnegative $\varphi\in C_c^\infty(\mathbb R^2)$ with $\sum_{q\in\mathbb Z^2}\varphi(z-q)=1$,
 and a closed square $Q_*$ containing its support. -/
+@[nolint defsWithUnderscore]
 def aux_IsPartitionData (φ : ℝ² → ℝ) (Qstar : Set ℝ²) : Prop :=
   (∀ z, 0 ≤ φ z) ∧ ContDiff ℝ (⊤ : ℕ∞) φ ∧ HasCompactSupport φ ∧
     (∀ z, ∑' q : Fin 2 → ℤ, φ (z - latticePt q) = 1) ∧
@@ -1516,6 +1522,7 @@ theorem aux_tail_conv_key (m : ℝ² → ℂ) (hm : ContDiff ℝ (⊤ : ℕ∞) 
 
 /-- Auxiliary for `tail:partition`: the multiplier $\varphi(T_j\xi/(hr)-q)$ of
 $P_{j,q,r}$ (`Auto.tailP`). -/
+@[nolint defsWithUnderscore]
 def aux_tailM (α β : ℝ) (φ : ℝ² → ℝ) (h : ℝ) (j : Fin 3) (q : Fin 2 → ℤ) (r : ℝ) : ℝ² → ℂ :=
   fun ξ => (φ ((h * r)⁻¹ • tailT α β j ξ - latticePt q) : ℂ)
 
@@ -1526,6 +1533,7 @@ theorem aux_tailP_eq (α β : ℝ) (φ : ℝ² → ℝ) (h : ℝ) (j : Fin 3) (q
 
 /-- Auxiliary for `tail:partition`: the inverses `V₀ = A - I`, `V₁ = -A`, `V₂ = I` of the maps
 `T_j` of `tail:coordinates`. -/
+@[nolint defsWithUnderscore]
 def aux_tailVmap (α β : ℝ) : Fin 3 → (ℝ² →L[ℝ] ℝ²) := ![tailA α β - 1, -tailA α β, 1]
 
 /-- Auxiliary for `tail:partition`: `T_j V_j = I`. -/
@@ -1841,6 +1849,7 @@ theorem aux_tail_l2F_sum {ι : Type*} [Countable ι] (s : Finset ι) (g : ι →
   exact Finset.sum_congr rfl fun i _ => by rw [aux_tail_l2F_eq (hg i)]
 
 /-- Auxiliary for `tail:partition`: the box `{-N,…,N}²` of lattice points. -/
+@[nolint defsWithUnderscore]
 def aux_tailBox (N : ℕ) : Finset (Fin 2 → ℤ) :=
   Fintype.piFinset fun _ => Finset.Icc (-(N : ℤ)) N
 
@@ -2254,6 +2263,7 @@ theorem tail_partition (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (hχ 
 
 /-- Auxiliary: inputs with $\|f_j\|_2,\|f_j\|_\infty\le B$ for all `j` (used in
 `\label{tail:one-triple}`, `\label{tail:bound}` and Section `tail:approximation-section`). -/
+@[nolint defsWithUnderscore]
 def aux_IsBothBounded (B : ℝ) (f : Fin 3 → ℝ² → ℂ) : Prop :=
   ∀ j, AEStronglyMeasurable (f j) volume ∧ eLpNorm (f j) 2 volume ≤ ENNReal.ofReal B ∧
     eLpNorm (f j) ⊤ volume ≤ ENNReal.ofReal B
@@ -2265,10 +2275,12 @@ def tailMasses (α β : ℝ) (f : Fin 3 → ℝ² → ℂ) (Qstar : Set ℝ²) (
 
 /-- Auxiliary: the middle value `n` of three numbers `m ≤ n ≤ p` (used in
 `\label{tail:one-triple}` and `\label{tail:increment}`). -/
+@[nolint defsWithUnderscore]
 def aux_med3 (x : Fin 3 → ℝ≥0∞) : ℝ≥0∞ := max (min (x 0) (x 1)) (min (max (x 0) (x 1)) (x 2))
 
 /-- Auxiliary: the largest value `p` of three numbers `m ≤ n ≤ p` (used in
 `\label{tail:one-triple}` and `\label{tail:increment}`). -/
+@[nolint defsWithUnderscore]
 def aux_max3 (x : Fin 3 → ℝ≥0∞) : ℝ≥0∞ := max (max (x 0) (x 1)) (x 2)
 
 /-- Auxiliary for `tail:one-triple`: an index of the largest of three numbers; the other two are
@@ -2771,6 +2783,7 @@ For the square families and contributing triples of Lemma `tail:partition`, ther
 constants $0<c<C$ such that
 $$\sum_{\mathrm{contributing}}np^{1/4}\le C_M\big(H(Cr)-H(cr)\big),$$
 where $m\le n\le p$ are the masses of the three squares in each triple. -/
+@[nolint unusedArguments]
 theorem tail_increment (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ)
     (φ : ℝ² → ℝ) (Qstar : Set ℝ²) (hφ : aux_IsPartitionData φ Qstar) (h : ℝ)
     (hh : aux_TailPartitionScale α β χ φ Qstar h) :
@@ -2883,6 +2896,7 @@ $[0,\infty]$-valued $H$, which makes the boundedness hypothesis unnecessary).
 For $0<c<C$, every nondecreasing bounded function $H$ satisfies
 $$\sum_{k=0}^{\infty}\big(H(C2^kR)-H(c2^kR)\big)\le D\sup_{t>0}H(t),$$
 provided $H\ge0$ and $D$ is any positive integer with $2^Dc\ge C$. -/
+@[nolint unusedArguments]
 theorem tail_telescoping (c C : ℝ) (hc : 0 < c) (hcC : c < C) (H : ℝ → ℝ≥0∞)
     (hH : MonotoneOn H (Ioi 0)) (D : ℕ) (hD : 0 < D) (hDc : C ≤ 2 ^ D * c) (R : ℝ)
     (hR : 0 < R) :
@@ -2932,6 +2946,7 @@ theorem tail_telescoping (c C : ℝ) (hc : 0 < c) (hcC : c < C) (H : ℝ → ℝ
 
 /-- Auxiliary for `tail:bound`: the one-dimensional bump `φ₁(t) = s(t) - s(t-1)` built from the
 smooth transition `s`; its integer translates sum to one. -/
+@[nolint defsWithUnderscore]
 def aux_tailPhi1 (t : ℝ) : ℝ := Real.smoothTransition t - Real.smoothTransition (t - 1)
 
 /-- Auxiliary for `tail:bound`: `φ₁ ≥ 0`. -/

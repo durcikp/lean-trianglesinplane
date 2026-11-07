@@ -154,3 +154,8 @@ These override conflicting instructions above (recorded 2026-11-06T12:53-08:00).
   no `sorry`/`admit`/`axiom`/`native_decide` in `Auto/`; all 257 public declaration statements identical to the
   last commit; `#print axioms` on all 155 public theorems: 153 exactly [propext, Classical.choice, Quot.sound],
   2 a subset; `intro_density` and `intro_smoothing`: [propext, Classical.choice, Quot.sound].
+- Linter cleanup (P12, completed 2026-11-06T19:00:13-08:00): Mathlib's `#lint in Auto` reports "All linting checks passed" (0 issues in 1299
+  declarations). Intentional exceptions are marked `@[nolint defsWithUnderscore]` (`aux_`/`C_` names required by these
+  instructions) and `@[nolint unusedArguments]` (unused manuscript hypotheses of public theorems); unused instance
+  arguments of `aux_` lemmas were removed with `omit ... in`. Forced full `lake build`: 0 warnings, 0 errors, 0 infos;
+  no placeholders; public statements unchanged; Theorems A and B: [propext, Classical.choice, Quot.sound].

@@ -47,6 +47,7 @@ translation $h$ in `\label{rig:common-core}` (see `Auto.rig_common_core`): it is
 $c/4$ with $F_h\subset E\cap E_h$, $Y_{j,h}\subset X_j\cap(X_j-h)$, and
 $\mu(E\setminus F_h)=\mu(E_h\setminus F_h)\le4\eta(h)$, where $\eta(h)=\mu(E\setminus E_h)$.
 Also used in `Auto.rig_translation_matrices`. -/
+@[nolint defsWithUnderscore]
 def aux_IsCommonCore (α β c : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ²) (h : ℝ²)
     (F : Set (ℝ² × Ang)) (Y : Fin 3 → Set ℝ²) : Prop :=
   IsCore α β F Y (c / 4) ∧ F ⊆ E ∩ baseShift h E ∧
@@ -55,11 +56,13 @@ def aux_IsCommonCore (α β c : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set
 
 /-- Auxiliary: the limit vertex sets `Y_j = ⋂ₙ X_j^{(n)}` of the deletion process of `rig:prune`
 at threshold `t`, started at `(X, E₀)` (used for `Auto.rig_common_core`). -/
+@[nolint defsWithUnderscore]
 def aux_rig_pruneY (α β t : ℝ) (X : Fin 3 → Set ℝ²) (E₀ : Set (ℝ² × Ang)) : Fin 3 → Set ℝ² :=
   fun j => ⋂ n, (aux_pruneSeq α β t X E₀ n).1 j
 
 /-- Auxiliary: the limit configuration set `F = ⋂ₙ E^{(n)}` of the deletion process of
 `rig:prune` at threshold `t`, started at `(X, E₀)` (used for `Auto.rig_common_core`). -/
+@[nolint defsWithUnderscore]
 def aux_rig_pruneF (α β t : ℝ) (X : Fin 3 → Set ℝ²) (E₀ : Set (ℝ² × Ang)) : Set (ℝ² × Ang) :=
   ⋂ n, (aux_pruneSeq α β t X E₀ n).2
 
@@ -447,6 +450,7 @@ theorem aux_rig_prod_integrable (b : OrthonormalBasis (Fin d) ℝ (kernelSpace �
 
 /-- Auxiliary: the Gram matrix `∑_j ∫_{S_j} Φ_j(z)ᵀ Φ_j(z+h) dz` (proof of
 `rig:translation-matrices`, `Auto.rig_translation_matrices`). -/
+@[nolint defsWithUnderscore]
 def aux_rig_gram (b : OrthonormalBasis (Fin d) ℝ (kernelSpace α β E X)) (S : Fin 3 → Set ℝ²)
     (h : ℝ²) : Matrix (Fin d) (Fin d) ℝ :=
   Matrix.of fun k l => ∑ j, ∫ z in S j, basisRow b j z k * basisRow b j (z + h) l
@@ -993,6 +997,7 @@ theorem rig_translation_matrices (α β : ℝ) (hβ : β ≠ 0) (E : Set (ℝ² 
 
 /-- Auxiliary: the analytic representation `P(h) = exp(h₁T₁ + h₂T₂)` of `ℝ²` given by commuting
 matrices (proof of `rig:pieces`, `Auto.rig_pieces`). -/
+@[nolint defsWithUnderscore]
 def aux_rig_expRep {d : ℕ} (T₁ T₂ : Matrix (Fin d) (Fin d) ℝ) (h : ℝ²) :
     Matrix (Fin d) (Fin d) ℝ :=
   NormedSpace.exp (h 0 • T₁ + h 1 • T₂)

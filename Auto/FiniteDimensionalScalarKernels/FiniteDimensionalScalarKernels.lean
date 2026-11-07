@@ -192,6 +192,7 @@ theorem aux_degree_setLIntegral (α β : ℝ) (j : Fin 3) (E : Set (ℝ² × Ang
 /-- Auxiliary: one deletion step of the proof of `rig:prune` at threshold `c`: keep the vertices
 `z ∈ X_j^{(m)}` with `d_{j,E^{(m)}}(z) ≥ c` and the configurations all of whose vertices are kept.
 Used for `Auto.rig_prune`. -/
+@[nolint defsWithUnderscore]
 def aux_pruneStep (α β c : ℝ) (XE : (Fin 3 → Set ℝ²) × Set (ℝ² × Ang)) :
     (Fin 3 → Set ℝ²) × Set (ℝ² × Ang) :=
   (fun j => {z ∈ XE.1 j | c ≤ degree α β j XE.2 z},
@@ -199,6 +200,7 @@ def aux_pruneStep (α β c : ℝ) (XE : (Fin 3 → Set ℝ²) × Set (ℝ² × A
 
 /-- Auxiliary: the `m`-th stage `(X^{(m)}, E^{(m)})` of the deletion process (proof of
 `rig:prune`, `Auto.rig_prune`). -/
+@[nolint defsWithUnderscore]
 abbrev aux_pruneSeq (α β c : ℝ) (X : Fin 3 → Set ℝ²) (E : Set (ℝ² × Ang)) (n : ℕ) :
     (Fin 3 → Set ℝ²) × Set (ℝ² × Ang) :=
   (aux_pruneStep α β c)^[n] (X, E)
@@ -503,6 +505,7 @@ theorem aux_extFun_smul (S : Set ℝ²) (hS : MeasurableSet S) (c : ℝ)
 
 /-- Auxiliary: extension by zero `L²(S) → L²(ℝ²)` for measurable `S`, as a continuous linear map
 (used for `Auto.incidenceOp`, `rig:def-kernel`). -/
+@[nolint defsWithUnderscore]
 def aux_extLp (S : Set ℝ²) (hS : MeasurableSet S) :
     Lp ℝ 2 (volume.restrict S) →L[ℝ] Lp ℝ 2 (volume : Measure ℝ²) :=
   LinearMap.mkContinuous
@@ -523,6 +526,7 @@ theorem aux_extLp_coe (S : Set ℝ²) (hS : MeasurableSet S) (f : Lp ℝ 2 (volu
 
 /-- Auxiliary: one vertex block `g ↦ (1_{X_j} g) ∘ π_j` of `D_E`, as a continuous linear map
 `L²(X_j) → L²(E, μ)` (used for `Auto.incidenceOp`, `rig:def-kernel`). -/
+@[nolint defsWithUnderscore]
 def aux_incBlock (α β : ℝ) (E : Set (ℝ² × Ang)) (S : Set ℝ²) (hS : MeasurableSet S) (j : Fin 3) :
     Lp ℝ 2 (volume.restrict S) →L[ℝ] Lp ℝ 2 (μinc.restrict E) :=
   (LpToLpRestrictCLM (ℝ² × Ang) ℝ ℝ μinc 2 E) ∘L
@@ -604,6 +608,7 @@ def baseShift (h : ℝ²) (E : Set (ℝ² × Ang)) : Set (ℝ² × Ang) :=
   {p | (p.1 + h, p.2) ∈ E}
 
 /-- Auxiliary: the vertex sets `X_j - h` of the base translate `E_h` (`Auto.baseShift`). -/
+@[nolint defsWithUnderscore]
 def aux_vertexShift (h : ℝ²) (X : Fin 3 → Set ℝ²) : Fin 3 → Set ℝ² :=
   fun j => (fun z => z + h) ⁻¹' X j
 
@@ -644,6 +649,7 @@ theorem aux_shear_ae {V : Type*} (N : ℝ² →L[ℝ] ℝ²) {F F' : ℝ² → V
 \,d\sigma(\theta)$ of $D_E^*D_E$ from the proof of `rig:kernel-gap` (for `i = j` it is
 multiplication by the degree, see `Auto.aux_Tfun_diag`).  Used for `Auto.rig_kernel_gap` and
 `Auto.rig_kernel_ui`. -/
+@[nolint defsWithUnderscore]
 def aux_Tfun (α β : ℝ) (E : Set (ℝ² × Ang)) (i j : Fin 3) (F : ℝ² → ℝ) (z : ℝ²) : ℝ :=
   ∫ θ, E.indicator (fun _ => (1 : ℝ)) (z - Lv α β j (u θ), θ) *
     F (z + (Lv α β i - Lv α β j) (u θ)) ∂σ
@@ -902,6 +908,7 @@ theorem aux_block_compact (α β : ℝ) (hβ : β ≠ 0) (E : Set (ℝ² × Ang)
 
 
 /-- Auxiliary: the inclusion of the `j`-th summand into `𝓗_E` (`rig:def-kernel`). -/
+@[nolint defsWithUnderscore]
 def aux_singleCLM (X : Fin 3 → Set ℝ²) (j : Fin 3) :
     Lp ℝ 2 (volume.restrict (X j)) →L[ℝ] HE X :=
   (PiLp.continuousLinearEquiv 2 ℝ
@@ -934,6 +941,7 @@ theorem aux_inner_Lp_restrict (S : Set ℝ²) (hS : MeasurableSet S) (x y : Lp �
 
 /-- Auxiliary: the `(i, j)` block operator `ι_j ∘ T_{ji} ∘ π_i` on `𝓗_E` (zero for `i = j`);
 used to assemble the compact part of `D_E^*D_E` in `Auto.aux_K_exists`. -/
+@[nolint defsWithUnderscore]
 def aux_blockTerm (X : Fin 3 → Set ℝ²)
     (T : (i j : Fin 3) → i ≠ j →
       Lp ℝ 2 (volume.restrict (X i)) →L[ℝ] Lp ℝ 2 (volume.restrict (X j)))
@@ -1218,6 +1226,7 @@ theorem aux_kernel_gap_core (α β : ℝ) (hβ : β ≠ 0) (E : Set (ℝ² × An
 
 /-- Auxiliary: the translation `z ↦ z - h` identifies `L²(X - h)` with `L²(X)` isometrically
 (base translation in the proof of `rig:kernel-gap`). -/
+@[nolint defsWithUnderscore]
 def aux_shiftLp (h : ℝ²) (S : Set ℝ²) (hS : MeasurableSet S) :
     Lp ℝ 2 (volume.restrict ((fun z => z + h) ⁻¹' S)) ≃ₗᵢ[ℝ] Lp ℝ 2 (volume.restrict S) :=
   have hσ : MeasurePreserving (fun z : ℝ² => z + h)
@@ -1255,6 +1264,7 @@ theorem aux_shiftLp_coe (h : ℝ²) (S : Set ℝ²) (hS : MeasurableSet S)
 
 /-- Auxiliary: the unitary identification `𝓗_{E_h} ≅ 𝓗_E` induced by a base translation
 (proof of `rig:kernel-gap`). -/
+@[nolint defsWithUnderscore]
 def aux_shiftHE (h : ℝ²) (X : Fin 3 → Set ℝ²) (hX : ∀ j, MeasurableSet (X j)) :
     HE (aux_vertexShift h X) ≃ₗᵢ[ℝ] HE X :=
   LinearIsometryEquiv.piLpCongrRight 2 (fun j => aux_shiftLp h (X j) (hX j))
@@ -1593,6 +1603,7 @@ theorem rig_kernel_ui (α β : ℝ) (hβ : β ≠ 0) :
 
 /-- Auxiliary: restriction of an `L²(μ)` class to a smaller measure `ν ≤ μ` (the restriction
 map of `rig:kernel-stability`). -/
+@[nolint defsWithUnderscore]
 def aux_resLp {μ ν : Measure ℝ²} (h : ν ≤ μ) (f : Lp ℝ 2 μ) : Lp ℝ 2 ν :=
   ((Lp.memLp f).mono_measure h).toLp f
 
@@ -1603,6 +1614,7 @@ theorem aux_resLp_coe {μ ν : Measure ℝ²} (h : ν ≤ μ) (f : Lp ℝ 2 μ) 
 
 /-- Auxiliary: the restriction map `𝓗_E → 𝓗_F`, `f ↦ (f_j|_{Y_j})_j`
 (`rig:kernel-stability`). -/
+@[nolint defsWithUnderscore]
 def aux_res (X Y : Fin 3 → Set ℝ²) (hYX : ∀ j, Y j ⊆ X j) : HE X →ₗ[ℝ] HE Y where
   toFun f := WithLp.toLp 2 fun j =>
     aux_resLp (Measure.restrict_mono (hYX j) le_rfl) (f j)
@@ -1635,6 +1647,7 @@ theorem aux_res_coe (X Y : Fin 3 → Set ℝ²) (hYX : ∀ j, Y j ⊆ X j) (f : 
   aux_resLp_coe (Measure.restrict_mono (hYX j) le_rfl) _
 
 /-- Auxiliary: extension by zero `L²(S) → L²(T)` for `S ⊆ T` (`rig:kernel-stability`). -/
+@[nolint defsWithUnderscore]
 def aux_extLp' {S T : Set ℝ²} (hS : MeasurableSet S) (hST : S ⊆ T)
     (f : Lp ℝ 2 (volume.restrict S)) : Lp ℝ 2 (volume.restrict T) :=
   (show MemLp (S.indicator ⇑f) 2 (volume.restrict T) by
@@ -1654,6 +1667,7 @@ theorem aux_extLp'_norm {S T : Set ℝ²} (hS : MeasurableSet S) (hST : S ⊆ T)
     eLpNorm_indicator_eq_eLpNorm_restrict hS, Measure.restrict_restrict_of_subset hST]
 
 /-- Auxiliary: the zero-extension map `𝓗_F → 𝓗_E` (`rig:kernel-stability`). -/
+@[nolint defsWithUnderscore]
 def aux_ext (X Y : Fin 3 → Set ℝ²) (hY : ∀ j, MeasurableSet (Y j)) (hYX : ∀ j, Y j ⊆ X j) :
     HE Y →ₗ[ℝ] HE X where
   toFun f := WithLp.toLp 2 fun j => aux_extLp' (hY j) (hYX j) (f j)

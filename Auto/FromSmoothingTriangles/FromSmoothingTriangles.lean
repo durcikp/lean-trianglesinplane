@@ -53,6 +53,7 @@ theorem aux_den_form_le_endNorm (α β : ℝ) (ν : FCMeasure) (i : Fin 3) (f : 
 
 /-- The inner integral $G_f(v)=\int f_0(x)f_1(x+v)f_2(x+Mv)\,dx$ of the counting form
 (auxiliary for `den_continuity`). -/
+@[nolint defsWithUnderscore]
 def aux_den_G (α β : ℝ) (f : Fin 3 → ℝ² → ℂ) (v : ℝ²) : ℂ :=
   ∫ x, f 0 x * f 1 (x + v) * f 2 (x + M α β v)
 
@@ -229,6 +230,7 @@ theorem aux_den_cont_bound (α β : ℝ) (ρ : ℝ² → ℂ) (hρ : Integrable 
     _ = _ := by ring
 
 /-- The unit square $[0,1]^2$ (auxiliary for `den_continuity`). -/
+@[nolint defsWithUnderscore]
 def aux_den_unitSq : Set ℝ² := (WithLp.ofLp (p := 2) (V := Fin 2 → ℝ)) ⁻¹' (Set.Icc 0 1)
 
 /-- A probability density on the plane: the indicator of the unit square (auxiliary for
@@ -321,6 +323,7 @@ theorem aux_volume_squareAt (z : ℝ²) (L : ℝ) (hL : 0 ≤ L) :
 set_option linter.unusedVariables false in
 /-- **Lemma `den:dense-squares`** (dense squares). If $0<\delta<d^*(E)$, there are squares $Q$ of
 arbitrarily large side length for which $|E\cap Q|\ge\delta|Q|$. -/
+@[nolint unusedArguments]
 theorem den_dense_squares_exists (E : Set ℝ²) (δ : ℝ) (hδ : 0 < δ)
     (hd : ENNReal.ofReal δ < upperBanachDensity E) (L₀ : ℝ) :
     ∃ (z : ℝ²) (L : ℝ), L₀ ≤ L ∧ 0 < L ∧
@@ -362,6 +365,7 @@ theorem den_dense_squares_missed (α β : ℝ) (E A : Set ℝ²) (hA : A ⊆ E) 
 set_option linter.unusedVariables false in
 /-- **Lemma `den:dense-squares`** (exact copies). If $D_s(\mathbf 1_A)>0$, then $A$, and hence
 $E$, contains a translate of a rotation of $s\{0,e_1,Me_1\}$. -/
+@[nolint unusedArguments]
 theorem den_dense_squares_copy (α β : ℝ) (A : Set ℝ²) (hA : MeasurableSet A) (s : ℝ)
     (hpos : 0 < triangleCount α β s (A.indicator 1)) :
     ∃ (x : ℝ²) (t : ℝ), ∀ p ∈ ({0, e1, M α β e1} : Set ℝ²), x + rot t (s • p) ∈ A := by
@@ -415,11 +419,13 @@ instance aux_instFiniteLine {α ι : Type*} [Finite α] [Finite ι] :
 
 /-- A `Fintype` structure on lines (auxiliary, for `den_line_number` and
 `den_weighted_lower`). -/
+@[nolint defsWithUnderscore]
 noncomputable instance aux_instFintypeLine {α ι : Type*} [Finite α] [Finite ι] :
     Fintype (Combinatorics.Line α ι) := Fintype.ofFinite _
 
 /-- Lines are words `ι → Option α` with at least one `none` coordinate (auxiliary for
 `den_line_number`). -/
+@[nolint defsWithUnderscore]
 def aux_lineEquiv (α ι : Type*) :
     Combinatorics.Line α ι ≃ {f : ι → Option α // ∃ i, f i = none} where
   toFun l := ⟨l.idxFun, l.proper⟩
@@ -429,6 +435,7 @@ def aux_lineEquiv (α ι : Type*) :
 
 /-- Lines with variable set `J` correspond to fillings of the fixed coordinates
 (auxiliary for `den_line_number_fixed`). -/
+@[nolint defsWithUnderscore]
 def aux_lineFixedEquiv (n : ℕ) (J : Finset (Fin n)) (hJ : J.Nonempty) :
     {l : Combinatorics.Line (Fin 3) (Fin n) // lineVarSet l = J} ≃ ({i // i ∉ J} → Fin 3) where
   toFun l i := (l.1.idxFun i.1).get (by
@@ -479,15 +486,18 @@ theorem den_line_number (n : ℕ) :
 
 /-- The three directions $d_0=0$, $d_1=u_\theta$, $d_2=Mu_\theta$ in the proof of
 `den:weighted-lower` (auxiliary for `den_weighted_lower`). -/
+@[nolint defsWithUnderscore]
 def aux_den_dvec (α β : ℝ) (θ : Ang) : Fin 3 → ℝ² := ![0, u θ, M α β (u θ)]
 
 /-- The offset $a_w(\theta)=\sum_j\lambda_jd_{w_j}$ of a word in the proof of
 `den:weighted-lower` (auxiliary for `den_weighted_lower`). -/
+@[nolint defsWithUnderscore]
 def aux_den_shift {n : ℕ} (α β : ℝ) (lam : Fin n → ℝ) (θ : Ang) (w : Fin n → Fin 3) : ℝ² :=
   ∑ j, lam j • aux_den_dvec α β θ (w j)
 
 /-- The inner (in $x$) triangle integral of $\mathbf 1_A$ at scale $s$ and angle $\theta$, as a
 lower integral (auxiliary for `den_weighted_lower`). -/
+@[nolint defsWithUnderscore]
 def aux_den_T (α β : ℝ) (A : Set ℝ²) (s : ℝ) (θ : Ang) : ℝ≥0∞ :=
   ∫⁻ x, A.indicator 1 x * A.indicator 1 (x + s • u θ) * A.indicator 1 (x + s • M α β (u θ))
 
@@ -727,6 +737,7 @@ contains a combinatorial line). Let $\lambda_1,\ldots,\lambda_n>0$ and put
 $S=\max(1,\|M\|)\sum_{j=1}^n\lambda_j$. Suppose $A$ is a Borel subset of a square $Q$ with
 $|A|\ge\delta|Q|$, and that $Q'=Q+[-S,S]^2$ satisfies $|Q'|\le2|Q|$. Then, for $f=\mathbf 1_A$,
 $$\sum_{\varnothing\ne J\subset[n]}3^{n-|J|}D_{s_J}(f)\ge\frac{\delta}{2}|Q|.$$ -/
+@[nolint unusedArguments]
 theorem den_weighted_lower (α β : ℝ) (δ : ℝ) (hδ0 : 0 < δ) (hδ1 : δ ≤ 1) (n : ℕ)
     (hn : ∀ A : Finset (Fin n → Fin 3), δ / 4 * (3 : ℝ) ^ n ≤ (A.card : ℝ) → ContainsLine A)
     (lam : Fin n → ℝ) (hlam : ∀ j, 0 < lam j) (z : ℝ²) (L : ℝ) (hL : 0 < L)
@@ -797,6 +808,7 @@ set_option linter.unusedVariables false in
 /-- **Lemma `den:select-scales`**. Let $\mathcal S\subset(0,\infty)$ be unbounded. Given $n\ge1$
 and $\tau>0$, one can choose $\lambda_1<\cdots<\lambda_n$ in $\mathcal S$ such that, for every
 nonempty $J\subset[n]$ and $k=\max J$, $\|\Lambda_{\sigma_{s_J}-\sigma_{\lambda_k}}\|<\tau$. -/
+@[nolint unusedArguments]
 theorem den_select_scales (α β : ℝ) (hβ : β ≠ 0) (S : Set ℝ) (hS : S ⊆ Ioi 0)
     (hSu : ¬ BddAbove S) (n : ℕ) (hn : 1 ≤ n) (τ : ℝ) (hτ : 0 < τ) :
     ∃ lam : Fin n → ℝ, StrictMono lam ∧ (∀ k, lam k ∈ S) ∧

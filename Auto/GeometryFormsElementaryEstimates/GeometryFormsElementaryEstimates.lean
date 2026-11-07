@@ -64,6 +64,7 @@ def simil (a b : ℝ) : ℝ² →L[ℝ] ℝ² := a • ContinuousLinearMap.id �
 abbrev M (α β : ℝ) : ℝ² →L[ℝ] ℝ² := simil α β
 
 /-- The transpose `Mᵀ = αI - βJ` of the triangle matrix (part of `\label{def:geometry}`). -/
+@[nolint defsWithUnderscore]
 abbrev aux_MT (α β : ℝ) : ℝ² →L[ℝ] ℝ² := simil α (-β)
 
 /-- The rotation `R_t = (cos t) I + (sin t) J` (part of `\label{def:geometry}`). -/
@@ -76,9 +77,11 @@ def Lv (α β : ℝ) : Fin 3 → (ℝ² →L[ℝ] ℝ²) := ![0, ContinuousLinea
 def e1 : ℝ² := !₂[1, 0]
 
 /-- The normalized triangle `Δ_M = {0, e₁, M e₁}` (part of `\label{def:geometry}`). -/
+@[nolint defsWithUnderscore]
 def aux_DeltaM (α β : ℝ) : Set ℝ² := {0, e1, M α β e1}
 
 /-- The unit vector `u_θ = (cos θ, sin θ)` for a real angle `θ`. -/
+@[nolint defsWithUnderscore]
 def aux_uR (θ : ℝ) : ℝ² := !₂[Real.cos θ, Real.sin θ]
 
 lemma aux_uR_periodic : Function.Periodic aux_uR (2 * π) := by
@@ -99,6 +102,7 @@ instance : IsProbabilityMeasure σ := by unfold σ; infer_instance
 
 /-- The measure `σ_r`, the pushforward of `σ` under `θ ↦ r u_θ`
 (part of `\label{def:geometry}`). -/
+@[nolint defsWithUnderscore]
 def aux_sigmaR (r : ℝ) : Measure ℝ² := σ.map (fun θ => r • u θ)
 
 /-- The vertex projections `π_j(x, θ) = x + L_j u_θ` (part of `\label{def:geometry}`). -/
@@ -256,9 +260,11 @@ theorem lem_geometry_normalization (a b c : ℝ²) (h : ¬ Collinear ℝ {a, b, 
 /-! ### Forms, operators and dilations (`def:form`) -/
 
 /-- The character `e_a(x) = e(a·x)` (`\label{def:form}`). -/
+@[nolint defsWithUnderscore]
 def aux_ea (a : ℝ²) (x : ℝ²) : ℂ := e ⟪a, x⟫_ℝ
 
 /-- The modulation operator `𝓜_a f = e_a f` (`\label{def:form}`). -/
+@[nolint defsWithUnderscore]
 def aux_modOp (a : ℝ²) (f : ℝ² → ℂ) : ℝ² → ℂ := fun x => aux_ea a x * f x
 
 /-! ### Elementary bounds (`lem:form-basic`) -/
@@ -383,22 +389,28 @@ lemma aux_s2a_eLpNorm_comp_smul (f : ℝ² → ℂ) (lam : ℝ) (hlam : lam ≠ 
 /-! ### The local Loomis–Whitney bound -/
 
 /-- `m_M = √(α² + β²)` (part of `\label{lem:triple-l2}`). -/
+@[nolint defsWithUnderscore]
 def aux_mM (α β : ℝ) : ℝ := Real.sqrt (α ^ 2 + β ^ 2)
 
 /-- `A_M = √(1 + m_M²)` (part of `\label{lem:triple-l2}`). -/
+@[nolint defsWithUnderscore]
 def aux_AM (α β : ℝ) : ℝ := Real.sqrt (1 + aux_mM α β ^ 2)
 
 /-- `h_M = |β| / (4 A_M²)` (part of `\label{lem:triple-l2}`). -/
+@[nolint defsWithUnderscore]
 def aux_hM (α β : ℝ) : ℝ := |β| / (4 * aux_AM α β ^ 2)
 
 /-- The angular interval `I_{t*} = (t* - h_M, t* + h_M)` (part of `\label{lem:triple-l2}`). -/
+@[nolint defsWithUnderscore]
 def aux_Iint (α β tstar : ℝ) : Set ℝ := Ioo (tstar - aux_hM α β) (tstar + aux_hM α β)
 
 /-- The pair-displacement map `H_{t*}(t, s) = M u_s - u_t`, where a point `p : ℝ²` encodes
 `(t, s) = (p 0, p 1)` (used in `\label{lem:triple-l2}`). -/
+@[nolint defsWithUnderscore]
 def aux_Hpair (α β : ℝ) (p : ℝ²) : ℝ² := M α β (aux_uR (p 1)) - aux_uR (p 0)
 
 /-- The square `I_{t*}²`, as a subset of `ℝ²` (used in `\label{lem:triple-l2}`). -/
+@[nolint defsWithUnderscore]
 def aux_Isq (α β tstar : ℝ) : Set ℝ² := {p | p 0 ∈ aux_Iint α β tstar ∧ p 1 ∈ aux_Iint α β tstar}
 
 /-- Squared Euclidean norm in coordinates (auxiliary for `aux_sc_lw_pairmap_injectivity`). -/
@@ -460,9 +472,11 @@ lemma aux_lw_mM_hM (α β : ℝ) : aux_mM α β * aux_hM α β ≤ |β| / 8 := b
 /-! ### The derivative of the pair-displacement map -/
 
 /-- First standard basis vector (auxiliary for `lem:triple-l2`). -/
+@[nolint defsWithUnderscore]
 def aux_lw_e0 : ℝ² := EuclideanSpace.single 0 1
 
 /-- Second standard basis vector (auxiliary for `lem:triple-l2`). -/
+@[nolint defsWithUnderscore]
 def aux_lw_e1 : ℝ² := EuclideanSpace.single 1 1
 
 /-- `u_t = cos t e₀ + sin t e₁` (auxiliary for `lem:triple-l2`). -/
@@ -485,6 +499,7 @@ lemma aux_lw_uR_contDiff {n : WithTop ℕ∞} : ContDiff ℝ n aux_uR := by
 
 /-- The differential `DH(t,s) w = w₁ M v_s - w₀ v_t` of `aux_Hpair` (auxiliary for
 `lem:triple-l2`, see `aux_sc_lw_pairmap_jacobian`). -/
+@[nolint defsWithUnderscore]
 def aux_lw_DH (α β : ℝ) (p : ℝ²) : ℝ² →L[ℝ] ℝ² :=
   (M α β).comp ((EuclideanSpace.proj (1 : Fin 2)).smulRight (J (aux_uR (p 1)))) -
     (EuclideanSpace.proj (0 : Fin 2)).smulRight (J (aux_uR (p 0)))
@@ -780,6 +795,7 @@ lemma aux_lw_Hpair_meas (α β : ℝ) : Measurable (aux_Hpair α β) :=
 
 /-- The coordinate map `ℝ² → ℝ × ℝ`, `p ↦ (p 0, p 1)`, as a measurable equivalence
 (auxiliary for `lem:triple-l2`). -/
+@[nolint defsWithUnderscore]
 def aux_lw_coordEquiv : ℝ² ≃ᵐ ℝ × ℝ :=
   (MeasurableEquiv.toLp 2 (Fin 2 → ℝ)).symm.trans MeasurableEquiv.finTwoArrow
 
@@ -1007,9 +1023,11 @@ theorem aux_pre_standardLW (α β : ℝ) (hβ : β ≠ 0) (tstar : ℝ) (f : Fin
 /-! ### The global Loomis–Whitney bound -/
 
 /-- The number `N_M = ⌈π / h_M⌉ + 1` (part of `\label{lem:triple-l2}`, see `aux_pre_LW`). -/
+@[nolint defsWithUnderscore]
 def aux_NM (α β : ℝ) : ℕ := ⌈π / aux_hM α β⌉₊ + 1
 
 /-- The constant `C_M = N_M/(2π) (2/|β|)^{1/2}` of `\label{lem:triple-l2}` (see `aux_pre_LW`). -/
+@[nolint defsWithUnderscore]
 def aux_C_pre_LW (α β : ℝ) : ℝ := aux_NM α β / (2 * π) * Real.sqrt (2 / |β|)
 
 /-- `θ ↦ u_θ` is continuous on `ℝ/(2πℤ)` (auxiliary for `lem:triple-l2`). -/
@@ -1318,6 +1336,7 @@ def formNorm (α β : ℝ) (ν : FCMeasure) : ℝ≥0∞ := endNorm α β ν 2
 
 /-- The exponent of an endpoint slot: `∞` at the bounded slot `i`, `2` elsewhere
 (auxiliary notation for `lem:form-basic`). -/
+@[nolint defsWithUnderscore]
 def aux_slotExp (i j : Fin 3) : ℝ≥0∞ := if j = i then ⊤ else 2
 
 /-- Auxiliary for `lem:form-basic`: Hölder's inequality for three functions with exponents
@@ -1385,7 +1404,7 @@ lemma aux_fb_inner (i : Fin 3) (f : Fin 3 → ℝ² → ℂ)
 
 /-- Auxiliary for `lem:form-basic`: a shear `(z, x) ↦ x + c z` is quasi-measure-preserving from
 `m ⊗ dx` to `dx`. -/
-lemma aux_fb_qmp {Z : Type*} [MeasurableSpace Z] (m : Measure Z) [SFinite m] (c : Z → ℝ²)
+lemma aux_fb_qmp {Z : Type*} [MeasurableSpace Z] (m : Measure Z) (c : Z → ℝ²)
     (hc : Measurable c) :
     Measure.QuasiMeasurePreserving (fun p : Z × ℝ² => p.2 + c p.1) (m.prod volume) volume := by
   have hmeas : Measurable (fun p : Z × ℝ² => p.2 + c p.1) :=
@@ -1551,6 +1570,7 @@ theorem lem_form_basic_scaling (α β : ℝ) (ν : FCMeasure) (i : Fin 3) (s : �
 set_option linter.unusedVariables false in
 /-- **Lemma `lem:form-basic`** (versions). The form does not depend on the choice of
 almost-everywhere versions of its inputs. -/
+@[nolint unusedArguments]
 theorem lem_form_basic_ae (α β : ℝ) (hβ : β ≠ 0) (ν : FCMeasure) (f g : Fin 3 → ℝ² → ℂ)
     (hfg : ∀ j, f j =ᵐ[volume] g j) :
     form α β ν (f 0) (f 1) (f 2) = form α β ν (g 0) (g 1) (g 2) := by
@@ -1699,6 +1719,7 @@ lemma aux_ff_fourier_e (ν : FCMeasure) (b : ℝ²) :
 
 /-- Auxiliary for `lem:fourier-form`: the integrand on `(Z × ℝ²) × (ℝ² × ℝ²)` obtained by
 Fourier inversion of the last two inputs. -/
+@[nolint defsWithUnderscore]
 def aux_ff_Phi (α β : ℝ) (ν : FCMeasure) (f₀ F₁ G : ℝ² → ℂ)
     (P : (ν.Z × ℝ²) × (ℝ² × ℝ²)) : ℂ :=
   (ν.w P.1.1 * f₀ P.1.2) * (F₁ P.2.1 * G P.2.2) *
@@ -1873,11 +1894,13 @@ theorem aux_cd_lintegral_sigma_add (F : Ang → ℝ≥0∞) (a : Ang) :
 /-- The circle-chord density
 `w_r(h) = 1_{0<|h|<2r} / (π² |h| √(4r² - |h|²))` (notation of `\label{lem:circle-difference}`,
 see `aux_cd_chorddensity`). -/
+@[nolint defsWithUnderscore]
 def aux_chordDensity (r : ℝ) (h : ℝ²) : ℝ :=
   if 0 < ‖h‖ ∧ ‖h‖ < 2 * r then 1 / (π ^ 2 * ‖h‖ * Real.sqrt (4 * r ^ 2 - ‖h‖ ^ 2)) else 0
 
 /-- Auxiliary: the measurable equivalence `ℝ² ≃ ℝ × ℝ` used to transfer Mathlib's polar
 coordinates to the plane (`lem:circle-difference`). -/
+@[nolint defsWithUnderscore]
 def aux_cd_coord : ℝ² ≃ᵐ ℝ × ℝ :=
   (MeasurableEquiv.toLp 2 (Fin 2 → ℝ)).symm.trans MeasurableEquiv.finTwoArrow
 
@@ -1938,6 +1961,7 @@ theorem aux_cd_lintegral_polar (H : ℝ² → ℝ≥0∞) (hH : Measurable H) :
 
 /-- Auxiliary: the chord length `|r u_θ - r u_{θ-δ}| = r√(2 - 2cos δ)` of the circle of radius `r`
 at angular separation `δ` (used for `lem:circle-difference`). -/
+@[nolint defsWithUnderscore]
 def aux_cd_chordRadius (r : ℝ) (δ : Ang) : ℝ := r * Real.sqrt (2 - 2 * u δ 0)
 
 /-- Auxiliary: the difference of two circle points at angular separation `d`,
@@ -2900,6 +2924,7 @@ theorem lem_circle_compact_small (N : ℝ² →L[ℝ] ℝ²) (hN : ∃ c > 0, �
 /-- Auxiliary for `lem:circle-compact`: a generalized weighted average operator
 `g ↦ (z ↦ ∫ K(z,p) g(z + D p) dρ(p))` over a probability space `(P, ρ)`.  The circle operator
 `Auto.circleOp` is the case `P = 𝕋`, `D θ = N u_θ`; `T T*` is the case `P = 𝕋²`. -/
+@[nolint defsWithUnderscore]
 def aux_gop {P : Type*} [MeasurableSpace P] (ρ : Measure P) (K : ℝ² → P → ℂ) (D : P → ℝ²)
     (g : ℝ² → ℂ) (z : ℝ²) : ℂ :=
   ∫ p, K z p * g (z + D p) ∂ρ
@@ -2928,6 +2953,7 @@ lemma aux_gop_ae (D : P → ℝ²) (hD : Measurable D) {g g' : ℝ² → ℂ} (h
       (fun q => g' (q.1 + D q.2)) := (aux_gop_add_mp ρ D hD).quasiMeasurePreserving.ae_eq h
   exact Measure.ae_ae_of_ae_prod h1
 
+omit [IsProbabilityMeasure ρ] in
 /-- Auxiliary for `lem:circle-compact`: pointwise domination by the unweighted average. -/
 lemma aux_gop_enorm_le (K : ℝ² → P → ℂ) (hK1 : ∀ z p, ‖K z p‖ ≤ 1) (D : P → ℝ²) (g : ℝ² → ℂ)
     (z : ℝ²) : ‖aux_gop ρ K D g z‖ₑ ≤ ∫⁻ p, ‖g (z + D p)‖ₑ ∂ρ := by
@@ -3035,6 +3061,7 @@ lemma aux_gop_add (K : ℝ² → P → ℂ) (hK : Measurable (Function.uncurry K
   simp only [aux_gop, Pi.add_apply, mul_add]
   exact integral_add hz₁ hz₂
 
+omit [IsProbabilityMeasure ρ] in
 /-- Auxiliary for `lem:circle-compact`: homogeneity. -/
 lemma aux_gop_smul (K : ℝ² → P → ℂ) (D : P → ℝ²) (c : ℂ) (g : ℝ² → ℂ) :
     aux_gop ρ K D (c • g) = c • aux_gop ρ K D g := by
@@ -3043,6 +3070,7 @@ lemma aux_gop_smul (K : ℝ² → P → ℂ) (D : P → ℝ²) (c : ℂ) (g : �
   rw [← integral_const_mul]; congr 1; funext p; ring
 
 /-- Auxiliary for `lem:circle-compact`: the operator `aux_gop` as a bounded operator on `L²`. -/
+@[nolint defsWithUnderscore]
 def aux_gopL (K : ℝ² → P → ℂ) (hK : Measurable (Function.uncurry K))
     (hK1 : ∀ z p, ‖K z p‖ ≤ 1) (D : P → ℝ²) (hD : Measurable D) :
     Lp ℂ 2 (volume : Measure ℝ²) →L[ℂ] Lp ℂ 2 (volume : Measure ℝ²) :=
@@ -3083,6 +3111,7 @@ lemma aux_gopL_coe (K : ℝ² → P → ℂ) (hK : Measurable (Function.uncurry 
 attribute [irreducible] aux_gopL
 
 /-- Auxiliary for `lem:circle-compact`: the adjoint weight `K'(y,p) = conj K(y - D p, p)`. -/
+@[nolint defsWithUnderscore]
 def aux_gopAdjW (K : ℝ² → P → ℂ) (D : P → ℝ²) (y : ℝ²) (p : P) : ℂ := conj (K (y - D p) p)
 
 lemma aux_gopAdjW_meas (K : ℝ² → P → ℂ) (hK : Measurable (Function.uncurry K)) (D : P → ℝ²)
@@ -3090,6 +3119,7 @@ lemma aux_gopAdjW_meas (K : ℝ² → P → ℂ) (hK : Measurable (Function.uncu
   Complex.continuous_conj.measurable.comp
     (hK.comp ((measurable_fst.sub (hD.comp measurable_snd)).prodMk measurable_snd))
 
+omit [MeasurableSpace P] in
 lemma aux_gopAdjW_le (K : ℝ² → P → ℂ) (hK1 : ∀ z p, ‖K z p‖ ≤ 1) (D : P → ℝ²) :
     ∀ y p, ‖aux_gopAdjW K D y p‖ ≤ 1 := fun y p => by
   rw [aux_gopAdjW, Complex.norm_conj]; exact hK1 _ _
@@ -3686,6 +3716,7 @@ lemma aux_cc_tail_tendsto (c : ℝ) (hc : 0 < c) :
   exact withDensity_apply _ (hSm n)
 
 /-- Auxiliary for `lem:circle-compact`: the displacement `N u_θ - N u_φ` of `T T*`. -/
+@[nolint defsWithUnderscore]
 def aux_cc_D3 (N : ℝ² →L[ℝ] ℝ²) (pq : Ang × Ang) : ℝ² := N (u pq.1) + -N (u pq.2)
 
 lemma aux_cc_D3_meas (N : ℝ² →L[ℝ] ℝ²) : Measurable (aux_cc_D3 N) :=
@@ -3694,6 +3725,7 @@ lemma aux_cc_D3_meas (N : ℝ² →L[ℝ] ℝ²) : Measurable (aux_cc_D3 N) :=
 
 /-- Auxiliary for `lem:circle-compact`: truncation of a weight on `𝕋²` according to whether
 `w_N(N u_θ - N u_φ) > H` (`b = true`) or not (`b = false`). -/
+@[nolint defsWithUnderscore]
 def aux_cc_trunc (N : ℝ² →L[ℝ] ℝ²) (c H : ℝ) (b : Bool) (K : ℝ² → Ang × Ang → ℂ)
     (z : ℝ²) (pq : Ang × Ang) : ℂ :=
   if H < aux_chordDensity c (aux_cc_D3 N pq) then (if b then K z pq else 0)

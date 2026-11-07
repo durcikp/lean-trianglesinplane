@@ -66,6 +66,7 @@ The following compactness facts also hold.
    subsets of Euclidean space, is compact from $L^2(Y)$ to $L^2(X)$.
 3. If $T$ is compact and a bounded sequence $f_n$ converges weakly to $f$, then $Tf_n\to Tf$
    in norm. -/
+@[nolint unusedArguments]
 theorem ext_compact_facts_finite_rank (T : H →L[ℂ] H')
     (hT : FiniteDimensional ℂ (LinearMap.range (T : H →ₗ[ℂ] H'))) :
     IsCompactOperator T := by
@@ -84,6 +85,7 @@ The following compactness facts also hold.
    subsets of Euclidean space, is compact from $L^2(Y)$ to $L^2(X)$.
 3. If $T$ is compact and a bounded sequence $f_n$ converges weakly to $f$, then $Tf_n\to Tf$
    in norm. -/
+@[nolint unusedArguments]
 theorem ext_compact_facts_limit (T : ℕ → H →L[ℂ] H') (T₀ : H →L[ℂ] H')
     (hT : Tendsto T atTop (𝓝 T₀)) (hc : ∀ n, IsCompactOperator (T n)) :
     IsCompactOperator T₀ :=
@@ -97,6 +99,7 @@ variable {α β : Type*} [MeasurableSpace α] [MeasurableSpace β] {μ : Measure
 
 /-- The pointwise integral operator `x ↦ ∫ k(x,y) f(y) dν(y)` with kernel `k`; used for
 `Auto.ext_compact_facts_integral`. -/
+@[nolint defsWithUnderscore]
 def aux_kerFun (ν : Measure β) (k : α × β → ℂ) (f : β → ℂ) : α → ℂ :=
   fun x => ∫ y, k (x, y) * f y ∂ν
 
@@ -105,6 +108,7 @@ theorem aux_eLpNorm_two (g : α → ℂ) (μ : Measure α) :
     eLpNorm g 2 μ = (∫⁻ x, ‖g x‖ₑ ^ (2:ℝ) ∂μ) ^ (1 / (2:ℝ)) := by
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]; simp
 
+omit [SFinite μ] in
 /-- Pointwise Hölder bound for the kernel integral (helper for
 `Auto.ext_compact_facts_integral`). -/
 theorem aux_kerFun_holder {k : α × β → ℂ} {f : β → ℂ} (hk : AEStronglyMeasurable k (μ.prod ν))
@@ -115,16 +119,19 @@ theorem aux_kerFun_holder {k : α × β → ℂ} {f : β → ℂ} (hk : AEStrong
   rw [aux_eLpNorm_two]
   exact ENNReal.lintegral_mul_le_Lp_mul_Lq ν Real.HolderConjugate.two_two hx.enorm hf.enorm
 
+omit [SFinite μ] in
 /-- Measurability of the kernel integral (helper for `Auto.ext_compact_facts_integral`). -/
 theorem aux_kerFun_aesm {k : α × β → ℂ} {f : β → ℂ} (hk : AEStronglyMeasurable k (μ.prod ν))
     (hf : AEStronglyMeasurable f ν) : AEStronglyMeasurable (aux_kerFun ν k f) μ :=
   (hk.mul (hf.comp_snd)).integral_prod_right'
 
+omit [SFinite μ] in
 /-- Tonelli for `‖k‖²` (helper for `Auto.ext_compact_facts_integral`). -/
 theorem aux_lintegral_prod_sq {k : α × β → ℂ} (hk : AEStronglyMeasurable k (μ.prod ν)) :
     ∫⁻ x, ∫⁻ y, ‖k (x, y)‖ₑ ^ (2:ℝ) ∂ν ∂μ = ∫⁻ p, ‖k p‖ₑ ^ (2:ℝ) ∂(μ.prod ν) :=
   (lintegral_prod _ (hk.enorm.pow_const _)).symm
 
+omit [SFinite μ] in
 /-- For a.e. `x`, `y ↦ k(x,y) f(y)` is integrable (helper for `Auto.ext_compact_facts_integral`). -/
 theorem aux_kerFun_integrable {k : α × β → ℂ} {f : β → ℂ} (hk : MemLp k 2 (μ.prod ν))
     (hf : MemLp f 2 ν) : ∀ᵐ x ∂μ, Integrable (fun y => k (x, y) * f y) ν := by
@@ -140,6 +147,7 @@ theorem aux_kerFun_integrable {k : α × β → ℂ} {f : β → ℂ} (hk : MemL
   refine lt_of_le_of_lt hh (ENNReal.mul_lt_top ?_ hf.2)
   exact ENNReal.rpow_lt_top_of_nonneg (by norm_num) hx.ne
 
+omit [SFinite μ] in
 /-- Cauchy–Schwarz bound `‖T_k f‖₂ ≤ ‖k‖₂ ‖f‖₂` for the kernel integral (helper for
 `Auto.ext_compact_facts_integral`). -/
 theorem aux_kerFun_memLp {k : α × β → ℂ} {f : β → ℂ} (hk : MemLp k 2 (μ.prod ν))
@@ -169,6 +177,7 @@ theorem aux_kerFun_memLp {k : α × β → ℂ} {f : β → ℂ} (hk : MemLp k 2
           norm_num
   exact ⟨⟨aux_kerFun_aesm hk.1 hf.1, hbd.trans_lt (ENNReal.mul_lt_top hk.2 hf.2)⟩, hbd⟩
 
+omit [SFinite μ] in
 /-- The kernel integral only depends on the a.e. classes of `k` and `f` (helper for
 `Auto.ext_compact_facts_integral`). -/
 theorem aux_kerFun_congr {k k' : α × β → ℂ} {f f' : β → ℂ} (hk : k =ᵐ[μ.prod ν] k')
@@ -178,6 +187,7 @@ theorem aux_kerFun_congr {k k' : α × β → ℂ} {f f' : β → ℂ} (hk : k =
   filter_upwards [hx, hf] with y h1 h2
   rw [h1, h2]
 
+omit [SFinite μ] in
 /-- Additivity of the kernel integral in `f` (helper for `Auto.ext_compact_facts_integral`). -/
 theorem aux_kerFun_add_right {k : α × β → ℂ} {f g : β → ℂ} (hk : MemLp k 2 (μ.prod ν))
     (hf : MemLp f 2 ν) (hg : MemLp g 2 ν) :
@@ -186,6 +196,7 @@ theorem aux_kerFun_add_right {k : α × β → ℂ} {f g : β → ℂ} (hk : Mem
   simp only [aux_kerFun, Pi.add_apply, mul_add]
   exact integral_add h1 h2
 
+omit [SFinite μ] in
 /-- Additivity of the kernel integral in `k` (helper for `Auto.ext_compact_facts_integral`). -/
 theorem aux_kerFun_add_left {k k' : α × β → ℂ} {f : β → ℂ} (hk : MemLp k 2 (μ.prod ν))
     (hk' : MemLp k' 2 (μ.prod ν)) (hf : MemLp f 2 ν) :
@@ -194,6 +205,7 @@ theorem aux_kerFun_add_left {k k' : α × β → ℂ} {f : β → ℂ} (hk : Mem
   simp only [aux_kerFun, Pi.add_apply, add_mul]
   exact integral_add h1 h2
 
+omit [MeasurableSpace α] [SFinite ν] in
 /-- Homogeneity of the kernel integral in `f` (helper for `Auto.ext_compact_facts_integral`). -/
 theorem aux_kerFun_smul_right (k : α × β → ℂ) (f : β → ℂ) (c : ℂ) :
     aux_kerFun ν k (c • f) = c • aux_kerFun ν k f := by
@@ -201,6 +213,7 @@ theorem aux_kerFun_smul_right (k : α × β → ℂ) (f : β → ℂ) (c : ℂ) 
   simp only [aux_kerFun, Pi.smul_apply, smul_eq_mul, mul_left_comm _ c]
   exact integral_const_mul c _
 
+omit [MeasurableSpace α] [SFinite ν] in
 /-- Homogeneity of the kernel integral in `k` (helper for `Auto.ext_compact_facts_integral`). -/
 theorem aux_kerFun_smul_left (k : α × β → ℂ) (f : β → ℂ) (c : ℂ) :
     aux_kerFun ν (c • k) f = c • aux_kerFun ν k f := by
@@ -210,6 +223,7 @@ theorem aux_kerFun_smul_left (k : α × β → ℂ) (f : β → ℂ) (c : ℂ) :
 
 /-- The integral operator `L²(ν) → L²(μ)` with kernel `k ∈ L²(μ × ν)`; used for the
 Hilbert–Schmidt part of `ext:compact-facts` (`Auto.ext_compact_facts_integral`). -/
+@[nolint defsWithUnderscore]
 def aux_kerOp (k : Lp ℂ 2 (μ.prod ν)) : Lp ℂ 2 ν →L[ℂ] Lp ℂ 2 μ :=
   LinearMap.mkContinuous
     { toFun := fun f => (aux_kerFun_memLp (Lp.memLp k) (Lp.memLp f)).1.toLp _
@@ -240,18 +254,21 @@ def aux_kerOp (k : Lp ℂ 2 (μ.prod ν)) : Lp ℂ 2 ν →L[ℂ] Lp ℂ 2 μ :=
         ((eLpNorm_congr_ae (MemLp.coeFn_toLp _)).trans_le
           (aux_kerFun_memLp (Lp.memLp k) (Lp.memLp f)).2))
 
+omit [SFinite μ] in
 /-- `aux_kerOp k f` is represented by the kernel integral (helper for
 `Auto.ext_compact_facts_integral`). -/
 theorem aux_kerOp_ae (k : Lp ℂ 2 (μ.prod ν)) (f : Lp ℂ 2 ν) :
     (aux_kerOp k f : α → ℂ) =ᵐ[μ] aux_kerFun ν k f :=
   (aux_kerFun_memLp (Lp.memLp k) (Lp.memLp f)).1.coeFn_toLp
 
+omit [SFinite μ] in
 /-- Operator norm bound `‖T_k‖ ≤ ‖k‖₂` (helper for `Auto.ext_compact_facts_integral`). -/
 theorem aux_kerOp_norm (k : Lp ℂ 2 (μ.prod ν)) : ‖aux_kerOp k‖ ≤ ‖k‖ :=
   LinearMap.mkContinuous_norm_le _ (norm_nonneg k) _
 
 /-- The integral operator as a bounded linear function of its kernel (helper for
 `Auto.ext_compact_facts_integral`). -/
+@[nolint defsWithUnderscore]
 def aux_kerOpL : Lp ℂ 2 (μ.prod ν) →L[ℂ] (Lp ℂ 2 ν →L[ℂ] Lp ℂ 2 μ) :=
   LinearMap.mkContinuous
     { toFun := aux_kerOp
@@ -277,6 +294,7 @@ def aux_kerOpL : Lp ℂ 2 (μ.prod ν) →L[ℂ] (Lp ℂ 2 ν →L[ℂ] Lp ℂ 2
           Pi.smul_apply] }
     1 (fun k => by simpa using aux_kerOp_norm k)
 
+omit [SFinite μ] in
 /-- Unfolding lemma for `aux_kerOpL` (helper for `Auto.ext_compact_facts_integral`). -/
 theorem aux_kerOpL_apply (k : Lp ℂ 2 (μ.prod ν)) : aux_kerOpL k = aux_kerOp k := rfl
 
@@ -285,10 +303,12 @@ variable [IsFiniteMeasure μ] [IsFiniteMeasure ν]
 
 /-- The `L²` indicator (with value `1`) of a measurable set, for a finite measure (helper for
 `Auto.ext_compact_facts_integral`). -/
+@[nolint defsWithUnderscore]
 abbrev aux_ind {γ : Type*} [MeasurableSpace γ] (ρ : Measure γ) [IsFiniteMeasure ρ] {S : Set γ}
     (hS : MeasurableSet S) : Lp ℂ 2 ρ :=
   indicatorConstLp 2 hS (measure_ne_top ρ S) (1 : ℂ)
 
+omit [SFinite μ] in
 /-- A rectangle kernel `1_{A×B}` gives a rank-one, hence compact, operator (helper for
 `Auto.ext_compact_facts_integral`). -/
 theorem aux_kerOp_rect {A : Set α} {B : Set β} (hA : MeasurableSet A) (hB : MeasurableSet B) :
@@ -317,6 +337,7 @@ theorem aux_kerOp_rect {A : Set α} {B : Set β} (hA : MeasurableSet A) (hB : Me
   exact (isCompactOperator_of_locallyCompactSpace_rng
     ((ContinuousLinearMap.id ℂ ℂ).smulRight (aux_ind μ hA))).comp_clm ℓ
 
+omit [SFinite μ] in
 /-- Indicator kernels of measurable sets give compact operators (Dynkin argument from
 rectangles; helper for `Auto.ext_compact_facts_integral`). -/
 theorem aux_kerOp_ind_compact :
@@ -397,6 +418,7 @@ theorem aux_kerOp_ind_compact :
     exact isCompactOperator_of_tendsto ((aux_kerOpL.continuous.tendsto _).comp hlim)
       (Eventually.of_forall fun N => hPc N)
 
+omit [SFinite μ] in
 /-- Every `L²` kernel gives a compact operator (density of simple kernels and closedness of
 compact operators; helper for `Auto.ext_compact_facts_integral`). -/
 theorem aux_kerOp_compact (k : Lp ℂ 2 (μ.prod ν)) : IsCompactOperator (aux_kerOp k) := by
@@ -434,6 +456,7 @@ The following compactness facts also hold.
    subsets of Euclidean space, is compact from $L^2(Y)$ to $L^2(X)$.
 3. If $T$ is compact and a bounded sequence $f_n$ converges weakly to $f$, then $Tf_n\to Tf$
    in norm. -/
+@[nolint unusedArguments]
 theorem ext_compact_facts_integral {n m : ℕ} {X : Set (EuclideanSpace ℝ (Fin n))}
     {Y : Set (EuclideanSpace ℝ (Fin m))} (hX : MeasurableSet X) (hXb : Bornology.IsBounded X)
     (hY : MeasurableSet Y) (hYb : Bornology.IsBounded Y)
@@ -540,6 +563,7 @@ set_option linter.unusedVariables false in
 Let $K$ be a compact self-adjoint operator on a Hilbert space, and suppose $B=I+K$ is
 nonnegative.  Then $\ker B$ is finite dimensional, and there is $\gamma>0$ such that
 $$\langle Bf,f\rangle\ge\gamma\operatorname{dist}(f,\ker B)^2\qquad(f\in H).$$ -/
+@[nolint unusedArguments]
 theorem ext_compact_gap_ker (K : H →L[ℂ] H) (hK : IsCompactOperator K) (hsa : IsSelfAdjoint K)
     (hB : ∀ f : H, 0 ≤ RCLike.re ⟪(1 + K) f, f⟫_ℂ) :
     FiniteDimensional ℂ (LinearMap.ker ((1 + K : H →L[ℂ] H) : H →ₗ[ℂ] H)) := by
@@ -563,6 +587,7 @@ theorem ext_compact_gap_ker (K : H →L[ℂ] H) (hK : IsCompactOperator K) (hsa 
     · rintro ⟨x, hx, rfl⟩; exact ⟨x.2, by simpa [mem_closedBall_zero_iff] using hx⟩
     · rintro ⟨hy, hy'⟩; exact ⟨⟨y, hy⟩, by simpa [mem_closedBall_zero_iff] using hy', rfl⟩
 
+omit [CompleteSpace H] in
 /-- Cauchy–Schwarz for a nonnegative symmetric operator: `‖Bx‖² ≤ ‖B‖ ⟨Bx,x⟩`
 (helper for `Auto.ext_compact_gap`). -/
 theorem aux_norm_sq_le_re_inner (B : H →L[ℂ] H) (hsym : ∀ x y, ⟪B x, y⟫_ℂ = ⟪x, B y⟫_ℂ)
@@ -751,6 +776,7 @@ theorem aux_integrable_mul_top {g ψ : α → ℂ} (hg : MemLp g ⊤ μ) (hψ : 
 
 /-- The pairing `ψ ↦ ∫ g ψ` of `g ∈ L^∞` with `L¹`, as a bounded functional (helper for
 `Auto.ext_weakstar_plane_countable`). -/
+@[nolint defsWithUnderscore]
 def aux_pair (g : α → ℂ) (hg : MemLp g ⊤ μ) : Lp ℂ 1 μ →L[ℂ] ℂ :=
   LinearMap.mkContinuous
     { toFun := fun ψ => ∫ x, g x * ψ x ∂μ
@@ -815,6 +841,7 @@ theorem aux_eLpNorm_mul_two {s h : α → ℂ} (hs : AEStronglyMeasurable s μ)
 
 /-- Multiplication by a fixed `L²` function, as a bounded map `L² → L¹` (helper for
 `Auto.ext_weakstar_plane_countable`). -/
+@[nolint defsWithUnderscore]
 def aux_mulOp (s : α → ℂ) (hs : MemLp s 2 μ) : Lp ℂ 2 μ →L[ℂ] Lp ℂ 1 μ :=
   LinearMap.mkContinuous
     { toFun := fun h => (aux_memLp_mul_two hs (Lp.memLp h)).toLp _

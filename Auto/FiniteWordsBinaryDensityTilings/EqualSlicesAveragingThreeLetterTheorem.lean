@@ -36,6 +36,7 @@ namespace Auto
 
 /-- The letter-count vector of a word: `countVec x j` is the number of occurrences of the letter
 `j` in `x` (auxiliary for `\label{cj:equal-slices}`). -/
+@[nolint defsWithUnderscore]
 def aux_countVec {X : Type*} [Fintype X] {k : ℕ} (x : X → Fin k) : Fin k → ℕ :=
   fun j => (univ.filter fun i => x i = j).card
 
@@ -59,6 +60,7 @@ def dTV {X : Type*} [Fintype X] (P Q : X → ℝ) : ℝ :=
 
 /-- `P` is a probability on the finite set `X` (nonnegative masses summing to one); auxiliary
 for `\label{cj:equal-slices}` and `\label{cj:probability-facts}`. -/
+@[nolint defsWithUnderscore]
 def aux_IsProb {X : Type*} [Fintype X] (P : X → ℝ) : Prop :=
   (∀ x, 0 ≤ P x) ∧ ∑ x, P x = 1
 
@@ -455,6 +457,7 @@ theorem cj_probability_facts_mixture {X ι : Type*} [Fintype X] (s : Finset ι) 
 /-- The set of coordinates of `[n]` outside the image of an injection `ι : [r] → [n]`
 (auxiliary for `\label{cj:restriction}`; a word `y` "on the complement of the image" is a
 function `aux_Compl ι → Fin k`). -/
+@[nolint defsWithUnderscore]
 abbrev aux_Compl {r n : ℕ} (ι : Fin r ↪ Fin n) : Type :=
   {i : Fin n // ¬ ∃ j, ι j = i}
 
@@ -474,6 +477,7 @@ def restrictPre {k r n : ℕ} (ι : Fin r ↪ Fin n) (y : aux_Compl ι → Fin k
 /-- The law of $\phi_{\iota,y}(w)$ when $\iota$ is uniform among the injections $[r]\to[n]$,
 $y$ (on the complement of the image of $\iota$) has law `yLaw ι`, and $w\in[k]^r$ independently
 has law `wLaw` (auxiliary for `\label{cj:transfer-uniform}` and `\label{cj:transfer-equal}`). -/
+@[nolint defsWithUnderscore]
 def aux_restrictLaw {k r n : ℕ} (yLaw : (ι : Fin r ↪ Fin n) → (aux_Compl ι → Fin k) → ℝ)
     (wLaw : (Fin r → Fin k) → ℝ) (z : Fin n → Fin k) : ℝ :=
   ∑ ι : Fin r ↪ Fin n, ∑ y : aux_Compl ι → Fin k, ∑ w : Fin r → Fin k,
@@ -863,6 +867,7 @@ following holds for every $n\ge N$.  Choose $\iota$ as in Definition `cj:restric
 remaining coordinates independent uniform letters, and independently choose $w\in[k]^r$ with any
 probability distribution $\lambda$.  The law of $\phi_{\iota,y}(w)$ is within $\zeta$ in total
 variation of $\mu_{k,n}$.  The same $N$ works for every $\lambda$. -/
+@[nolint unusedArguments]
 theorem cj_transfer_uniform {k : ℕ} (hk : k = 2 ∨ k = 3) {r : ℕ} (hr : 1 ≤ r) {ζ : ℝ}
     (hζ : 0 < ζ) :
     ∃ N ≥ r, ∀ n ≥ N, ∀ lam : (Fin r → Fin k) → ℝ, aux_IsProb lam →
@@ -1313,11 +1318,13 @@ theorem aux_sum_perm_indicator {m k : ℕ} (w : Fin m → Fin k) (E : Finset (Fi
 /-- The binary word with letter $1$ (`0 : Fin 2`) at the first $s$ coordinates and $2$ elsewhere;
 composed with a permutation it is the word $u_s(\pi)$ of the proof of `cj:binary-pairs`
 (auxiliary for `cj_binary_pairs_bound`). -/
+@[nolint defsWithUnderscore]
 def aux_chainBin (m s : ℕ) : Fin m → Fin 2 := fun j => if (j : ℕ) < s then 0 else 1
 
 /-- The ternary word with letter $1$ at the first $\min(s,t)$ coordinates, letter $3$ at the next
 $|s-t|$ coordinates and $2$ elsewhere: the word $z$ of the proof of `cj:binary-pairs`
 (auxiliary for `cj_binary_pairs_bound`). -/
+@[nolint defsWithUnderscore]
 def aux_chainTer (m s t : ℕ) : Fin m → Fin 3 :=
   fun j => if (j : ℕ) < min s t then 0 else if (j : ℕ) < max s t then 2 else 1
 
@@ -1556,10 +1563,12 @@ theorem cj_binary_pairs_forbidden {m : ℕ} (A : Finset (Fin m → Fin 3))
 (see `cj_density_increment`); it equals $\varepsilon/2$ for the constants
 $\theta=\delta^2/64$, $t=\delta\theta/8$, $\kappa=t/8$, $\varepsilon=\delta\kappa/8$ of
 equation `eq:cj-increment-constants`. -/
+@[nolint defsWithUnderscore]
 def C_cj_density_increment (δ : ℝ) : ℝ := δ ^ 4 / 65536
 
 /-- The coordinate-restriction map $\phi_{\iota,y}$ as an $r$-dimensional combinatorial subspace of
 $[k]^n$ (auxiliary for `cj:density-increment`, `cj_density_increment`). -/
+@[nolint defsWithUnderscore]
 def aux_restrictSub {k r n : ℕ} (ι : Fin r ↪ Fin n) (y : aux_Compl ι → Fin k) :
     Subspace (Fin r) (Fin k) (Fin n) :=
   ⟨fun i => if h : ∃ j, ι j = i then Sum.inr (ι.invOfMemRange ⟨i, h⟩) else Sum.inl (y ⟨i, h⟩),

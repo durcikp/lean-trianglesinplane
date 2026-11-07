@@ -169,6 +169,7 @@ theorem cj_bookkeeping_count_lines (k n : ℕ) :
 
 /-- The constant $H_2(\alpha)=2\lceil\alpha^{-2}\rceil$ of `\label{cj:binary}`
 (see `cj_binary`). -/
+@[nolint defsWithUnderscore]
 def C_cj_binary (α : ℝ) : ℕ := 2 * ⌈(α ^ 2)⁻¹⌉₊
 
 /-- The bound $(r+1)\binom{2r}{r}^2\le 16^r$, i.e. $\binom{2r}{r}/4^r\le(r+1)^{-1/2}$
@@ -220,6 +221,7 @@ theorem aux_fin_two (a : Fin 2) : a = 0 ∨ a = 1 := by
 
 /-- The set $S(x)$ of coordinates of a binary word carrying the letter $2$
 (encoded as `1 : Fin 2`) (auxiliary for `cj_binary`). -/
+@[nolint defsWithUnderscore]
 def aux_twoSet {n : ℕ} (x : Fin n → Fin 2) : Finset (Fin n) :=
   univ.filter fun j => x j = 1
 
@@ -283,6 +285,7 @@ set_option linter.unusedVariables false in
 For $0<\alpha\le1$, set $H_2(\alpha)=2\lceil\alpha^{-2}\rceil$.
 If $n\ge H_2(\alpha)$ and $A\subseteq[2]^n$ has $\mu_{2,n}(A)\ge\alpha$, then $A$ contains a
 combinatorial line. -/
+@[nolint unusedArguments]
 theorem cj_binary {α : ℝ} (hα0 : 0 < α) (hα1 : α ≤ 1) {n : ℕ} (hn : C_cj_binary α ≤ n)
     (A : Finset (Fin n → Fin 2)) (hA : α ≤ unifDensity A) : ContainsLine A := by
   by_contra hfree
@@ -321,6 +324,7 @@ theorem cj_binary {α : ℝ} (hα0 : 0 < α) (hα1 : α ≤ 1) {n : ℕ} (hn : C
 /-- The recursive constant $B(m,\alpha)$ of `\label{cj:binary-multi}` (see `cj_binary_multi`):
 $B(1,\alpha)=H_2(\alpha)$ and, with $M=H_2(\alpha/2)$,
 $B(m+1,\alpha)=M+B(m,\alpha/(2\,3^M))$.  The value at $m=0$ is irrelevant. -/
+@[nolint defsWithUnderscore]
 def C_cj_binary_multi : ℕ → ℝ → ℕ
   | 0, _ => 0
   | 1, α => C_cj_binary α
@@ -355,6 +359,7 @@ theorem aux_sum_card_append_fiber {k a b : ℕ} (A : Finset (Fin (a + b) → Fin
 
 /-- A combinatorial line viewed as a one-dimensional subspace with parameter set `Fin 1`
 (auxiliary for `cj_binary_multi`). -/
+@[nolint defsWithUnderscore]
 def aux_lineToSubspace {k n : ℕ} (l : Line (Fin k) (Fin n)) : Subspace (Fin 1) (Fin k) (Fin n) :=
   ⟨fun i => (l.idxFun i).elim (Sum.inr 0) Sum.inl, fun e => by
     obtain ⟨i, hi⟩ := l.proper
@@ -487,10 +492,12 @@ theorem cj_binary_multi {m : ℕ} (hm : 1 ≤ m) {α : ℝ} (hα0 : 0 < α) (hα
 /-- The constant
 $P(k,m,\varepsilon)=m\left(\left\lceil\frac{k^m-1}{\varepsilon}\right\rceil+2\right)$
 of `\label{cj:fiber}` (see `cj_fiber`). -/
+@[nolint defsWithUnderscore]
 def C_cj_fiber (k m : ℕ) (ε : ℝ) : ℕ := m * (⌈((k : ℝ) ^ m - 1) / ε⌉₊ + 2)
 
 /-- The prefix of length $\ell\le n$ of a word $w\in[k]^n$ (auxiliary for `cj_fiber` and
 `cj_binary_face`). -/
+@[nolint defsWithUnderscore]
 def aux_pref {k n : ℕ} (ℓ : ℕ) (h : ℓ ≤ n) (w : Fin n → Fin k) : Fin ℓ → Fin k :=
   fun i => w (Fin.castLE h i)
 
@@ -564,6 +571,7 @@ theorem aux_card_extensions {k ℓ m : ℕ} (x : Fin ℓ → Fin k) :
 
 /-- The prefix subspace $\{x\frown z: z\in[k]^m\}\subseteq[k]^{\ell+m}$ (auxiliary for
 `cj_fiber`). -/
+@[nolint defsWithUnderscore]
 def aux_prefSubspace {k ℓ : ℕ} (m : ℕ) (x : Fin ℓ → Fin k) :
     Subspace (Fin m) (Fin k) (Fin (ℓ + m)) :=
   ⟨fun i => if h : (i : ℕ) < ℓ then Sum.inl (x ⟨i, h⟩) else Sum.inr ⟨i - ℓ, by omega⟩,
@@ -714,6 +722,7 @@ theorem cj_fiber {k m : ℕ} (hk : 2 ≤ k) (hm : 1 ≤ m) {ε : ℝ} (hε0 : 0 
 
 /-- The constant $F_2(d,\alpha)=P(3,M,\alpha/2)$, $M=B(d,\alpha/2)$, of
 `\label{cj:binary-face}` (see `cj_binary_face`). -/
+@[nolint defsWithUnderscore]
 def C_cj_binary_face (d : ℕ) (α : ℝ) : ℕ :=
   C_cj_fiber 3 (C_cj_binary_multi d (α / 2)) (α / 2)
 
@@ -734,6 +743,7 @@ theorem aux_C_cj_binary_multi_pos {m : ℕ} (hm : 1 ≤ m) {β : ℝ} (hβ : 0 <
 
 /-- A binary subspace of $[2]^M$ viewed as a ternary subspace of $[3]^M$ with the same fixed
 letters and variable sets (auxiliary for `cj_binary_face`). -/
+@[nolint defsWithUnderscore]
 def aux_binToTern {d M : ℕ} (W : Subspace (Fin d) (Fin 2) (Fin M)) :
     Subspace (Fin d) (Fin 3) (Fin M) :=
   ⟨fun i => (W.idxFun i).map Fin.castSucc id, fun e => by
@@ -751,6 +761,7 @@ theorem aux_binToTern_binEmb {d M : ℕ} (W : Subspace (Fin d) (Fin 2) (Fin M))
 /-- Appending a fixed suffix $y$ to a subspace of $[k]^\ell$ gives a subspace of $[k]^n$
 (auxiliary for `cj_binary_face`; an instance of `cj_bookkeeping_concat` with a
 zero-dimensional factor). -/
+@[nolint defsWithUnderscore]
 def aux_appendSuffix {d k ℓ n : ℕ} (U : Subspace (Fin d) (Fin k) (Fin ℓ)) (hℓ : ℓ ≤ n)
     (y : Fin (n - ℓ) → Fin k) : Subspace (Fin d) (Fin k) (Fin n) :=
   ⟨fun i => if h : (i : ℕ) < ℓ then U.idxFun ⟨i, h⟩ else Sum.inl (y ⟨i - ℓ, by omega⟩),
@@ -926,6 +937,7 @@ theorem cj_insensitive_facts_face {m n : ℕ} {i : Fin 2} {D : Finset (Fin n →
 /-- The constant $T_1(d,\varepsilon)=LM$ of `\label{cj:tile-one}` (see `cj_tile_one`), where
 $\beta=\varepsilon/2$, $M=F_2(d,\beta)$, $Q=(3+d)^M$, $\vartheta=\frac{\beta}{Q}\,3^{d-M}$ and
 $L=\lceil\vartheta^{-1}\rceil+1$. -/
+@[nolint defsWithUnderscore]
 def C_cj_tile_one (d : ℕ) (ε : ℝ) : ℕ :=
   let β : ℝ := ε / 2
   let M : ℕ := C_cj_binary_face d β
@@ -937,21 +949,25 @@ def C_cj_tile_one (d : ℕ) (ε : ℝ) : ℕ :=
 /-- The word obtained from $w\in[3]^n$ by writing $z\in[3]^M$ on the block of coordinates
 $[a,a+M)$; in the proof of `cj:tile-one` the word $x\frown z\frown y$ is `aux_put a M h w z`
 when $w=x\frown z'\frown y$ (auxiliary for `cj_tile_one`). -/
+@[nolint defsWithUnderscore]
 def aux_put {n : ℕ} (a M : ℕ) (_h : a + M ≤ n) (w : Fin n → Fin 3) (z : Fin M → Fin 3) :
     Fin n → Fin 3 :=
   fun j => if h' : a ≤ (j : ℕ) ∧ (j : ℕ) < a + M then z ⟨j - a, by omega⟩ else w j
 
 /-- The middle block $z$ of $w=x\frown z\frown y$, i.e. the letters on the coordinates
 $[a,a+M)$ (auxiliary for `cj_tile_one`). -/
+@[nolint defsWithUnderscore]
 def aux_block {n : ℕ} (a M : ℕ) (h : a + M ≤ n) (w : Fin n → Fin 3) : Fin M → Fin 3 :=
   fun i => w ⟨a + i, by omega⟩
 
 /-- The context (the pair $(x,y)$) of $w=x\frown z\frown y$, encoded as the word with the
 middle block cleared to the letter `0` (auxiliary for `cj_tile_one`). -/
+@[nolint defsWithUnderscore]
 def aux_clear {n : ℕ} (a M : ℕ) (h : a + M ≤ n) (w : Fin n → Fin 3) : Fin n → Fin 3 :=
   aux_put a M h w 0
 
 /-- The set of contexts $(x,y)$, encoded by `aux_clear` (auxiliary for `cj_tile_one`). -/
+@[nolint defsWithUnderscore]
 def aux_ctx {n : ℕ} (a M : ℕ) (h : a + M ≤ n) : Finset (Fin n → Fin 3) :=
   univ.image (aux_clear a M h)
 
@@ -1047,6 +1063,7 @@ theorem aux_card_ctx : (aux_ctx a M h).card * 3 ^ M = 3 ^ n := by
 
 /-- The $d$-dimensional subspace $x\frown W\frown y$ of $[3]^n$, for a context $c=(x,y)$ and a
 subspace $W\subseteq[3]^M$ (auxiliary for `cj_tile_one`). -/
+@[nolint defsWithUnderscore]
 def aux_embSub {d : ℕ} (c : Fin n → Fin 3) (W : Subspace (Fin d) (Fin 3) (Fin M)) :
     Subspace (Fin d) (Fin 3) (Fin n) :=
   ⟨fun j => if h' : a ≤ (j : ℕ) ∧ (j : ℕ) < a + M then W.idxFun ⟨j - a, by omega⟩
@@ -1079,6 +1096,7 @@ end TileAux
 $(i,3)$-equivalence classes of words agreeing on all coordinates $\ge b$, i.e. all prefix
 sections $\{x : x\frown y\in R\}$ with $y$ of length $n-b$ are $(i,3)$-insensitive (auxiliary for
 `cj_tile_one`). -/
+@[nolint defsWithUnderscore]
 def aux_InsAbove {n : ℕ} (i : Fin 2) (b : ℕ) (R : Finset (Fin n → Fin 3)) : Prop :=
   ∀ w w', InsEquiv i w w' → (∀ j : Fin n, b ≤ (j : ℕ) → w j = w' j) → (w ∈ R ↔ w' ∈ R)
 
@@ -1375,6 +1393,7 @@ theorem cj_tile_one {d : ℕ} (hd : 1 ≤ d) {ε : ℝ} (hε0 : 0 < ε) (hε1 : 
 
 /-- The constant $T_2(d,\varepsilon)=T_1(M,\varepsilon/2)$, $M=T_1(d,\varepsilon/2)$, of
 `\label{cj:tile-two}` (see `cj_tile_two`). -/
+@[nolint defsWithUnderscore]
 def C_cj_tile_two (d : ℕ) (ε : ℝ) : ℕ :=
   C_cj_tile_one (C_cj_tile_one d (ε / 2)) (ε / 2)
 
@@ -1391,6 +1410,7 @@ theorem aux_C_cj_tile_one_pos {d : ℕ} (hd : 1 ≤ d) {ε : ℝ} (hε : 0 < ε)
 
 /-- The composed subspace $V\circ W$ supplied by `cj_bookkeeping_comp` (auxiliary for
 `cj_tile_two`). -/
+@[nolint defsWithUnderscore]
 def aux_compSub {r m k n : ℕ} (V : Subspace (Fin m) (Fin k) (Fin n))
     (W : Subspace (Fin r) (Fin k) (Fin m)) : Subspace (Fin r) (Fin k) (Fin n) :=
   (cj_bookkeeping_comp V W).choose

@@ -74,6 +74,11 @@ The manuscript is `blueprint/triangles_in_the_plane_blueprint.tex` (the "bluepri
 - Explicit numerical constants: `def C_<theorem name> := ...`. Unspecified constants are
   existentially quantified after the parameters they depend on.
 - Auxiliary material is prefixed `aux_` and its docstring says what it is for.
+- Mathlib's `#lint` exceptions are intentional and marked with `@[nolint ...]`:
+  `defsWithUnderscore` on `aux_` definitions and `C_<theorem name>` constants (naming required by
+  `automation/Instructions.md`), and `unusedArguments` on public theorems whose manuscript hypotheses
+  the proof does not need (these also carry `set_option linter.unusedVariables false in` with a
+  comment). Unused arguments of `aux_` lemmas are removed instead.
 - Add only hypotheses needed for faithful semantics (measurability, `MemLp`, finiteness).
 - Only mark `Proof completed` when `#print axioms` shows just `propext`, `Classical.choice`,
   `Quot.sound`.

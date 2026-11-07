@@ -396,6 +396,7 @@ lemma aux_loc_big (α β : ℝ) (ω : ℝ → ℝ)
 
 /-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the localized inputs
 `θ_m · (P * g_m)` of the hypothesis (ann:bounded-local-hyp). -/
+@[nolint defsWithUnderscore]
 def aux_locIn (P : FCMeasure) (θ : Fin 3 → ℝ² → ℝ) (g : Fin 3 → ℝ² → ℂ) (m : Fin 3) (x : ℝ²) :
     ℂ := (θ m x : ℂ) * P.convFun (g m) x
 
@@ -583,6 +584,7 @@ lemma aux_loc_cheb (g : ℝ² → ℂ) (hg : MemLp g 2 volume) (T : ℝ) (hT : 0
 
 /-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the small-support property
 (conclusion of `Auto.lem_small_support`) for a modulus `ω`. -/
+@[nolint defsWithUnderscore]
 def aux_loc_SmallSupp (α β : ℝ) (ω : ℝ → ℝ) : Prop :=
   ∀ (i j : Fin 3), i ≠ j → ∀ (f : Fin 3 → ℝ² → ℂ),
     (∀ l, MemLp (f l) (aux_slotExp i l) volume) →
@@ -1293,6 +1295,7 @@ inputs $f_i\in L^\infty$, $f_j\in L^2$ ($j\ne i$) with Fourier supports in
 $\overline{B(0,C_0R)}$,
 $|\Lambda_{K_R}(f_0,f_1,f_2)|\le a(R)\|f_i\|_\infty\prod_{j\ne i}\|f_j\|_2$, where
 $K_R=\sigma*(R^2\check\psi(R\,\cdot))$.  Used for "its modulus $a(r)$" in Sections 9 and 10. -/
+@[nolint defsWithUnderscore]
 def aux_IsAnnularModulus (α β : ℝ) (ψ : ℝ² → ℂ) (C₀ : ℝ) (a : ℝ → ℝ) : Prop :=
   Tendsto a atTop (𝓝 0) ∧ (∀ R, 0 ≤ a R ∧ a R ≤ ∫ x, ‖𝓕⁻ ψ x‖) ∧
   ∀ R : ℝ, 0 < R → ∀ (i : Fin 3) (f : Fin 3 → ℝ² → ℂ),
@@ -1838,6 +1841,7 @@ lemma aux_glob_tele (α β : ℝ) (hβ : β ≠ 0) (ν : FCMeasure) (i : Fin 3)
 
 /-- Auxiliary for `ann:global` (`Auto.ann_global`): the admissible inputs at scale `R` for the
 bounded slot `i` (Fourier supports in `B̄(0, C₀R)`). -/
+@[nolint defsWithUnderscore]
 def aux_glob_Adm (C₀ R : ℝ) (i : Fin 3) (f : Fin 3 → ℝ² → ℂ) : Prop :=
   (MemLp (f i) ⊤ volume ∧ HasFourierSupportIn (Metric.closedBall 0 (C₀ * R)) (f i)) ∧
   ∀ j, j ≠ i → ∃ hf : MemLp (f j) 2 volume,
@@ -1845,6 +1849,7 @@ def aux_glob_Adm (C₀ R : ℝ) (i : Fin 3) (f : Fin 3 → ℝ² → ℂ) : Prop
 
 /-- Auxiliary for `ann:global` (`Auto.ann_global`): the restricted endpoint norm of
 `Λ_{K_R}` on admissible inputs (normalized by scalar factors `c_j`). -/
+@[nolint defsWithUnderscore]
 def aux_glob_N (α β : ℝ) (ψ : ℝ² → ℂ) (C₀ R : ℝ) (i : Fin 3) : ℝ≥0∞ :=
   ⨆ (f : Fin 3 → ℝ² → ℂ) (_ : aux_glob_Adm C₀ R i f) (c : Fin 3 → ℂ)
     (_ : ∀ j, ‖c j‖ₑ * eLpNorm (f j) (aux_slotExp i j) volume ≤ 1),

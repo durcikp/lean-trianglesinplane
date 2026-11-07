@@ -131,6 +131,7 @@ continuous, $C(0)=I$, and $C(h+k)=C(h)C(k)$ whenever $h,k,h+k\in U$.
 There are commuting real matrices $T_1,T_2$ such that, on a possibly smaller neighborhood of
 zero, $$C(h)=\exp(h_1T_1+h_2T_2).$$
 The expression on the right is real analytic for all $h\in\mathbb R^2$. -/
+@[nolint unusedArguments]
 theorem ext_matrix_group {d : ℕ} {U : Set ℝ²} (hU : U ∈ 𝓝 (0 : ℝ²))
     (C : ℝ² → Matrix (Fin d) (Fin d) ℝ) (hC : ContinuousOn C U) (hGL : ∀ h ∈ U, IsUnit (C h))
     (hC0 : C 0 = 1) (hmul : ∀ h k, h ∈ U → k ∈ U → h + k ∈ U → C (h + k) = C h * C k) :
@@ -242,6 +243,7 @@ theorem ext_matrix_group_analytic {d : ℕ} (T₁ T₂ : Matrix (Fin d) (Fin d) 
 `Auto.ext_analytic_zero_config`): the property of a real normed space `E` with a measure that every
 real analytic function on a preconnected open set `U ⊆ E` vanishing on a subset of `U` of positive
 measure vanishes on all of `U`. -/
+@[nolint defsWithUnderscore]
 def aux_AnalyticZeroProp (E : Type*) [NormedAddCommGroup E] [NormedSpace ℝ E] [MeasureSpace E] :
     Prop :=
   ∀ U : Set E, IsOpen U → IsPreconnected U → ∀ F : E → ℝ, AnalyticOnNhd ℝ F U →
@@ -287,7 +289,6 @@ is not identically zero, it vanishes on no open set; on a product ball `B₁ × 
 to the slices of the zero set, shows that the zero set is null. -/
 theorem aux_analyticZero_prod {E₁ E₂ : Type*} [NormedAddCommGroup E₁] [NormedSpace ℝ E₁]
     [MeasureSpace E₁] [BorelSpace E₁] [SecondCountableTopology E₁]
-    [SigmaFinite (volume : Measure E₁)]
     [NormedAddCommGroup E₂] [NormedSpace ℝ E₂] [MeasureSpace E₂] [BorelSpace E₂]
     [SecondCountableTopology E₂] [SigmaFinite (volume : Measure E₂)]
     (h₁ : aux_AnalyticZeroProp E₁) (h₂ : aux_AnalyticZeroProp E₂) :
@@ -401,6 +402,7 @@ $d=1,2,$ or $3$.  If $F$ vanishes on a set of positive Lebesgue measure, it vani
 identically.  In particular, a real analytic function on
 $\mathbb R^2\times(\mathbb R/(2\pi\mathbb Z))$ which vanishes on a set of positive product
 measure is identically zero. -/
+@[nolint unusedArguments]
 theorem ext_analytic_zero {d : ℕ} (hd : d = 1 ∨ d = 2 ∨ d = 3)
     {U : Set (EuclideanSpace ℝ (Fin d))}
     (hUo : IsOpen U) (hUc : IsConnected U) {F : EuclideanSpace ℝ (Fin d) → ℝ}

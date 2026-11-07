@@ -803,6 +803,7 @@ theorem ext_fourier_unitary :
 /-- Auxiliary (for `ext:fourier-uniqueness`, see `ext_fourier_uniqueness`): for a presentation `ν =
 φ_*(w·m)` and `c ∈ {Re, -Re, Im, -Im}`, the finite positive measure `φ_*(c(w)⁺ · m)`; `ν` is the
 combination `(P_Re - P_{-Re}) + i (P_Im - P_{-Im})` of these (`aux_integral_decomp`). -/
+@[nolint defsWithUnderscore]
 def aux_part (ν : FCMeasure) (c : ℂ → ℝ) : Measure ℝ² :=
   (ν.m.withDensity fun z => ((c (ν.w z)).toNNReal : ℝ≥0∞)).map ν.φ
 
@@ -1350,6 +1351,7 @@ Suppose $p\in\mathcal S(\mathbb R^2)$ and $\widehat p=1$ on a neighborhood of a 
 If $g\in L^2$ or $g\in L^\infty$ has Fourier support in $K$, then $p*g=g$ almost everywhere.
 For a function in $L^2\cap L^\infty$, the two support conditions in
 Definition `ext:bounded-support` agree. -/
+@[nolint unusedArguments]
 theorem ext_reproduction_L2 {K : Set ℝ²} (hK : IsCompact K) (p : 𝓢(ℝ², ℂ))
     (hp : ∀ᶠ ξ in 𝓝ˢ K, 𝓕 (⇑p) ξ = 1) {g : ℝ² → ℂ} (hg : MemLp g 2 volume)
     (hsupp : HasL2FourierSupportIn K (hg.toLp g)) :
@@ -1548,6 +1550,7 @@ Suppose $p\in\mathcal S(\mathbb R^2)$ and $\widehat p=1$ on a neighborhood of a 
 If $g\in L^2$ or $g\in L^\infty$ has Fourier support in $K$, then $p*g=g$ almost everywhere.
 For a function in $L^2\cap L^\infty$, the two support conditions in
 Definition `ext:bounded-support` agree. -/
+@[nolint unusedArguments]
 theorem ext_reproduction_bounded {K : Set ℝ²} (hK : IsCompact K) (p : 𝓢(ℝ², ℂ))
     (hp : ∀ᶠ ξ in 𝓝ˢ K, 𝓕 (⇑p) ξ = 1) {g : ℝ² → ℂ} (hg : MemLp g ⊤ volume)
     (hsupp : HasFourierSupportIn K g) :
@@ -1569,6 +1572,7 @@ Suppose $p\in\mathcal S(\mathbb R^2)$ and $\widehat p=1$ on a neighborhood of a 
 If $g\in L^2$ or $g\in L^\infty$ has Fourier support in $K$, then $p*g=g$ almost everywhere.
 For a function in $L^2\cap L^\infty$, the two support conditions in
 Definition `ext:bounded-support` agree. -/
+@[nolint unusedArguments]
 theorem ext_reproduction_agree {K : Set ℝ²} (hK : IsCompact K) {g : ℝ² → ℂ}
     (hg2 : MemLp g 2 volume) (hgi : MemLp g ⊤ volume) :
     HasFourierSupportIn K g ↔ HasL2FourierSupportIn K (hg2.toLp g) := by

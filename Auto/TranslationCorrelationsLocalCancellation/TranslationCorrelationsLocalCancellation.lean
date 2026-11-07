@@ -302,6 +302,7 @@ theorem aux_ann_exists_near (D : ℕ → Sh) (hD : DenseRange D) (m : ℕ) (s : 
 open Classical in
 /-- Auxiliary (`ann:extract`, see `Auto.ann_extract`): the first index of the dense sequence
 `D` within distance `1/(m+1)` of `s`; a measurable rounding of shifts to the dense set. -/
+@[nolint defsWithUnderscore]
 def aux_ann_idx (D : ℕ → Sh) (hD : DenseRange D) (m : ℕ) (s : Sh) : ℕ :=
   Nat.find (aux_ann_exists_near D hD m s)
 
@@ -648,6 +649,7 @@ theorem aux_ann_prod3_sub (a b : Fin 3 → ℂ) (ha : ∀ j, ‖a j‖ ≤ 1) (h
       (mul_le_one₀ (hb 0) (norm_nonneg _) (hb 1))
 
 /-- Auxiliary (`ann:extract`): decoding a vertex index from a natural number. -/
+@[nolint defsWithUnderscore]
 def aux_ann_fin3 (k : ℕ) : Fin 3 := ⟨k % 3, Nat.mod_lt _ (by norm_num)⟩
 
 theorem aux_ann_fin3_val (j : Fin 3) : aux_ann_fin3 j = j :=
@@ -784,6 +786,7 @@ theorem ann_extract (C : ℝ) :
 /-- Auxiliary: the conclusion of `\label{ann:spectral}` (see `Auto.ann_spectral`): measurable
 kernels `z ↦ ν j z` of finite positive measures of mass at most one with
 $k_j(z;s,t)=\int\mathrm e((s-t)\cdot\xi)\,d\nu_{j,z}(\xi)$ for a.e. `z` and all `s,t`. -/
+@[nolint defsWithUnderscore]
 def aux_IsSpectralKernels (k : Fin 3 → ℝ² → ℝ² → ℝ² → ℂ) (ν : Fin 3 → ℝ² → Measure ℝ²) :
     Prop :=
   (∀ j, IsMeasurableKernel (ν j)) ∧ (∀ j z, ν j z univ ≤ 1) ∧
@@ -1240,6 +1243,7 @@ theorem aux_ann_proj_zero (α β : ℝ) (p : ℝ² × Ang) : proj α β 0 p = p.
 end Factor
 
 /-- Auxiliary (`ann:factor`): the shear `(z, θ) ↦ (z + φ(θ), θ)` as a measurable equivalence. -/
+@[nolint defsWithUnderscore]
 def aux_ann_shearEquiv (φ : Ang → ℝ²) (hφ : Measurable φ) : ℝ² × Ang ≃ᵐ ℝ² × Ang where
   toFun p := (p.1 + φ p.2, p.2)
   invFun q := (q.1 - φ q.2, q.2)
@@ -1274,6 +1278,7 @@ theorem aux_ann_norm_u (θ : Ang) : ‖u θ‖ = 1 := by
     simp [aux_uR, Real.cos_sq_add_sin_sq]
 
 /-- Auxiliary (`ann:factor`): the matrix `N = M - I`. -/
+@[nolint defsWithUnderscore]
 abbrev aux_ann_N (α β : ℝ) : ℝ² →L[ℝ] ℝ² := M α β - ContinuousLinearMap.id ℝ ℝ²
 
 /-- Auxiliary (`ann:factor`): `M - I` is a nonzero similarity when `β ≠ 0`. -/
@@ -1701,6 +1706,7 @@ set_option linter.unusedVariables false in
 /-- **Lemma `ann:factor`** (first assertion).  For the notation of Definition `ann:polynomials`,
 $$|F_{0,n}[a](\pi_0p)|^2\stackrel{*}{\rightharpoonup}\int|a|^2\,d\nu_0,\qquad
 |G_n(p)|^2\stackrel{*}{\rightharpoonup}\int|G|^2\,d(\nu_1\otimes\nu_2).$$ -/
+@[nolint unusedArguments]
 theorem ann_factor_one (α β : ℝ) (hβ : β ≠ 0) (Q : Set ℝ²) (hQ : Bornology.IsBounded Q)
     (C L : ℝ) (R : ℕ → ℝ) (f : Fin 3 → ℕ → ℝ² → ℂ) (hadm : IsAdmissibleSeq Q C R f)
     (k : Fin 3 → ℝ² → ℝ² → ℝ² → ℂ) (h3 : ℝ² × Ang → (Fin 3 → ℝ²) → ℂ)
@@ -1728,6 +1734,7 @@ set_option linter.unusedVariables false in
 `ann:polynomials`,
 $$|F_{0,n}[a](\pi_0p)|^2\stackrel{*}{\rightharpoonup}\int|a|^2\,d\nu_0,\qquad
 |G_n(p)|^2\stackrel{*}{\rightharpoonup}\int|G|^2\,d(\nu_1\otimes\nu_2).$$ -/
+@[nolint unusedArguments]
 theorem ann_factor_two (α β : ℝ) (hβ : β ≠ 0) (Q : Set ℝ²) (hQ : Bornology.IsBounded Q)
     (C L : ℝ) (R : ℕ → ℝ) (f : Fin 3 → ℕ → ℝ² → ℂ) (hadm : IsAdmissibleSeq Q C R f)
     (k : Fin 3 → ℝ² → ℝ² → ℝ² → ℂ) (h3 : ℝ² × Ang → (Fin 3 → ℝ²) → ℂ)
@@ -1795,6 +1802,7 @@ theorem ann_factor_two (α β : ℝ) (hβ : β ≠ 0) (Q : Set ℝ²) (hQ : Born
 the Cauchy–Schwarz bound `(ann:cs)` $|\ell(a,G)|\le\|a\|_{L^2(\mu_0)}\|G\|_{L^2(\mu_{12})}$
 (used in `\label{ann:form}`, see `Auto.ann_form`).  The bound and bilinearity make `ℓ` depend
 only on the almost-everywhere classes of square-integrable arguments. -/
+@[nolint defsWithUnderscore]
 def aux_IsBoundedBilinear (μ₀ : Measure ℝ²) (μ₁₂ : Measure (ℝ² × ℝ²))
     (ℓ : (ℝ² → ℂ) → (ℝ² × ℝ² → ℂ) → ℂ) : Prop :=
   (∀ a a' G, MemLp a 2 μ₀ → MemLp a' 2 μ₀ → MemLp G 2 μ₁₂ → ℓ (a + a') G = ℓ a G + ℓ a' G) ∧
@@ -1808,6 +1816,7 @@ def aux_IsBoundedBilinear (μ₀ : Measure ℝ²) (μ₁₂ : Measure (ℝ² × 
 $L^2(\nu_0)\times L^2(\nu_1\otimes\nu_2)$ (with $\nu_j=\nu_{j,\pi_jp}$); on polynomial
 arguments it is the weak-* limit of $F_{0,n}[a](\pi_0p)G_n(p)$; on characters it equals the
 three-point limit `h3`. -/
+@[nolint defsWithUnderscore]
 def aux_IsLimitForm (α β : ℝ) (R : ℕ → ℝ) (f : Fin 3 → ℕ → ℝ² → ℂ)
     (ν : Fin 3 → ℝ² → Measure ℝ²) (h3 : ℝ² × Ang → (Fin 3 → ℝ²) → ℂ)
     (ℓ : ℝ² × Ang → (ℝ² → ℂ) → (ℝ² × ℝ² → ℂ) → ℂ) : Prop :=
@@ -1996,6 +2005,7 @@ theorem aux_ann_integral_normSq_sum2 (μ₁ μ₂ : Measure ℝ²) [IsFiniteMeas
 
 /-- Auxiliary (`ann:form`): the polynomial form
 $\Lambda_p(a,G)=\sum_{s,t}a_sG_t\,h(p;s,t_1,t_2)$ on coefficient families. -/
+@[nolint defsWithUnderscore]
 def aux_ann_Λ (h3 : ℝ² × Ang → (Fin 3 → ℝ²) → ℂ) (p : ℝ² × Ang) (a : ℝ² →₀ ℂ)
     (G : ℝ² × ℝ² →₀ ℂ) : ℂ :=
   a.sum fun s c => G.sum fun t d => c * d * h3 p ![s, t.1, t.2]
@@ -2053,11 +2063,13 @@ end FormLimit
 
 /-- Auxiliary (`ann:form`): the trigonometric polynomial $\sum_{i<N}c_ie_{D_i}$ as a coefficient
 family. -/
+@[nolint defsWithUnderscore]
 def aux_ann_aOf (D : ℕ → ℝ²) (N : ℕ) (c : Fin N → ℂ) : ℝ² →₀ ℂ :=
   ∑ i : Fin N, Finsupp.single (D i) (c i)
 
 /-- Auxiliary (`ann:form`): the tensor sum $\sum_{k,l<N}d_{kl}e_{D_k}\otimes e_{D_l}$ as a
 coefficient family. -/
+@[nolint defsWithUnderscore]
 def aux_ann_GOf (D : ℕ → ℝ²) (N : ℕ) (d : Fin N × Fin N → ℂ) : ℝ² × ℝ² →₀ ℂ :=
   ∑ kl : Fin N × Fin N, Finsupp.single (D kl.1, D kl.2) (d kl)
 
@@ -2136,17 +2148,20 @@ theorem aux_ann_quad (A B : ℝ) (l : ℂ) (hA : 0 ≤ A)
     linarith
 
 /-- Auxiliary (`ann:form`): $\int|\sum_{i<N}c_ie_{D_i}|^2\,d\nu$ in coefficient form. -/
+@[nolint defsWithUnderscore]
 def aux_ann_Aq (ν : Measure ℝ²) (D : ℕ → ℝ²) (N : ℕ) (c : Fin N → ℂ) : ℂ :=
   ∑ P ∈ (Finset.univ : Finset (Fin N)) ×ˢ Finset.univ,
     c P.1 * conj (c P.2) * ∫ ξ, e ⟪D P.1 - D P.2, ξ⟫_ℝ ∂ν
 
 /-- Auxiliary (`ann:form`): $\int|\sum_{k,l<N}d_{kl}e_{D_k}\otimes e_{D_l}|^2\,d(\nu_1\otimes\nu_2)$
 in coefficient form. -/
+@[nolint defsWithUnderscore]
 def aux_ann_Bq (ν₁ ν₂ : Measure ℝ²) (D : ℕ → ℝ²) (N : ℕ) (d : Fin N × Fin N → ℂ) : ℂ :=
   ∑ P ∈ (Finset.univ : Finset (Fin N × Fin N)) ×ˢ Finset.univ, d P.1 * conj (d P.2) *
     ((∫ ξ, e ⟪D P.1.1 - D P.2.1, ξ⟫_ℝ ∂ν₁) * ∫ ξ, e ⟪D P.1.2 - D P.2.2, ξ⟫_ℝ ∂ν₂)
 
 /-- Auxiliary (`ann:form`): the polynomial form in coefficient form. -/
+@[nolint defsWithUnderscore]
 def aux_ann_lq (h3 : ℝ² × Ang → (Fin 3 → ℝ²) → ℂ) (p : ℝ² × Ang) (D : ℕ → ℝ²) (N : ℕ)
     (c : Fin N → ℂ) (d : Fin N × Fin N → ℂ) : ℂ :=
   ∑ i : Fin N, ∑ kl : Fin N × Fin N, c i * d kl * h3 p ![D i, D kl.1, D kl.2]
@@ -3215,6 +3230,7 @@ Outside a fixed null set of configurations, for every $s\in\mathbb R^2$, $h\in\m
 $a\in L^2(\nu_0)$, and $G\in L^2(\nu_1\otimes\nu_2)$,
 $$\ell_p(a,G)=\ell_p\bigl(e_sa,(e_{s+hv_\theta}\otimes e_{s+hMv_\theta})G\bigr).\qquad
 (\text{ann:inv})$$ -/
+@[nolint unusedArguments]
 theorem ann_invariance (α β : ℝ) (hβ : β ≠ 0) (Q : Set ℝ²) (hQ : Bornology.IsBounded Q)
     (C L : ℝ) (R : ℕ → ℝ) (f : Fin 3 → ℕ → ℝ² → ℂ) (hadm : IsAdmissibleSeq Q C R f)
     (k : Fin 3 → ℝ² → ℝ² → ℝ² → ℂ) (h3 : ℝ² × Ang → (Fin 3 → ℝ²) → ℂ)
@@ -3414,6 +3430,7 @@ of $$\xi\longmapsto (Nv_\theta)\cdot\xi$$ is concentrated at a single point atom
 Consequently, for almost every configuration $p$, the restriction of $\nu_1\otimes\nu_2$ to
 $$H_p=\{(\xi_1,\xi_2):v_\theta\cdot\xi_1+Mv_\theta\cdot\xi_2=0\}$$
 is concentrated on countably many pairs of point atoms. -/
+@[nolint unusedArguments]
 theorem ann_fibers (ν : ℝ² → Measure ℝ²) (hν : IsMeasurableKernel ν) (hν1 : ∀ z, ν z univ ≤ 1)
     (N : ℝ² →L[ℝ] ℝ²) (hN : IsUnit N) :
     ∀ᵐ q ∂μinc, ∀ t : ℝ, 0 < ν q.1 {ξ | ⟪N (v q.2), ξ⟫_ℝ = t} →
@@ -3617,11 +3634,13 @@ theorem ann_fibers_hyperplane (α β : ℝ) (hβ : β ≠ 0) (ν₁ ν₂ : ℝ�
 
 /-- Auxiliary (`ann:selectors`, see `Auto.ann_selectors`): the set of levels `t` at which the
 normalized distribution function of the `k`-th coordinate marginal of `ν_z` reaches `r`. -/
+@[nolint defsWithUnderscore]
 def aux_ann_qset (ν : ℝ² → Measure ℝ²) (k : Fin 2) (r : ℝ) (z : ℝ²) : Set ℝ :=
   {t : ℝ | ENNReal.ofReal r * ν z univ ≤ ν z {ξ | ξ k ≤ t}}
 
 /-- Auxiliary (`ann:selectors`, see `Auto.ann_selectors`): the quantile
 $q_{k,r}(z)=\inf\{t:\nu_z(\{\xi_k\le t\})/\nu_z(\mathbb R^2)\ge r\}$ (zero in degenerate cases). -/
+@[nolint defsWithUnderscore]
 def aux_ann_quantile (ν : ℝ² → Measure ℝ²) (k : Fin 2) (r : ℝ) (z : ℝ²) : ℝ :=
   if ν z univ ≠ 0 ∧ 0 < r ∧ r < 1 then sInf (aux_ann_qset ν k r z) else 0
 
@@ -3899,6 +3918,7 @@ For almost every configuration $p$, every triple of point atoms $\xi_j$ of $\nu_
 satisfying
 $$\xi_0+\xi_1+\xi_2=0,\qquad v_\theta\cdot(\xi_1+M^T\xi_2)=0\qquad(\text{ann:stationarity})$$
 also satisfies $\xi_1+M^T\xi_2=0$. -/
+@[nolint unusedArguments]
 theorem ann_atomic_rigidity (α β : ℝ) (hβ : β ≠ 0) (ν : Fin 3 → ℝ² → Measure ℝ²)
     (hν : ∀ j, IsMeasurableKernel (ν j)) (hν1 : ∀ j z, ν j z univ ≤ 1) :
     ∀ᵐ p ∂μinc, ∀ ξ : Fin 3 → ℝ², (∀ j, 0 < ν j (proj α β j p) {ξ j}) →
