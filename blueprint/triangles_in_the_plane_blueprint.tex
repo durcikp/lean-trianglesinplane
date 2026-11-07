@@ -2542,6 +2542,7 @@ of the threshold follows from the estimates just proved.
 
 \begin{lemma}[A common core for nearby translates]\label{rig:common-core}
 \lean{Auto.rig_common_core}
+\leanok
 Let $E$ be a core of degree $c$, and define
 \[
  E_h=\{(x,\theta):(x+h,\theta)\in E\},
@@ -2587,6 +2588,7 @@ convergence of the vertex losses.
 
 \begin{lemma}[Translation matrices]\label{rig:translation-matrices}
 \lean{Auto.rig_translation_matrices}
+\leanok
 Let $\phi^1,\ldots,\phi^d$ be an orthonormal basis of $K_E$, and write
 \[
  \Phi_j(z)=(\phi_j^1(z),\ldots,\phi_j^d(z)),
@@ -2654,6 +2656,7 @@ $C(h_0+h)=C(h_0)C(h)$.
 
 \begin{proposition}[Analytic pieces for a scalar kernel]\label{rig:pieces}
 \lean{Auto.rig_pieces}
+\leanok
 Every positive-measure core $E$ has a measurable subset $E'\subset E$
 of positive measure such that each component of an orthonormal basis of
 $K_E$, evaluated at its vertex, agrees on $E'$ with a real analytic
@@ -2705,6 +2708,7 @@ Its components supply the required analytic representatives.
 
 \begin{lemma}[Rigidity for analytic fields]\label{rig:analytic-rigidity}
 \lean{Auto.rig_analytic_rigidity}
+\leanok
 Let $a_j:\R^2\to\R^2$ be real analytic and suppose that, for every
 $(x,\theta)\in\R^2\times \mathbb T$,
 \[
@@ -2782,6 +2786,7 @@ $B+M^{\mathsf T}C=tu=0$, as required.
 \begin{theorem}[Measurable stationarity forces zero displacement frequency]
 \label{rig:exact}
 \lean{Auto.rig_exact}
+\leanok
 Let $(E;X_0,X_1,X_2)$ be a core of positive degree, and let
 $a_j\in L^2(X_j;\R^2)$ satisfy, for almost every $p=(x,\theta)\in E$,
 \[
@@ -3508,7 +3513,7 @@ is used for each of the three choices of the bounded input. All constants below
 may depend on $M$ and on the smooth functions fixed in this section.
 
 \begin{definition}[Annular kernels]\label{tail:annular-definition}
-\lean{Auto.tailPsi,Auto.tailQ,Auto.tailK,Auto.tailForm}
+\lean{Auto.tailPsi,Auto.tailQ,Auto.tailK,Auto.tailForm,Auto.aux_tail_annular_definition}
 Fix a real radial function $\chi\in C_c^\infty(\R^2)$ which equals one
 on $B(0,1)$ and vanishes outside $B(0,2)$. Define
 \[
@@ -3528,6 +3533,7 @@ $\|k_r\|_1=\|\check\psi\|_1$ hold for every $r>0$.
 \begin{lemma}[Frequency representation with compact spectral supports]
 \label{tail:fourier}
 \lean{Auto.tail_fourier}
+\leanok
 Suppose that $f_0,f_1,f_2\in L^2(\R^2)$ have compact Fourier supports.
 Then
 \begin{align*}
@@ -3577,6 +3583,7 @@ $z_j=T_j\xi_j$ and $b=\xi_1+A\xi_2$.
 \begin{lemma}[Frequency separation and modulation invariance]
 \label{tail:separation}
 \lean{Auto.tailV,Auto.tail_separation_identities,Auto.tail_separation_comparable,Auto.tail_separation_modulation,Auto.tail_separation_translate}
+\leanok
 For the coordinates of Definition~\ref{tail:coordinates},
 \[
  z_0-z_2=-(A-I)^{-1}b,\quad
@@ -3634,6 +3641,7 @@ $\psi((\xi_1+A\xi_2)/r)\ne0$.
 
 \begin{lemma}[Properties of the smooth partition]\label{tail:partition}
 \lean{Auto.tail_partition}
+\leanok
 The parameter $h$ can be chosen depending only on $M$ and $\varphi$ so
 that the following statements hold uniformly in $r>0$.
 \begin{enumerate}
@@ -3701,6 +3709,7 @@ the left and the just-proved absolute convergence on the right.
 
 \begin{lemma}[One frequency triple]\label{tail:one-triple}
 \lean{Auto.tail_one_triple}
+\leanok
 Suppose that $\|f_j\|_2,\|f_j\|_\infty\le B$. For a contributing
 triple let $m\le n\le p$ be the three numbers
 $\mu(Q_{q_j,r})$, in increasing order. For a sufficiently large fixed
@@ -3742,6 +3751,7 @@ $0\le H(t)\le\mu(\R^2)^{5/4}$.
 
 \begin{lemma}[Geometric mass increment]\label{tail:increment}
 \lean{Auto.tail_increment}
+\leanok
 For the square families and contributing triples of
 Lemma~\ref{tail:partition}, there are fixed constants $0<c<C$ such that
 \[
@@ -3781,6 +3791,7 @@ times its integral over the whole plane, which is $H(Cr)-H(cr)$.
 \begin{lemma}[Dyadic telescoping of the mass increments]
 \label{tail:telescoping}
 \lean{Auto.tail_telescoping}
+\leanok
 For $0<c<C$, every nondecreasing bounded function $H$ satisfies
 \[
  \sum_{k=0}^{\infty}

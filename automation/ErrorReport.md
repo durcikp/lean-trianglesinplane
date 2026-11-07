@@ -96,3 +96,16 @@ formalization from the blueprint. Each entry records the date/time and the bluep
 - (2026-11-06T14:48:51-08:00) `rig:kernel-gap` (tex ~2307–2350): proof route changed (no error). Instead of forming A^{-1/2}D*DA^{-1/2}, Lean
   proves ‖D_E f‖² = ⟨Af,f⟩ + ⟨Kf,f⟩ with K compact (off-diagonal blocks via `lem:circle-compact`) and uses a
   real-Hilbert-space version of `ext:compact-gap`.
+- (2026-11-06T15:35:17-08:00) `rig:common-core` (tex ~2470): pruning starts from E ∩ E_h ∩ ⋂_j π_j⁻¹(X_j − h), which differs from E ∩ E_h by a
+  null set, so that Y_{j,h} ⊆ X_j ∩ (X_j − h) holds exactly (no error).
+- (2026-11-06T15:35:17-08:00) `rig:pieces` (tex ~2560–2595): proof route changed (no error). With P(h) = exp(h₁T₁+h₂T₂), the normalized rows
+  Φ_j(z)P(−z) are shown to take countably many values a.e. (two-variable Fubini), and E' is a positive-measure level set,
+  instead of the six-variable Fubini and change of variables.
+- (2026-11-06T15:35:17-08:00) `rig:analytic-rigidity` (tex ~2620–2685): same strategy, different execution (no error): differentiating along
+  curves and the θ ↦ θ+π parity give KM = λI = MᵀK directly, hence λ = 0 since β ≠ 0, without the θ-integration step.
+- (2026-11-06T16:05:16-08:00) `tail:fourier` (tex ~3446–3473): the limit is taken one slot at a time; only compact Fourier support of f₂ is
+  used (no error).
+- (2026-11-06T16:05:16-08:00) `tail:partition` (tex ~3570–3612): the L² identity 𝓕(𝓕⁻m * f) = m f̂ is proved by duality; the uniform L¹ kernel
+  bound uses a modulation-plus-dilation formula; absolute summability uses u₀u₁ ≤ u₀²+u₁² (no error).
+- (2026-11-06T16:05:16-08:00) `tail:one-triple`, `tail:increment`, `tail:bound`: explicit choices C₀₀ = (Σ_j‖V_j‖+1)·D, c = d/4, C = D+d, and an
+  explicit partition of unity φ(z) = φ₁(z₀)φ₁(z₁) with Q_* = [0,2]² (no error).

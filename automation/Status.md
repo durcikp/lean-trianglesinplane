@@ -164,11 +164,11 @@ Lean file: Auto/AnalyticPiecesMeasurableRigidity/AnalyticPiecesMeasurableRigidit
 
 #### Theorems
 
-\label{rig:common-core}: [Statement completed] (Lean: Auto.rig_common_core) (2026-11-06T12:28:18-08:00)
-\label{rig:translation-matrices}: [Statement completed] (Lean: Auto.rig_translation_matrices) (2026-11-06T12:28:18-08:00)
-\label{rig:pieces}: [Statement completed] (Lean: Auto.rig_pieces) (2026-11-06T12:28:18-08:00)
-\label{rig:analytic-rigidity}: [Statement completed] (Lean: Auto.rig_analytic_rigidity) (2026-11-06T12:28:18-08:00)
-\label{rig:exact}: [Statement completed] (Lean: Auto.rig_exact) (2026-11-06T12:28:18-08:00)
+\label{rig:common-core}: [Proof completed] (Lean: Auto.rig_common_core) (2026-11-06T15:35:17-08:00)
+\label{rig:translation-matrices}: [Proof completed] (Lean: Auto.rig_translation_matrices) (2026-11-06T15:35:17-08:00)
+\label{rig:pieces}: [Proof completed] (Lean: Auto.rig_pieces) (2026-11-06T15:35:17-08:00)
+\label{rig:analytic-rigidity}: [Proof completed] (Lean: Auto.rig_analytic_rigidity) (2026-11-06T15:35:17-08:00)
+\label{rig:exact}: [Proof completed] (Lean: Auto.rig_exact) (2026-11-06T15:35:17-08:00)
 
 ## Translation correlations and local cancellation
 
@@ -210,19 +210,19 @@ Lean file: Auto/SummationFrequencyAnnuli/SummationFrequencyAnnuli.lean
 
 #### Definitions
 
-\label{tail:annular-definition}: [Completed] (Lean: Auto.tailPsi, Auto.tailQ, Auto.tailK, Auto.tailForm) (2026-11-06T12:50:39-08:00)
+\label{tail:annular-definition}: [Completed] (Lean: Auto.tailPsi, Auto.tailQ, Auto.tailK, Auto.tailForm, Auto.aux_tail_annular_definition) (2026-11-06T16:05:16-08:00)
 \label{tail:coordinates}: [Completed] (Lean: Auto.tailA, Auto.tailT) (2026-11-06T12:50:39-08:00)
 \label{tail:partition-definition}: [Completed] (Lean: Auto.latticePt, Auto.tailP, Auto.tailSquare, Auto.tailMu, Auto.tailContributing) (2026-11-06T12:50:39-08:00)
 \label{tail:mass-definition}: [Completed] (Lean: Auto.tailH) (2026-11-06T12:50:39-08:00)
 
 #### Theorems
 
-\label{tail:fourier}: [Statement completed] (Lean: Auto.tail_fourier) (2026-11-06T12:50:39-08:00)
-\label{tail:separation}: [Statement completed] (Lean: Auto.tailV, Auto.tail_separation_identities, Auto.tail_separation_comparable, Auto.tail_separation_modulation, Auto.tail_separation_translate) (2026-11-06T12:50:39-08:00)
-\label{tail:partition}: [Statement completed] (Lean: Auto.tail_partition) (2026-11-06T12:50:39-08:00)
-\label{tail:one-triple}: [Statement completed] (Lean: Auto.tail_one_triple) (2026-11-06T12:50:39-08:00)
-\label{tail:increment}: [Statement completed] (Lean: Auto.tail_increment) (2026-11-06T12:50:39-08:00)
-\label{tail:telescoping}: [Statement completed] (Lean: Auto.tail_telescoping) (2026-11-06T12:50:39-08:00)
+\label{tail:fourier}: [Proof completed] (Lean: Auto.tail_fourier) (2026-11-06T16:05:16-08:00)
+\label{tail:separation}: [Proof completed] (Lean: Auto.tailV, Auto.tail_separation_identities, Auto.tail_separation_comparable, Auto.tail_separation_modulation, Auto.tail_separation_translate) (2026-11-06T16:05:16-08:00)
+\label{tail:partition}: [Proof completed] (Lean: Auto.tail_partition) (2026-11-06T16:05:16-08:00)
+\label{tail:one-triple}: [Proof completed] (Lean: Auto.tail_one_triple) (2026-11-06T16:05:16-08:00)
+\label{tail:increment}: [Proof completed] (Lean: Auto.tail_increment) (2026-11-06T16:05:16-08:00)
+\label{tail:telescoping}: [Proof completed] (Lean: Auto.tail_telescoping) (2026-11-06T16:05:16-08:00)
 \label{tail:bound}: [Statement completed] (Lean: Auto.tail_bound, Auto.tail_bound_tendsto) (2026-11-06T12:50:39-08:00)
 
 ## Approximation of the counting form

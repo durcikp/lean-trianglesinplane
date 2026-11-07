@@ -117,8 +117,8 @@ theorem aux_ann_factor_vertex (hadm : IsAdmissibleSeq Q C R f)
   exact h1 ψ hψ
 
 /-- Auxiliary (`ann:factor`): pullback of weak-* convergence by `(x, θ) ↦ x`. -/
-theorem aux_ann_weakStar_pullback_fst {F : ℕ → ℝ² → ℂ} {G : ℝ² → ℂ}
-    (hFm : ∀ n, AEStronglyMeasurable (F n) volume) (hFb : ∀ n x, ‖F n x‖ ≤ 1)
+theorem aux_ann_weakStar_pullback_fst {F : ℕ → ℝ² → ℂ} {G : ℝ² → ℂ} {B : ℝ}
+    (hFm : ∀ n, AEStronglyMeasurable (F n) volume) (hFb : ∀ n x, ‖F n x‖ ≤ B)
     (hG : MemLp G ⊤ volume) (h : annWeakStar volume F G) :
     annWeakStar μinc (fun n p => F n p.1) (fun p => G p.1) := by
   intro ψ hψ
@@ -158,7 +158,12 @@ theorem ann_factor_one (α β : ℝ) (hβ : β ≠ 0) (Q : Set ℝ²) (hQ : Born
     simp only [polyTranslate, Finsupp.sum, annT]
     exact (by fun_prop : Continuous _).measurable
   simp_rw [aux_ann_proj_zero]
-  refine aux_ann_weakStar_pullback_fst (fun n => (hm n).aestronglyMeasurable) ?_ h2 h1
-  sorry
+  refine aux_ann_weakStar_pullback_fst (B := (∑ s ∈ a.support, ‖a s‖) ^ 2)
+    (fun n => (hm n).aestronglyMeasurable) (fun n z => ?_) h2 h1
+  rw [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+  gcongr
+  refine (norm_sum_le _ _).trans (Finset.sum_le_sum fun s _ => ?_)
+  rw [norm_mul]
+  exact mul_le_of_le_one_right (norm_nonneg _) (aux_ann_annT_le_one hadm _ _ _ _)
 
 end Auto

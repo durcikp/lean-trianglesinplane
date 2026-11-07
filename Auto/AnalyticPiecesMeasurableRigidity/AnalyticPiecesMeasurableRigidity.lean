@@ -23,10 +23,18 @@ Formalization of the section "Analytic pieces and measurable rigidity" of the bl
   `Matrix.vecMul`.
 * "Real analytic on all of `ℝ²`" is `AnalyticOnNhd ℝ g univ`; `Mᵀ` is
   `ContinuousLinearMap.adjoint (M α β)`.
+* Proof of `rig:pieces`: instead of the six-variable change of variables of the manuscript, we
+  show that the normalized rows `R_j(z) = Φ_j(z) P(-z)` (which are translation invariant along
+  the row identities) take only countably many values a.e. on `X_j` (`Auto.aux_rig_atomic`);
+  `E'` is then a positive-measure level set of `p ↦ (R_j(π_j p))_j`.
+* Proof of `rig:analytic-rigidity`: the transport identities are obtained by differentiating
+  along the curves `r ↦ (x + L u_s - L u_r, r)` (`Auto.aux_rig_curve_first`,
+  `Auto.aux_rig_curve_second`), and the `θ ↦ θ + π` symmetry shows that `KM` and `MᵀK` are
+  scalar (`Auto.aux_rig_scalar`).
 -/
 
 open MeasureTheory Real Set Filter Topology
-open scoped ENNReal NNReal InnerProductSpace
+open scoped ENNReal NNReal InnerProductSpace symmDiff Pointwise
 
 noncomputable section
 
@@ -45,6 +53,167 @@ def aux_IsCommonCore (α β c : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set
     (∀ j, Y j ⊆ X j ∩ aux_vertexShift h X j) ∧
     μinc (E \ F) = μinc (baseShift h E \ F) ∧ μinc (E \ F) ≤ 4 * μinc (E \ baseShift h E)
 
+/-- Auxiliary: the limit vertex sets `Y_j = ⋂ₙ X_j^{(n)}` of the deletion process of `rig:prune`
+at threshold `t`, started at `(X, E₀)` (used for `Auto.rig_common_core`). -/
+def aux_rig_pruneY (α β t : ℝ) (X : Fin 3 → Set ℝ²) (E₀ : Set (ℝ² × Ang)) : Fin 3 → Set ℝ² :=
+  fun j => ⋂ n, (aux_pruneSeq α β t X E₀ n).1 j
+
+/-- Auxiliary: the limit configuration set `F = ⋂ₙ E^{(n)}` of the deletion process of
+`rig:prune` at threshold `t`, started at `(X, E₀)` (used for `Auto.rig_common_core`). -/
+def aux_rig_pruneF (α β t : ℝ) (X : Fin 3 → Set ℝ²) (E₀ : Set (ℝ² × Ang)) : Set (ℝ² × Ang) :=
+  ⋂ n, (aux_pruneSeq α β t X E₀ n).2
+
+/-- Auxiliary: basic properties of the limit of the deletion process (measurability, inclusions,
+every surviving configuration has surviving vertices, surviving vertices have degree at least `t`
+in the limit and in `E₀`); used for `Auto.rig_common_core`. -/
+theorem aux_rig_prune_props (α β t : ℝ) (X : Fin 3 → Set ℝ²) (E₀ : Set (ℝ² × Ang))
+    (hX : ∀ j, MeasurableSet (X j)) (hE₀ : MeasurableSet E₀) :
+    (∀ j, MeasurableSet (aux_rig_pruneY α β t X E₀ j)) ∧
+      MeasurableSet (aux_rig_pruneF α β t X E₀) ∧
+      (∀ j, aux_rig_pruneY α β t X E₀ j ⊆ X j) ∧ aux_rig_pruneF α β t X E₀ ⊆ E₀ ∧
+      (∀ j, ∀ p ∈ aux_rig_pruneF α β t X E₀, proj α β j p ∈ aux_rig_pruneY α β t X E₀ j) ∧
+      (∀ j, ∀ z ∈ aux_rig_pruneY α β t X E₀ j, t ≤ degree α β j (aux_rig_pruneF α β t X E₀) z) ∧
+      (∀ j, ∀ z ∈ aux_rig_pruneY α β t X E₀ j, t ≤ degree α β j E₀ z) := by
+  set Y := aux_rig_pruneY α β t X E₀ with hYdef
+  set F := aux_rig_pruneF α β t X E₀ with hFdef
+  have hYm : ∀ j, MeasurableSet (Y j) := fun j =>
+    MeasurableSet.iInter fun n => (aux_pruneSeq_measurable α β t X E₀ hX hE₀ n).1 j
+  have hFm : MeasurableSet F :=
+    MeasurableSet.iInter fun n => (aux_pruneSeq_measurable α β t X E₀ hX hE₀ n).2
+  have hYX : ∀ j, Y j ⊆ X j := fun j => iInter_subset (fun n => (aux_pruneSeq α β t X E₀ n).1 j) 0
+  have hFE : F ⊆ E₀ := iInter_subset (fun n => (aux_pruneSeq α β t X E₀ n).2) 0
+  have hFproj : ∀ j, ∀ p ∈ F, proj α β j p ∈ Y j := by
+    intro j p hp
+    refine mem_iInter.2 fun n => ?_
+    exact aux_pruneSeq_fst_succ_subset α β t X E₀ n j
+      (aux_pruneSeq_proj α β t X E₀ n j (mem_iInter.1 hp (n + 1)))
+  have hdeg : ∀ j, ∀ z ∈ Y j, t ≤ degree α β j F z := by
+    intro j z hz
+    have hz' : ∀ n, z ∈ (aux_pruneSeq α β t X E₀ n).1 j := mem_iInter.1 hz
+    have e : {θ | (z - Lv α β j (u θ), θ) ∈ F} =
+        ⋂ n, {θ | (z - Lv α β j (u θ), θ) ∈ (aux_pruneSeq α β t X E₀ n).2} := by
+      ext θ; simp [hFdef, aux_rig_pruneF]
+    have hmeas : ∀ n, MeasurableSet {θ | (z - Lv α β j (u θ), θ) ∈ (aux_pruneSeq α β t X E₀ n).2} :=
+      fun n => measurable_prodMk_left ((aux_ker_measurable_unshear α β j)
+        (aux_pruneSeq_measurable α β t X E₀ hX hE₀ n).2)
+    have hF' : ENNReal.ofReal t ≤ ENNReal.ofReal (degree α β j F z) := by
+      rw [aux_degree_eq α β j F hFm z, e, Antitone.measure_iInter]
+      · refine le_iInf fun n => ?_
+        rw [← aux_degree_eq α β j _ (aux_pruneSeq_measurable α β t X E₀ hX hE₀ n).2 z]
+        exact ENNReal.ofReal_le_ofReal (aux_pruneSeq_degree α β t X E₀ n j z (hz' (n + 1)))
+      · exact antitone_nat_of_succ_le
+          (f := fun n => {θ | (z - Lv α β j (u θ), θ) ∈ (aux_pruneSeq α β t X E₀ n).2})
+          fun n θ hθ => aux_pruneSeq_snd_succ_subset α β t X E₀ n hθ
+      · exact fun n => (hmeas n).nullMeasurableSet
+      · exact ⟨0, measure_ne_top _ _⟩
+    by_cases ht : t ≤ 0
+    · exact ht.trans (rig_degree_integration_bounds α β j F hFm z).1
+    · exact (ENNReal.ofReal_le_ofReal_iff
+        (rig_degree_integration_bounds α β j F hFm z).1).1 hF'
+  have hdeg0 : ∀ j, ∀ z ∈ Y j, t ≤ degree α β j E₀ z := by
+    intro j z hz
+    have := aux_pruneSeq_degree α β t X E₀ 0 j z (mem_iInter.1 hz 1)
+    simpa [aux_pruneSeq] using this
+  exact ⟨hYm, hFm, hYX, hFE, hFproj, hdeg, hdeg0⟩
+
+/-- Auxiliary: the loss bound `μ(E₀ \ F) ≤ t ∑_j |X_j \ Y_j|` for the limit of the deletion
+process (the accounting of `rig:prune`, used for `Auto.rig_common_core`). -/
+theorem aux_rig_prune_loss (α β t : ℝ) (X : Fin 3 → Set ℝ²) (E₀ : Set (ℝ² × Ang))
+    (hX : ∀ j, MeasurableSet (X j)) (hE₀ : MeasurableSet E₀)
+    (hproj : ∀ j, ∀ᵐ p ∂(μinc.restrict E₀), proj α β j p ∈ X j) :
+    μinc (E₀ \ aux_rig_pruneF α β t X E₀) ≤
+      ENNReal.ofReal t * ∑ j, volume (X j \ aux_rig_pruneY α β t X E₀ j) := by
+  have e : E₀ \ aux_rig_pruneF α β t X E₀ = ⋃ n, (E₀ \ (aux_pruneSeq α β t X E₀ n).2) := by
+    simp only [aux_rig_pruneF, sdiff_iInter]
+  rw [e, Monotone.measure_iUnion]
+  · refine iSup_le fun n => (aux_pruneSeq_loss α β t X E₀ hX hE₀ hproj n).trans ?_
+    gcongr with j
+    exact iInter_subset (fun n => (aux_pruneSeq α β t X E₀ n).1 j) n
+  · intro m n hmn
+    exact sdiff_subset_sdiff_right (aux_pruneSeq_snd_anti α β t X E₀ hmn)
+
+/-- Auxiliary: base translation `(x, θ) ↦ (x + h, θ)` preserves `μ` (used for
+`Auto.rig_common_core` and `Auto.rig_translation_matrices`). -/
+theorem aux_rig_shift_mp (h : ℝ²) :
+    MeasurePreserving (fun p : ℝ² × Ang => (p.1 + h, p.2)) μinc μinc := by
+  unfold μinc
+  exact (measurePreserving_add_right volume h).prod (MeasurePreserving.id σ)
+
+/-- Auxiliary: a core has finite measure (used for `Auto.rig_common_core`). -/
+theorem aux_rig_core_finite (α β : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ²)
+    (hE : IsCoreData α β E X) : μinc E < ⊤ := by
+  have hnull : μinc (E \ proj α β 0 ⁻¹' X 0) = 0 := by
+    have h := hE.ae_proj_mem 0
+    rw [ae_restrict_iff' hE.measurableSet_E] at h
+    exact measure_mono_null (t := {p | ¬ (p ∈ E → proj α β 0 p ∈ X 0)})
+      (fun p hp hpX => hp.2 (hpX hp.1)) (ae_iff.1 h)
+  calc μinc E ≤ μinc (E ∩ proj α β 0 ⁻¹' X 0) + μinc (E \ proj α β 0 ⁻¹' X 0) :=
+        measure_le_inter_add_sdiff _ _ _
+    _ ≤ μinc (proj α β 0 ⁻¹' X 0) + 0 := by rw [hnull]; gcongr; exact inter_subset_right
+    _ = volume (X 0) := by
+        rw [add_zero, (aux_proj_measurePreserving α β 0).measure_preimage
+          (hE.measurableSet_X 0).nullMeasurableSet]
+    _ < ⊤ := (hE.isBounded_X 0).measure_lt_top
+
+/-- Auxiliary: translation continuity, `μ(E \ E_h) → 0` as `h → 0` for measurable `E` of finite
+measure (proof of `rig:common-core`, `Auto.rig_common_core`). -/
+theorem aux_rig_eta_tendsto (E : Set (ℝ² × Ang)) (hE : MeasurableSet E) (hEfin : μinc E < ⊤) :
+    Tendsto (fun h => μinc (E \ baseShift h E)) (𝓝 0) (𝓝 0) := by
+  have : μinc.InnerRegularCompactLTTop := by unfold μinc; infer_instance
+  have : IsLocallyFiniteMeasure μinc := by unfold μinc; infer_instance
+  let F : C(ℝ² × (ℝ² × Ang), ℝ² × Ang) :=
+    ⟨fun q => (q.2.1 + q.1, q.2.2), by fun_prop⟩
+  let f : ℝ² → C(ℝ² × Ang, ℝ² × Ang) := F.curry
+  have hf : Continuous f := F.curry.continuous
+  have h0 : f 0 = ContinuousMap.id _ := by ext p <;> simp [f, F]
+  have key := tendsto_measure_symmDiff_preimage_nhds_zero (μ := μinc) (ν := μinc)
+    (s := E) (hf.tendsto 0) (Eventually.of_forall fun h => aux_rig_shift_mp h)
+    (aux_rig_shift_mp 0) hE.nullMeasurableSet hEfin.ne
+  refine tendsto_of_tendsto_of_tendsto_of_le_of_le' tendsto_const_nhds key
+    (Eventually.of_forall fun h => zero_le) (Eventually.of_forall fun h => ?_)
+  refine measure_mono fun p hp => ?_
+  rw [h0, Set.mem_symmDiff]
+  exact Or.inr ⟨hp.1, hp.2⟩
+
+/-- Auxiliary: for a core `E` and `E₀ = E ∩ E_h ∩ ⋂_j π_j⁻¹(X_j - h)`, the configurations of
+`E` missing from `E₀` are, up to a null set, those missing from `E_h`
+(proof of `rig:common-core`, `Auto.rig_common_core`). -/
+theorem aux_rig_E0_loss (α β : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ²)
+    (hE : IsCoreData α β E X) (h : ℝ²) :
+    μinc (E \ (E ∩ baseShift h E ∩ ⋂ j, proj α β j ⁻¹' aux_vertexShift h X j)) ≤
+      μinc (E \ baseShift h E) := by
+  have hEm := hE.measurableSet_E
+  set T : ℝ² × Ang → ℝ² × Ang := fun p => (p.1 + h, p.2) with hT
+  have hnull : ∀ j, μinc (baseShift h E \ proj α β j ⁻¹' aux_vertexShift h X j) = 0 := by
+    intro j
+    have h0 : μinc {p | ¬ (p ∈ E → proj α β j p ∈ X j)} = 0 := by
+      have hh := hE.ae_proj_mem j
+      rw [ae_restrict_iff' hEm] at hh
+      exact ae_iff.1 hh
+    have e : baseShift h E \ proj α β j ⁻¹' aux_vertexShift h X j ⊆
+        T ⁻¹' {p | ¬ (p ∈ E → proj α β j p ∈ X j)} := by
+      intro p ⟨hp1, hp2⟩ hcon
+      apply hp2
+      have := hcon hp1
+      simp only [aux_vertexShift, mem_preimage, proj, hT] at this ⊢
+      convert this using 1; abel
+    exact measure_mono_null e ((aux_rig_shift_mp h).quasiMeasurePreserving.preimage_null h0)
+  calc μinc (E \ (E ∩ baseShift h E ∩ ⋂ j, proj α β j ⁻¹' aux_vertexShift h X j))
+      ≤ μinc ((E \ baseShift h E) ∪
+          ⋃ j, (baseShift h E \ proj α β j ⁻¹' aux_vertexShift h X j)) := by
+        refine measure_mono fun p ⟨hpE, hp⟩ => ?_
+        by_cases h1 : p ∈ baseShift h E
+        · right
+          by_contra hcon
+          simp only [mem_iUnion, not_exists, Set.mem_sdiff, not_and, not_not] at hcon
+          exact hp ⟨⟨hpE, h1⟩, mem_iInter.2 fun j => hcon j h1⟩
+        · exact Or.inl ⟨hpE, h1⟩
+    _ ≤ μinc (E \ baseShift h E) +
+          μinc (⋃ j, (baseShift h E \ proj α β j ⁻¹' aux_vertexShift h X j)) :=
+        measure_union_le _ _
+    _ = μinc (E \ baseShift h E) := by
+        rw [measure_iUnion_null hnull, add_zero]
+
 /-- **Lemma `rig:common-core`**.  Let $E$ be a core of degree $c$, and define
 $$E_h=\{(x,\theta):(x+h,\theta)\in E\},\qquad \eta(h)=\mu(E\setminus E_h).$$
 For all sufficiently small $h\in\mathbb R^2$, there is a core
@@ -58,7 +227,123 @@ theorem rig_common_core (α β : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Se
     ∃ (F : ℝ² → Set (ℝ² × Ang)) (Y : ℝ² → Fin 3 → Set ℝ²),
       (∀ᶠ h in 𝓝 (0 : ℝ²), aux_IsCommonCore α β c E X h (F h) (Y h)) ∧
       ∀ j, Tendsto (fun h => volume (X j \ Y h j)) (𝓝 0) (𝓝 0) := by
-  sorry
+  have hX := hE.measurableSet_X
+  have hEm := hE.measurableSet_E
+  have hc := hE.degree_pos
+  have hEfin := aux_rig_core_finite α β E X hE.toIsCoreData
+  set E0 : ℝ² → Set (ℝ² × Ang) := fun h =>
+    E ∩ baseShift h E ∩ ⋂ j, proj α β j ⁻¹' aux_vertexShift h X j with hE0def
+  have hE0m : ∀ h, MeasurableSet (E0 h) := fun h =>
+    (hEm.inter (hEm.preimage (aux_rig_shift_mp h).measurable)).inter
+      (MeasurableSet.iInter fun j => (aux_ker_measurable_proj α β j)
+        (measurable_add_const h (hX j)))
+  have hE0E : ∀ h, E0 h ⊆ E := fun h p hp => hp.1.1
+  set Y : ℝ² → Fin 3 → Set ℝ² := fun h => aux_rig_pruneY α β (c / 4) X (E0 h) with hYdef
+  set F : ℝ² → Set (ℝ² × Ang) := fun h => aux_rig_pruneF α β (c / 4) X (E0 h) with hFdef
+  set η : ℝ² → ℝ≥0∞ := fun h => μinc (E \ baseShift h E) with hηdef
+  have hprops := fun h => aux_rig_prune_props α β (c / 4) X (E0 h) hX (hE0m h)
+  -- the accounting, valid for every `h`
+  have hacc : ∀ h, μinc (E \ F h) ≤ 4 * η h ∧
+      ENNReal.ofReal (c / 4) * ∑ j, volume (X j \ Y h j) ≤ 3 * η h := by
+    intro h
+    obtain ⟨hYm, hFm, hYX, hFE0, hFproj, -, -⟩ := hprops h
+    have hproj0 : ∀ j, ∀ᵐ p ∂(μinc.restrict (E0 h)), proj α β j p ∈ X j := fun j =>
+      ae_restrict_of_ae_restrict_of_subset (hE0E h) (hE.ae_proj_mem j)
+    set V := ∑ j, volume (X j \ Y h j) with hVdef
+    have hL : μinc (E0 h \ F h) ≤ ENNReal.ofReal (c / 4) * V :=
+      aux_rig_prune_loss α β (c / 4) X (E0 h) hX (hE0m h) hproj0
+    have hj : ∀ j, ENNReal.ofReal c * volume (X j \ Y h j) ≤ μinc (E \ F h) := fun j =>
+      aux_vertex_loss α β E (F h) X (Y h) c hE hFm hYm
+        (fun j => ae_restrict_of_forall_mem hFm fun p hp => hFproj j p hp) j
+    have hm : μinc (E \ F h) ≤ η h + μinc (E0 h \ F h) := by
+      have h1 : E \ F h ⊆ (E \ E0 h) ∪ (E0 h \ F h) := by
+        intro p ⟨hpE, hpF⟩
+        by_cases h' : p ∈ E0 h
+        · exact Or.inr ⟨h', hpF⟩
+        · exact Or.inl ⟨hpE, h'⟩
+      refine (measure_mono h1).trans ((measure_union_le _ _).trans ?_)
+      gcongr
+      exact aux_rig_E0_loss α β E X hE.toIsCoreData h
+    have hVfin : V ≠ ⊤ := by
+      refine ne_top_of_le_ne_top ?_ (Finset.sum_le_sum fun j _ => measure_mono (sdiff_subset))
+      exact (ENNReal.sum_lt_top.2 fun j _ => (hE.isBounded_X j).measure_lt_top).ne
+    set t := ENNReal.ofReal (c / 4) * V with htdef
+    have htfin : t ≠ ⊤ := ENNReal.mul_ne_top ENNReal.ofReal_ne_top hVfin
+    have hc4 : ENNReal.ofReal c = 4 * ENNReal.ofReal (c / 4) := by
+      rw [← ENNReal.ofReal_ofNat 4, ← ENNReal.ofReal_mul (by norm_num)]; congr 1; ring
+    have hsum : 4 * t ≤ 3 * μinc (E \ F h) := by
+      calc 4 * t = ∑ j, ENNReal.ofReal c * volume (X j \ Y h j) := by
+            rw [← Finset.mul_sum, hc4, htdef, hVdef]; ring
+        _ ≤ ∑ _j : Fin 3, μinc (E \ F h) := Finset.sum_le_sum fun j _ => hj j
+        _ = 3 * μinc (E \ F h) := by simp
+    have ht3 : t ≤ 3 * η h := by
+      have h1 : t + 3 * t ≤ 3 * η h + 3 * t := by
+        calc t + 3 * t = 4 * t := by ring
+          _ ≤ 3 * μinc (E \ F h) := hsum
+          _ ≤ 3 * (η h + t) := by gcongr; exact hm.trans (by gcongr)
+          _ = 3 * η h + 3 * t := by ring
+      exact (ENNReal.add_le_add_iff_right (ENNReal.mul_ne_top (by norm_num) htfin)).1 h1
+    refine ⟨?_, ht3⟩
+    calc μinc (E \ F h) ≤ η h + t := hm.trans (by gcongr)
+      _ ≤ η h + 3 * η h := by gcongr
+      _ = 4 * η h := by ring
+  have hηt : Tendsto η (𝓝 0) (𝓝 0) := aux_rig_eta_tendsto E hEm hEfin
+  have hc4 : ENNReal.ofReal (c / 4) ≠ 0 := by
+    rw [Ne, ENNReal.ofReal_eq_zero, not_le]; positivity
+  refine ⟨F, Y, ?_, fun j => ?_⟩
+  · have h4 : Tendsto (fun h => 4 * η h) (𝓝 0) (𝓝 0) := by
+      simpa using ENNReal.Tendsto.const_mul hηt (Or.inr (by simp : (4 : ℝ≥0∞) ≠ ⊤))
+    filter_upwards [h4.eventually (Iio_mem_nhds hE.measure_pos)] with h hh
+    obtain ⟨hYm, hFm, hYX, hFE0, hFproj, hdegF, hdeg0⟩ := hprops h
+    have hlt : μinc (E \ F h) < μinc E := ((hacc h).1).trans_lt hh
+    have hFE : F h ⊆ E := hFE0.trans (hE0E h)
+    have hFEh : F h ⊆ baseShift h E := fun p hp => (hFE0 hp).1.2
+    have hFpos : 0 < μinc (F h) := by
+      rw [pos_iff_ne_zero]
+      intro h0
+      have : μinc E ≤ μinc (F h) + μinc (E \ F h) := by
+        calc μinc E ≤ μinc (E ∩ F h) + μinc (E \ F h) := measure_le_inter_add_sdiff _ _ _
+          _ ≤ μinc (F h) + μinc (E \ F h) := by gcongr; exact inter_subset_right
+      rw [h0, zero_add] at this
+      exact absurd this (not_le.2 hlt)
+    have hYsub : ∀ j, Y h j ⊆ aux_vertexShift h X j := by
+      intro j z hz
+      have hd := hdeg0 j z hz
+      by_contra hzn
+      have hzero : degree α β j (E0 h) z = 0 := by
+        unfold degree
+        refine integral_eq_zero_of_ae (Eventually.of_forall fun θ => ?_)
+        refine indicator_of_notMem (fun hmem => hzn ?_) _
+        have h2 := mem_iInter.1 hmem.2 j
+        simpa [proj] using h2
+      rw [hzero] at hd
+      linarith
+    have hEhm : μinc (baseShift h E) = μinc E :=
+      (aux_rig_shift_mp h).measure_preimage hEm.nullMeasurableSet
+    have hFfin : μinc (F h) ≠ ⊤ := (lt_of_le_of_lt (measure_mono hFE) hEfin).ne
+    refine ⟨?_, subset_inter hFE hFEh, fun j => subset_inter (hYX j) (hYsub j), ?_,
+      (hacc h).1⟩
+    · exact
+        { measurableSet_X := hYm
+          isBounded_X := fun j => (hE.isBounded_X j).subset (hYX j)
+          measurableSet_E := hFm
+          ae_proj_mem := fun j => ae_restrict_of_forall_mem hFm fun p hp => hFproj j p hp
+          measure_pos := hFpos
+          degree_pos := by positivity
+          ae_degree_ge := fun j => ae_restrict_of_forall_mem (hYm j) fun z hz => hdegF j z hz }
+    · rw [measure_sdiff hFE hFm.nullMeasurableSet hFfin,
+        measure_sdiff hFEh hFm.nullMeasurableSet hFfin, hEhm]
+  · have hb : Tendsto (fun h => 3 * η h / ENNReal.ofReal (c / 4)) (𝓝 0) (𝓝 0) := by
+      have h3 : Tendsto (fun h => 3 * η h) (𝓝 0) (𝓝 0) := by
+        simpa using ENNReal.Tendsto.const_mul hηt (Or.inr (by simp : (3 : ℝ≥0∞) ≠ ⊤))
+      simpa using ENNReal.Tendsto.div_const h3 (Or.inr hc4)
+    refine tendsto_of_tendsto_of_tendsto_of_le_of_le' tendsto_const_nhds hb
+      (Eventually.of_forall fun h => zero_le) (Eventually.of_forall fun h => ?_)
+    rw [ENNReal.le_div_iff_mul_le (Or.inl hc4) (Or.inl ENNReal.ofReal_ne_top), mul_comm]
+    refine le_trans ?_ (hacc h).2
+    gcongr
+    exact Finset.single_le_sum (f := fun j => volume (X j \ Y h j))
+      (fun _ _ => zero_le) (Finset.mem_univ j)
 
 /-! ### Translation matrices (`rig:translation-matrices`) -/
 
@@ -69,6 +354,358 @@ def basisRow {α β : ℝ} {E : Set (ℝ² × Ang)} {X : Fin 3 → Set ℝ²} {d
     (b : OrthonormalBasis (Fin d) ℝ (kernelSpace α β E X)) (j : Fin 3) (z : ℝ²) : Fin d → ℝ :=
   fun i => (X j).indicator (((b i : HE X) j : Lp ℝ 2 (volume.restrict (X j))) : ℝ² → ℝ) z
 
+/-- Auxiliary: the base translate $E_h$ of a core of degree $c$, with vertex sets $X_j-h$, is again
+a core of degree $c$ (used for `Auto.rig_translation_matrices`). -/
+theorem aux_rig_shift_core (α β : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ²) (c : ℝ)
+    (hE : IsCore α β E X c) (h : ℝ²) :
+    IsCore α β (baseShift h E) (aux_vertexShift h X) c := by
+  have hX := hE.measurableSet_X
+  have hEm := hE.measurableSet_E
+  have hS := aux_rig_shift_mp h
+  have hpre : baseShift h E = (fun p : ℝ² × Ang => (p.1 + h, p.2)) ⁻¹' E := rfl
+  have hEhm : MeasurableSet (baseShift h E) := by rw [hpre]; exact hEm.preimage hS.measurable
+  refine
+    { measurableSet_X := fun j => measurable_add_const h (hX j)
+      isBounded_X := fun j => ?_
+      measurableSet_E := hEhm
+      ae_proj_mem := fun j => ?_
+      measure_pos := ?_
+      degree_pos := hE.degree_pos
+      ae_degree_ge := fun j => ?_ }
+  · have e : aux_vertexShift h X j = -h +ᵥ X j := by
+      ext x
+      rw [Set.mem_vadd_set_iff_neg_vadd_mem, neg_neg, vadd_eq_add, add_comm]
+      rfl
+    rw [e]; exact (hE.isBounded_X j).vadd (-h)
+  · have hR := hS.restrict_preimage hEm
+    rw [← hpre] at hR
+    filter_upwards [hR.quasiMeasurePreserving.ae (hE.ae_proj_mem j)] with p hp
+    simp only [aux_vertexShift, mem_preimage, proj] at hp ⊢
+    convert hp using 1; abel
+  · rw [hpre, hS.measure_preimage hEm.nullMeasurableSet]; exact hE.measure_pos
+  · have hR := (measurePreserving_add_right volume h).restrict_preimage (hX j)
+    filter_upwards [hR.quasiMeasurePreserving.ae (hE.ae_degree_ge j)] with z hz
+    convert hz using 1
+    unfold degree baseShift
+    congr 1; funext θ
+    have e : (z - (Lv α β j) (u θ) + h, θ) = (z + h - (Lv α β j) (u θ), θ) := by
+      rw [sub_add_eq_add_sub]
+    by_cases hm : (z + h - (Lv α β j) (u θ), θ) ∈ E
+    · rw [indicator_of_mem hm, indicator_of_mem (show (z - (Lv α β j) (u θ), θ) ∈
+        {p : ℝ² × Ang | (p.1 + h, p.2) ∈ E} from by simpa [e] using hm)]
+    · rw [indicator_of_notMem hm, indicator_of_notMem (show (z - (Lv α β j) (u θ), θ) ∉
+        {p : ℝ² × Ang | (p.1 + h, p.2) ∈ E} from by simpa [e] using hm)]
+
+/-- Auxiliary: base translation by `h` maps `K_E` into `K_{E_h}`, the translated element having
+components `f_j(· + h)` (used for `Auto.rig_translation_matrices`). -/
+theorem aux_rig_shift_ker (α β : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ²)
+    (hX : ∀ j, MeasurableSet (X j)) (hEm : MeasurableSet E) (h : ℝ²) (f : HE X)
+    (hf : f ∈ kernelSpace α β E X) :
+    (aux_shiftHE h X hX).symm f ∈ kernelSpace α β (baseShift h E) (aux_vertexShift h X) ∧
+      ∀ j, ∀ᵐ z ∂(volume.restrict (aux_vertexShift h X j)),
+        (((aux_shiftHE h X hX).symm f) j : ℝ² → ℝ) z = (f j : ℝ² → ℝ) (z + h) := by
+  set g := (aux_shiftHE h X hX).symm f with hg
+  have hfg : aux_shiftHE h X hX g = f := LinearIsometryEquiv.apply_symm_apply _ _
+  refine ⟨?_, fun j => ?_⟩
+  · change incidenceOp α β (baseShift h E) (aux_vertexShift h X) g = 0
+    rw [← norm_eq_zero, aux_shift_norm α β E hEm X hX h g, hfg, norm_eq_zero]
+    exact hf
+  · have h1 : ((aux_shiftHE h X hX g) j : ℝ² → ℝ) =ᵐ[volume.restrict (X j)]
+        fun z => (g j : ℝ² → ℝ) (z - h) := aux_shiftLp_coe h (X j) (hX j) (g j)
+    rw [hfg] at h1
+    have hR := (measurePreserving_add_right volume h).restrict_preimage (hX j)
+    filter_upwards [hR.quasiMeasurePreserving.ae_eq_comp h1] with z hz
+    simp only [Function.comp_apply, add_sub_cancel_right] at hz
+    exact hz.symm
+
+section Gram
+
+variable {α β : ℝ} {E : Set (ℝ² × Ang)} {X : Fin 3 → Set ℝ²} {d : ℕ}
+
+/-- Auxiliary: the entries of the rows `Φ_j` are square integrable on the plane (proof of
+`rig:translation-matrices`, `Auto.rig_translation_matrices`). -/
+theorem aux_rig_row_memLp (b : OrthonormalBasis (Fin d) ℝ (kernelSpace α β E X)) (j : Fin 3)
+    (k : Fin d) (hX : MeasurableSet (X j)) :
+    MemLp (fun z => basisRow b j z k) 2 (volume : Measure ℝ²) := by
+  change MemLp ((X j).indicator _) 2 volume
+  exact (memLp_indicator_iff_restrict hX).2 (Lp.memLp _)
+
+/-- Auxiliary: `(2, 2, 1)` is a Hölder triple (Cauchy–Schwarz estimates in the proof of
+`rig:translation-matrices`). -/
+instance aux_rig_holder : ENNReal.HolderTriple 2 2 1 := ⟨by
+  rw [ENNReal.inv_two_add_inv_two, inv_one]⟩
+
+/-- Auxiliary: products of (translates of) entries of the rows are integrable (proof of
+`rig:translation-matrices`). -/
+theorem aux_rig_prod_integrable (b : OrthonormalBasis (Fin d) ℝ (kernelSpace α β E X))
+    (j : Fin 3) (k l : Fin d) (hX : MeasurableSet (X j)) (h : ℝ²) :
+    Integrable (fun z => basisRow b j z k * basisRow b j (z + h) l) (volume : Measure ℝ²) :=
+  memLp_one_iff_integrable.mp
+    (((aux_rig_row_memLp b j l hX).comp_measurePreserving
+      (measurePreserving_add_right volume h)).mul' (aux_rig_row_memLp b j k hX)
+      (p := 2) (q := 2) (r := 1))
+
+/-- Auxiliary: the Gram matrix `∑_j ∫_{S_j} Φ_j(z)ᵀ Φ_j(z+h) dz` (proof of
+`rig:translation-matrices`, `Auto.rig_translation_matrices`). -/
+def aux_rig_gram (b : OrthonormalBasis (Fin d) ℝ (kernelSpace α β E X)) (S : Fin 3 → Set ℝ²)
+    (h : ℝ²) : Matrix (Fin d) (Fin d) ℝ :=
+  Matrix.of fun k l => ∑ j, ∫ z in S j, basisRow b j z k * basisRow b j (z + h) l
+
+/-- Auxiliary: orthonormality, `∑_j ∫_{X_j} Φ_jᵀ Φ_j = I` (proof of `rig:translation-matrices`). -/
+theorem aux_rig_gram_one (b : OrthonormalBasis (Fin d) ℝ (kernelSpace α β E X))
+    (hX : ∀ j, MeasurableSet (X j)) : aux_rig_gram b X 0 = 1 := by
+  ext k l
+  have h1 : ⟪((b k : kernelSpace α β E X) : HE X), ((b l : kernelSpace α β E X) : HE X)⟫_ℝ =
+      (1 : Matrix (Fin d) (Fin d) ℝ) k l := by
+    rw [← Submodule.coe_inner, orthonormal_iff_ite.mp b.orthonormal k l, Matrix.one_apply]
+  rw [← h1, PiLp.inner_apply]
+  simp only [aux_rig_gram, Matrix.of_apply, add_zero]
+  refine Finset.sum_congr rfl fun j _ => ?_
+  rw [MeasureTheory.L2.inner_def]
+  refine setIntegral_congr_fun (hX j) fun z hz => ?_
+  simp only [basisRow, Set.indicator_of_mem hz, aux_real_inner_eq_mul]
+
+/-- Auxiliary: the row identity `Φ_j(z+h) = Φ_j(z) C` on `S_j` gives
+`G(S, h) = G(S, 0) C` for the Gram matrices (proof of `rig:translation-matrices`). -/
+theorem aux_rig_gram_mul (b : OrthonormalBasis (Fin d) ℝ (kernelSpace α β E X))
+    (S : Fin 3 → Set ℝ²) (hX : ∀ j, MeasurableSet (X j)) (h : ℝ²)
+    (Cm : Matrix (Fin d) (Fin d) ℝ)
+    (hid : ∀ j, ∀ᵐ z ∂(volume.restrict (S j)),
+      basisRow b j (z + h) = Matrix.vecMul (basisRow b j z) Cm) :
+    aux_rig_gram b S h = aux_rig_gram b S 0 * Cm := by
+  ext k l
+  simp only [aux_rig_gram, Matrix.of_apply, Matrix.mul_apply]
+  have key : ∀ j : Fin 3,
+      (∫ z in S j, basisRow b j z k * basisRow b j (z + h) l) =
+      ∑ m, (∫ z in S j, basisRow b j z k * basisRow b j (z + 0) m) * Cm m l := by
+    intro j
+    have he : ∀ᵐ z ∂(volume.restrict (S j)),
+        basisRow b j z k * basisRow b j (z + h) l =
+          ∑ m, basisRow b j z k * basisRow b j (z + 0) m * Cm m l := by
+      filter_upwards [hid j] with z hz
+      rw [hz, add_zero]
+      simp only [Matrix.vecMul, dotProduct, Finset.mul_sum]
+      exact Finset.sum_congr rfl fun m _ => by ring
+    rw [integral_congr_ae he, integral_finsetSum]
+    · exact Finset.sum_congr rfl fun m _ => integral_mul_const _ _
+    · intro m _
+      exact ((aux_rig_prod_integrable b j k m (hX j) 0).integrableOn.mul_const _)
+  rw [Finset.sum_congr rfl fun j _ => key j, Finset.sum_comm]
+  exact Finset.sum_congr rfl fun m _ => (Finset.sum_mul _ _ _).symm
+
+/-- Auxiliary: Gram matrices over sets filling up the vertex sets tend to the identity (proof of
+`rig:translation-matrices`). -/
+theorem aux_rig_gram_tendsto_one {ι : Type*} {fl : Filter ι}
+    (b : OrthonormalBasis (Fin d) ℝ (kernelSpace α β E X)) (hX : ∀ j, MeasurableSet (X j))
+    (S : ι → Fin 3 → Set ℝ²)
+    (hSm : ∀ᶠ i in fl, ∀ j, MeasurableSet (S i j) ∧ S i j ⊆ X j)
+    (hS : ∀ j, Tendsto (fun i => volume (X j \ S i j)) fl (𝓝 0)) :
+    Tendsto (fun i => aux_rig_gram b (S i) 0) fl (𝓝 1) := by
+  have hentry : ∀ k l : Fin d, Tendsto (fun i => aux_rig_gram b (S i) 0 k l) fl
+      (𝓝 ((1 : Matrix (Fin d) (Fin d) ℝ) k l)) := by
+    intro k l
+    set F : Fin 3 → ℝ² → ℝ := fun j z => basisRow b j z k * basisRow b j (z + 0) l with hFdef
+    have hFint : ∀ j, Integrable (F j) (volume : Measure ℝ²) := fun j =>
+      aux_rig_prod_integrable b j k l (hX j) 0
+    have hzero : Tendsto (fun i => ∑ j, ∫ z in X j \ S i j, F j z) fl (𝓝 0) := by
+      have : (0 : ℝ) = ∑ _j : Fin 3, (0 : ℝ) := by simp
+      rw [this]
+      exact tendsto_finsetSum _ fun j _ => (hFint j).tendsto_setIntegral_nhds_zero (hS j)
+    have heq : ∀ᶠ i in fl, aux_rig_gram b (S i) 0 k l =
+        (aux_rig_gram b X 0) k l - ∑ j, ∫ z in X j \ S i j, F j z := by
+      filter_upwards [hSm] with i hi
+      have hsplit : ∀ j, ∫ z in S i j, F j z =
+          (∫ z in X j, F j z) - ∫ z in X j \ S i j, F j z := by
+        intro j
+        have hu : ∫ z in X j, F j z =
+            (∫ z in S i j, F j z) + ∫ z in X j \ S i j, F j z := by
+          rw [← setIntegral_union disjoint_sdiff_right ((hX j).diff (hi j).1)
+            (hFint j).integrableOn (hFint j).integrableOn, union_sdiff_cancel (hi j).2]
+        linarith
+      simp only [aux_rig_gram, Matrix.of_apply]
+      rw [Finset.sum_congr rfl fun j _ => hsplit j, ← Finset.sum_sub_distrib]
+    refine Tendsto.congr' (Filter.EventuallyEq.symm heq) ?_
+    rw [aux_rig_gram_one b hX]
+    have hc2 : Tendsto (fun _ : ι => (1 : Matrix (Fin d) (Fin d) ℝ) k l) fl
+        (𝓝 ((1 : Matrix (Fin d) (Fin d) ℝ) k l)) := tendsto_const_nhds
+    simpa using hc2.sub hzero
+  exact tendsto_pi_nhds.2 fun k => tendsto_pi_nhds.2 fun l => hentry k l
+
+/-- Auxiliary: the Cauchy–Schwarz estimate for an integral of a product over a set (proof of
+`rig:translation-matrices`). -/
+theorem aux_rig_cs (S : Set ℝ²) (G F : ℝ² → ℝ) (hG : MemLp G 2 (volume : Measure ℝ²))
+    (hF : MemLp F 2 (volume : Measure ℝ²)) :
+    |∫ x in S, G x * F x| ≤
+      (eLpNorm G 2 (volume : Measure ℝ²)).toReal * (eLpNorm F 2 (volume : Measure ℝ²)).toReal := by
+  have hmul : eLpNorm (fun x => G x * F x) 1 (volume : Measure ℝ²) ≤
+      eLpNorm G 2 volume * eLpNorm F 2 volume := by
+    have := eLpNorm_smul_le_mul_eLpNorm (𝕜 := ℝ) (f := F) (φ := G) (p := 2) (q := 2) (r := 1)
+      hF.1 hG.1
+    refine le_trans (le_of_eq ?_) this
+    congr 1
+  have hb : ‖∫ x in S, G x * F x‖ₑ ≤ eLpNorm G 2 volume * eLpNorm F 2 volume := by
+    calc ‖∫ x in S, G x * F x‖ₑ ≤ ∫⁻ x in S, ‖G x * F x‖ₑ :=
+          enorm_integral_le_lintegral_enorm _
+      _ ≤ ∫⁻ x, ‖G x * F x‖ₑ := setLIntegral_le_lintegral _ _
+      _ = eLpNorm (fun x => G x * F x) 1 volume := eLpNorm_one_eq_lintegral_enorm.symm
+      _ ≤ _ := hmul
+  rw [← ENNReal.toReal_mul, ← Real.norm_eq_abs, ← ENNReal.ofReal_le_iff_le_toReal
+    (ENNReal.mul_ne_top hG.eLpNorm_lt_top.ne hF.eLpNorm_lt_top.ne), ofReal_norm]
+  exact hb
+
+/-- Auxiliary: continuity of translation in `L²(ℝ²)` for real functions (proof of
+`rig:translation-matrices`). -/
+theorem aux_rig_transl_L2 (F : ℝ² → ℝ) (hF : MemLp F 2 (volume : Measure ℝ²)) :
+    Tendsto (fun h : ℝ² =>
+        (eLpNorm (fun x => F (x + h) - F x) 2 (volume : Measure ℝ²)).toReal) (𝓝 0) (𝓝 0) := by
+  set f := hF.toLp F with hfdef
+  let G0 : C(ℝ² × ℝ², ℝ²) := ⟨fun q => q.2 + q.1, by fun_prop⟩
+  let g : ℝ² → C(ℝ², ℝ²) := G0.curry
+  have hgm : ∀ h : ℝ², MeasurePreserving (g h) volume volume := fun h =>
+    measurePreserving_add_right volume h
+  have hgc : Continuous g := G0.curry.continuous
+  have hcont : Continuous (fun h : ℝ² => Lp.compMeasurePreserving (g h) (hgm h) f) :=
+    Continuous.compMeasurePreservingLp continuous_const hgc hgm (by simp)
+  set T : ℝ² → Lp ℝ 2 (volume : Measure ℝ²) :=
+    fun h => Lp.compMeasurePreserving (g h) (hgm h) f with hTdef
+  have hT0 : T 0 = f := by
+    refine Lp.ext ?_
+    filter_upwards [Lp.coeFn_compMeasurePreserving (f := g 0) f (hgm 0)] with x hx
+    rw [show ⇑(T 0) x = (⇑f ∘ ⇑(g 0)) x from hx]
+    simp only [Function.comp_apply]
+    rw [show (g 0) x = x + 0 from rfl, add_zero]
+  have hlim : Tendsto (fun h => ‖T h - f‖) (𝓝 0) (𝓝 0) := by
+    have h1 : Tendsto T (𝓝 0) (𝓝 f) := by
+      have := hcont.tendsto 0
+      rwa [hT0] at this
+    have h2 : Tendsto (fun h => T h - f) (𝓝 0) (𝓝 (f - f)) :=
+      h1.sub (tendsto_const_nhds (x := f))
+    rw [sub_self] at h2
+    simpa using h2.norm
+  refine hlim.congr fun h => ?_
+  have hshift : ∀ᵐ x ∂(volume : Measure ℝ²), (⇑f) ((g h) x) = F ((g h) x) :=
+    (hgm h).quasiMeasurePreserving.ae hF.coeFn_toLp
+  have hae : ⇑(T h - f) =ᵐ[volume] fun x => F (x + h) - F x := by
+    filter_upwards [Lp.coeFn_sub (T h) f, Lp.coeFn_compMeasurePreserving (f := g h) f (hgm h),
+      hF.coeFn_toLp, hshift] with x h1 h2 h3 h4
+    rw [h1, Pi.sub_apply, h2]
+    simp only [Function.comp_apply]
+    rw [h3, h4, show (g h) x = x + h from rfl]
+  rw [Lp.norm_def, eLpNorm_congr_ae hae]
+
+/-- Auxiliary: shifted and unshifted Gram matrices differ by a quantity tending to zero
+(`L²` translation continuity; proof of `rig:translation-matrices`). -/
+theorem aux_rig_gram_shift_tendsto {ι : Type*} {fl : Filter ι}
+    (b : OrthonormalBasis (Fin d) ℝ (kernelSpace α β E X))
+    (hX : ∀ j, MeasurableSet (X j)) (S : ι → Fin 3 → Set ℝ²) (hh : ι → ℝ²)
+    (hhlim : Tendsto hh fl (𝓝 0)) :
+    Tendsto (fun i => aux_rig_gram b (S i) (hh i) - aux_rig_gram b (S i) 0) fl (𝓝 0) := by
+  have hentry : ∀ k l : Fin d,
+      Tendsto (fun i => aux_rig_gram b (S i) (hh i) k l - aux_rig_gram b (S i) 0 k l) fl
+        (𝓝 0) := by
+    intro k l
+    set N : Fin 3 → ℝ :=
+      fun j => (eLpNorm (fun z => basisRow b j z k) 2 (volume : Measure ℝ²)).toReal with hNdef
+    set Dq : Fin 3 → ι → ℝ := fun j i =>
+      (eLpNorm (fun z => basisRow b j (z + hh i) l - basisRow b j (z + 0) l) 2
+        (volume : Measure ℝ²)).toReal with hDdef
+    have hD : ∀ j, Tendsto (Dq j) fl (𝓝 0) := by
+      intro j
+      have := (aux_rig_transl_L2 (fun z => basisRow b j z l)
+        (aux_rig_row_memLp b j l (hX j))).comp hhlim
+      simpa [hDdef, Function.comp_def] using this
+    have hg : Tendsto (fun i => ∑ j, N j * Dq j i) fl (𝓝 0) := by
+      have h0 : (0 : ℝ) = ∑ _j : Fin 3, (0 : ℝ) := by simp
+      rw [h0]
+      refine tendsto_finsetSum _ fun j _ => ?_
+      simpa using (hD j).const_mul (N j)
+    refine squeeze_zero_norm (fun i => ?_) hg
+    have hsplit : aux_rig_gram b (S i) (hh i) k l - aux_rig_gram b (S i) 0 k l =
+        ∑ j, ∫ z in S i j, basisRow b j z k *
+          (basisRow b j (z + hh i) l - basisRow b j (z + 0) l) := by
+      simp only [aux_rig_gram, Matrix.of_apply]
+      rw [← Finset.sum_sub_distrib]
+      refine Finset.sum_congr rfl fun j _ => ?_
+      rw [← integral_sub (aux_rig_prod_integrable b j k l (hX j) (hh i)).integrableOn
+        (aux_rig_prod_integrable b j k l (hX j) 0).integrableOn]
+      exact integral_congr_ae (Eventually.of_forall fun z => by ring)
+    rw [hsplit, Real.norm_eq_abs]
+    refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum fun j _ => ?_)
+    exact aux_rig_cs _ _ _ (aux_rig_row_memLp b j k (hX j))
+      (((aux_rig_row_memLp b j l (hX j)).comp_measurePreserving
+        (measurePreserving_add_right volume (hh i))).sub
+        ((aux_rig_row_memLp b j l (hX j)).comp_measurePreserving
+        (measurePreserving_add_right volume 0)))
+  exact tendsto_pi_nhds.2 fun k => tendsto_pi_nhds.2 fun l => hentry k l
+
+end Gram
+
+/-- Auxiliary: translation continuity of the indicator of a set of finite measure,
+`|S \ (S - h)| → 0` (proof of `rig:translation-matrices`). -/
+theorem aux_rig_transl_set (S : Set ℝ²) (hS : MeasurableSet S) (hfin : volume S ≠ ⊤) :
+    Tendsto (fun h : ℝ² => volume (S \ (· + h) ⁻¹' S)) (𝓝 0) (𝓝 0) := by
+  have : (volume : Measure ℝ²).InnerRegularCompactLTTop := inferInstance
+  let G0 : C(ℝ² × ℝ², ℝ²) := ⟨fun q => q.2 + q.1, by fun_prop⟩
+  let g : ℝ² → C(ℝ², ℝ²) := G0.curry
+  have hgm : ∀ h : ℝ², MeasurePreserving (g h) volume volume := fun h =>
+    measurePreserving_add_right volume h
+  have hgc : Continuous g := G0.curry.continuous
+  have h0 : g 0 = ContinuousMap.id _ := by ext x; simp [g, G0]
+  have key := tendsto_measure_symmDiff_preimage_nhds_zero (μ := (volume : Measure ℝ²))
+    (ν := (volume : Measure ℝ²)) (s := S) (hgc.tendsto 0)
+    (Eventually.of_forall hgm) (hgm 0) hS.nullMeasurableSet hfin
+  refine tendsto_of_tendsto_of_tendsto_of_le_of_le' tendsto_const_nhds key
+    (Eventually.of_forall fun h => zero_le) (Eventually.of_forall fun h => ?_)
+  refine measure_mono fun x hx => ?_
+  rw [Set.mem_symmDiff]
+  right
+  refine ⟨?_, ?_⟩
+  · rw [h0]; exact hx.1
+  · exact hx.2
+
+/-- Auxiliary: the coercion of a finite sum in `L²` is almost everywhere the sum of the
+coercions (proof of `rig:translation-matrices`). -/
+theorem aux_rig_coeFn_sum {ι : Type*} {μ : Measure ℝ²} (s : Finset ι) (f : ι → Lp ℝ 2 μ) :
+    ⇑(∑ i ∈ s, f i) =ᵐ[μ] fun x => ∑ i ∈ s, f i x := by
+  classical
+  induction s using Finset.induction_on with
+  | empty =>
+      filter_upwards [Lp.coeFn_zero ℝ 2 μ] with x hx
+      simpa using hx
+  | insert a s ha ih =>
+      rw [Finset.sum_insert ha]
+      filter_upwards [Lp.coeFn_add (f a) (∑ i ∈ s, f i), ih] with x h1 h2
+      rw [h1, Pi.add_apply, h2, Finset.sum_insert ha]
+
+/-- Auxiliary: a finite sum in a `PiLp` space is computed componentwise. -/
+theorem aux_rig_piLp_sum_apply {ι κ : Type*} {p : ℝ≥0∞} {γ : κ → Type*}
+    [∀ i, SeminormedAddCommGroup (γ i)] (s : Finset ι) (w : ι → PiLp p γ) (j : κ) :
+    (∑ i ∈ s, w i) j = ∑ i ∈ s, w i j := by
+  classical
+  induction s using Finset.induction_on with
+  | empty => simp
+  | insert a s ha ih => rw [Finset.sum_insert ha, PiLp.add_apply, ih, Finset.sum_insert ha]
+
+/-- Auxiliary: componentwise expansion of an element of `K_E` in an orthonormal basis (proof of
+`rig:translation-matrices`). -/
+theorem aux_rig_expand {α β : ℝ} {E : Set (ℝ² × Ang)} {X : Fin 3 → Set ℝ²} {d : ℕ}
+    (b : OrthonormalBasis (Fin d) ℝ (kernelSpace α β E X)) (a : kernelSpace α β E X) (j : Fin 3) :
+    (((a : HE X) j : ℝ² → ℝ)) =ᵐ[volume.restrict (X j)]
+      fun z => ∑ l, b.repr a l * (((b l : kernelSpace α β E X) : HE X) j : ℝ² → ℝ) z := by
+  have e1 : (a : HE X) j = ∑ l, b.repr a l • (((b l : kernelSpace α β E X) : HE X) j) := by
+    conv_lhs => rw [← b.sum_repr a]
+    rw [AddSubmonoidClass.coe_finsetSum, aux_rig_piLp_sum_apply]
+    exact Finset.sum_congr rfl fun l _ => rfl
+  rw [e1]
+  filter_upwards [aux_rig_coeFn_sum Finset.univ
+      (fun l => b.repr a l • (((b l : kernelSpace α β E X) : HE X) j)),
+    ae_all_iff.mpr (fun l : Fin d => Lp.coeFn_smul (b.repr a l)
+      (((b l : kernelSpace α β E X) : HE X) j))] with z h1 h2
+  rw [h1]
+  exact Finset.sum_congr rfl fun l _ => by rw [h2 l]; rfl
+
+set_option maxHeartbeats 1000000 in
+-- the proof assembles many eventual statements in one long proof term
 /-- **Lemma `rig:translation-matrices`**.  Let $\phi^1,\ldots,\phi^d$ be an orthonormal basis of
 $K_E$, and write
 $$\Phi_j(z)=(\phi_j^1(z),\ldots,\phi_j^d(z)),$$
@@ -89,9 +726,432 @@ theorem rig_translation_matrices (α β : ℝ) (hβ : β ≠ 0) (E : Set (ℝ² 
       (∀ j, Tendsto (fun h => volume (X j \ Y h j)) (𝓝 0) (𝓝 0)) ∧
       ∃ U ∈ 𝓝 (0 : ℝ²), ContinuousOn C U ∧ C 0 = 1 ∧
         ∀ h k, h ∈ U → k ∈ U → h + k ∈ U → C (h + k) = C h * C k := by
-  sorry
+  classical
+  have hX := hE.measurableSet_X
+  have hEm := hE.measurableSet_E
+  have hc := hE.degree_pos
+  obtain ⟨F, Y, hFY, hY⟩ := rig_common_core α β E X c hE
+  obtain ⟨C₀, hC₀, hgap⟩ := rig_kernel_gap α β hβ E X c hE
+  have hgap0 : ∀ f : HE X,
+      Metric.infDist f (kernelSpace α β E X) ≤ C₀ * ‖incidenceOp α β E X f‖ := by
+    have e1 : aux_vertexShift 0 X = X := by funext j; ext z; simp [aux_vertexShift]
+    have e2 : baseShift 0 E = E := by ext p; simp [baseShift]
+    have := hgap 0
+    rw [e1, e2] at this
+    exact this
+  obtain ⟨η₀, hη₀, hstab⟩ := rig_kernel_stability α β hβ c (c / 4) C₀ hc (by positivity) hC₀
+  have hexists : ∀ h, aux_IsCommonCore α β c E X h (F h) (Y h) →
+      μinc (E \ F h) < ENNReal.ofReal η₀ →
+      ∃ Cm : Matrix (Fin d) (Fin d) ℝ, ∀ j, ∀ᵐ z ∂(volume.restrict (Y h j)),
+        basisRow b j (z + h) = Matrix.vecMul (basisRow b j z) Cm := by
+    intro h hcc hsmall
+    obtain ⟨hFcore, hFsub, hYsub, hEq, -⟩ := hcc
+    have hFE : F h ⊆ E := fun p hp => (hFsub hp).1
+    have hFEh : F h ⊆ baseShift h E := fun p hp => (hFsub hp).2
+    have hYX : ∀ j, Y h j ⊆ X j := fun j z hz => (hYsub j hz).1
+    have hYXh : ∀ j, Y h j ⊆ aux_vertexShift h X j := fun j z hz => (hYsub j hz).2
+    obtain ⟨R, hR⟩ := hstab E X hE hgap0 (F h) (Y h) hFcore hFE hYX hsmall
+    obtain ⟨R', hR'⟩ := hstab (baseShift h E) (aux_vertexShift h X)
+      (aux_rig_shift_core α β E X c hE h) (hgap h) (F h) (Y h) hFcore hFEh hYXh
+      (by rw [← hEq]; exact hsmall)
+    let tr : Fin d → kernelSpace α β (baseShift h E) (aux_vertexShift h X) := fun k =>
+      ⟨(aux_shiftHE h X hX).symm (b k : HE X),
+        (aux_rig_shift_ker α β E X hX hEm h _ (b k).2).1⟩
+    let ak : Fin d → kernelSpace α β E X := fun k => R.symm (R' (tr k))
+    refine ⟨Matrix.of fun l k => b.repr (ak k) l, fun j => ?_⟩
+    have hall : ∀ k, ∀ᵐ z ∂(volume.restrict (Y h j)),
+        (((b k : kernelSpace α β E X) : HE X) j : ℝ² → ℝ) (z + h) =
+          ∑ l, b.repr (ak k) l * (((b l : kernelSpace α β E X) : HE X) j : ℝ² → ℝ) z := by
+      intro k
+      have hA := hR (ak k) j
+      have hRak : R (ak k) = R' (tr k) := R.apply_symm_apply _
+      rw [hRak] at hA
+      have hB := hR' (tr k) j
+      have hC := ae_restrict_of_ae_restrict_of_subset (hYXh j)
+        ((aux_rig_shift_ker α β E X hX hEm h _ (b k).2).2 j)
+      have hD := ae_restrict_of_ae_restrict_of_subset (hYX j) (aux_rig_expand b (ak k) j)
+      filter_upwards [hA, hB, hC, hD] with z hA' hB' hC' hD'
+      calc (((b k : kernelSpace α β E X) : HE X) j : ℝ² → ℝ) (z + h)
+          = (((aux_shiftHE h X hX).symm (b k : HE X)) j : ℝ² → ℝ) z := hC'.symm
+        _ = _ := hB'.symm
+        _ = _ := hA'
+        _ = _ := hD'
+    filter_upwards [ae_all_iff.mpr hall, ae_restrict_mem (hFcore.measurableSet_X j)]
+      with z hz hzY
+    have hzX : z ∈ X j := hYX j hzY
+    have hzXh : z + h ∈ X j := hYXh j hzY
+    funext k
+    simp only [basisRow, Matrix.vecMul, dotProduct, indicator_of_mem hzX, indicator_of_mem hzXh,
+      Matrix.of_apply]
+    rw [hz k]
+    exact Finset.sum_congr rfl fun l _ => by ring
+  -- the choice of `C`
+  set Cf : ℝ² → Matrix (Fin d) (Fin d) ℝ := fun h =>
+    if hh : ∃ Cm : Matrix (Fin d) (Fin d) ℝ, ∀ j, ∀ᵐ z ∂(volume.restrict (Y h j)),
+        basisRow b j (z + h) = Matrix.vecMul (basisRow b j z) Cm then hh.choose else 1
+    with hCfdef
+  have hCfspec : ∀ h, (∃ Cm : Matrix (Fin d) (Fin d) ℝ, ∀ j, ∀ᵐ z ∂(volume.restrict (Y h j)),
+      basisRow b j (z + h) = Matrix.vecMul (basisRow b j z) Cm) →
+      ∀ j, ∀ᵐ z ∂(volume.restrict (Y h j)),
+        basisRow b j (z + h) = Matrix.vecMul (basisRow b j z) (Cf h) := by
+    intro h hh
+    rw [hCfdef]
+    simp only [dif_pos hh]
+    exact hh.choose_spec
+  -- the good set of translations
+  have hEfin := aux_rig_core_finite α β E X hE.toIsCoreData
+  have hsmall : ∀ᶠ h in 𝓝 (0 : ℝ²), μinc (E \ F h) < ENNReal.ofReal η₀ := by
+    have h4 : Tendsto (fun h => 4 * μinc (E \ baseShift h E)) (𝓝 0) (𝓝 0) := by
+      simpa using ENNReal.Tendsto.const_mul (aux_rig_eta_tendsto E hEm hEfin)
+        (Or.inr (by simp : (4 : ℝ≥0∞) ≠ ⊤))
+    have hq : (0 : ℝ≥0∞) < ENNReal.ofReal η₀ := ENNReal.ofReal_pos.2 hη₀
+    filter_upwards [hFY, h4.eventually (Iio_mem_nhds hq)] with h h1 h2
+    exact lt_of_le_of_lt h1.2.2.2.2 h2
+  have hgood : ∀ᶠ h in 𝓝 (0 : ℝ²), aux_IsCommonCore α β c E X h (F h) (Y h) ∧
+      ∀ j, ∀ᵐ z ∂(volume.restrict (Y h j)),
+        basisRow b j (z + h) = Matrix.vecMul (basisRow b j z) (Cf h) := by
+    filter_upwards [hFY, hsmall] with h h1 h2
+    exact ⟨h1, hCfspec h (hexists h h1 h2)⟩
+  have hSm : ∀ᶠ h in 𝓝 (0 : ℝ²), ∀ j, MeasurableSet (Y h j) ∧ Y h j ⊆ X j := by
+    filter_upwards [hFY] with h h1 j
+    exact ⟨h1.1.measurableSet_X j, fun z hz => (h1.2.2.1 j hz).1⟩
+  -- Gram matrices
+  set G0 : ℝ² → Matrix (Fin d) (Fin d) ℝ := fun h => aux_rig_gram b (Y h) 0 with hG0def
+  set Gh : ℝ² → Matrix (Fin d) (Fin d) ℝ := fun h => aux_rig_gram b (Y h) h with hGhdef
+  have hG0 : Tendsto G0 (𝓝 0) (𝓝 1) := aux_rig_gram_tendsto_one b hX Y hSm hY
+  have hGh : Tendsto Gh (𝓝 0) (𝓝 1) := by
+    have hdiff := aux_rig_gram_shift_tendsto b hX Y id tendsto_id
+    have h2 := hdiff.add hG0
+    rw [zero_add] at h2
+    refine h2.congr (fun h => ?_)
+    simp only [id, hG0def, hGhdef, sub_add_cancel]
+  have hdetU : ∀ (G : ℝ² → Matrix (Fin d) (Fin d) ℝ), Tendsto G (𝓝 0) (𝓝 1) →
+      ∀ᶠ h in 𝓝 (0 : ℝ²), IsUnit (G h).det := by
+    intro G hG
+    have hd : Tendsto (fun h => (G h).det) (𝓝 (0 : ℝ²)) (𝓝 1) := by
+      have h2 := (continuous_id.matrix_det (R := ℝ) (n := Fin d)).continuousAt.tendsto.comp hG
+      simpa [Function.comp_def] using h2
+    filter_upwards [hd.eventually (eventually_ne_nhds one_ne_zero)] with h hh
+    exact isUnit_iff_ne_zero.mpr hh
+  have hmul : ∀ᶠ h in 𝓝 (0 : ℝ²), Gh h = G0 h * Cf h := by
+    filter_upwards [hgood] with h hh
+    exact aux_rig_gram_mul b (Y h) hX h (Cf h) hh.2
+  have hunitC : ∀ᶠ h in 𝓝 (0 : ℝ²), IsUnit (Cf h) := by
+    filter_upwards [hmul, hdetU _ hGh] with h h1 h2
+    rw [Matrix.isUnit_iff_isUnit_det]
+    rw [h1, Matrix.det_mul] at h2
+    exact isUnit_of_mul_isUnit_right h2
+  -- continuity at zero
+  have htend : Tendsto Cf (𝓝 0) (𝓝 1) := by
+    have hC : ∀ᶠ h in 𝓝 (0 : ℝ²), Cf h = (G0 h)⁻¹ * Gh h := by
+      filter_upwards [hmul, hdetU _ hG0] with h h1 h2
+      rw [h1, ← Matrix.mul_assoc, Matrix.nonsing_inv_mul _ h2, Matrix.one_mul]
+    have hinv : Tendsto (fun h => (G0 h)⁻¹) (𝓝 0) (𝓝 1) := by
+      have hc1 : ContinuousAt (Inv.inv : Matrix (Fin d) (Fin d) ℝ → Matrix (Fin d) (Fin d) ℝ)
+          1 := by
+        refine continuousAt_matrix_inv 1 ?_
+        rw [Matrix.det_one]
+        simp
+      simpa [Function.comp_def] using hc1.tendsto.comp hG0
+    refine Tendsto.congr' (Filter.EventuallyEq.symm hC) ?_
+    simpa using hinv.mul hGh
+  -- the local group law
+  have hXfin : ∀ j, volume (X j) ≠ ⊤ := fun j => (hE.isBounded_X j).measure_lt_top.ne
+  set Z : ℝ² × ℝ² → Fin 3 → Set ℝ² :=
+    fun p j => Y p.1 j ∩ (· + p.1) ⁻¹' (Y p.2 j) ∩ Y (p.1 + p.2) j with hZdef
+  have t1 : Tendsto (fun p : ℝ² × ℝ² => p.1) (𝓝 ((0 : ℝ²), (0 : ℝ²))) (𝓝 0) :=
+    continuous_fst.tendsto' _ _ rfl
+  have t2 : Tendsto (fun p : ℝ² × ℝ² => p.2) (𝓝 ((0 : ℝ²), (0 : ℝ²))) (𝓝 0) :=
+    continuous_snd.tendsto' _ _ rfl
+  have t3 : Tendsto (fun p : ℝ² × ℝ² => p.1 + p.2) (𝓝 ((0 : ℝ²), (0 : ℝ²))) (𝓝 0) := by
+    exact (continuous_fst.add continuous_snd).tendsto' _ _ (by simp)
+  have e1 := t1.eventually (hgood.and hSm)
+  have e2 := t2.eventually (hgood.and hSm)
+  have e3 := t3.eventually (hgood.and hSm)
+  have hZm : ∀ᶠ p in 𝓝 ((0 : ℝ²), (0 : ℝ²)), ∀ j, MeasurableSet (Z p j) ∧ Z p j ⊆ X j := by
+    filter_upwards [e1, e2, e3] with p h1 h2 h3 j
+    refine ⟨(((h1.2 j).1).inter (((h2.2 j).1).preimage (measurable_add_const p.1))).inter
+      (h3.2 j).1, ?_⟩
+    exact (inter_subset_left.trans inter_subset_left).trans (h1.2 j).2
+  have hZ : ∀ j, Tendsto (fun p => volume (X j \ Z p j)) (𝓝 ((0 : ℝ²), (0 : ℝ²))) (𝓝 0) := by
+    intro j
+    have hbound : Tendsto (fun p : ℝ² × ℝ² => volume (X j \ Y p.1 j) +
+        (volume (X j \ (· + p.1) ⁻¹' (X j)) + volume (X j \ Y p.2 j)) +
+        volume (X j \ Y (p.1 + p.2) j)) (𝓝 ((0 : ℝ²), (0 : ℝ²))) (𝓝 0) := by
+      have b1 := (hY j).comp t1
+      have b2 := (aux_rig_transl_set (X j) (hX j) (hXfin j)).comp t1
+      have b3 := (hY j).comp t2
+      have b4 := (hY j).comp t3
+      simpa [Function.comp_def] using ((b1.add (b2.add b3)).add b4)
+    refine tendsto_of_tendsto_of_tendsto_of_le_of_le' tendsto_const_nhds hbound
+      (Eventually.of_forall fun p => zero_le) (Eventually.of_forall fun p => ?_)
+    have hsub : X j \ Z p j ⊆ (X j \ Y p.1 j) ∪
+        ((X j \ (· + p.1) ⁻¹' (X j)) ∪ (· + p.1) ⁻¹' (X j \ Y p.2 j)) ∪
+        (X j \ Y (p.1 + p.2) j) := by
+      intro x hx
+      by_cases h1 : x ∈ Y p.1 j
+      · by_cases h3 : x ∈ Y (p.1 + p.2) j
+        · have h2 : x ∉ (· + p.1) ⁻¹' (Y p.2 j) := by
+            intro h2
+            exact hx.2 ⟨⟨h1, h2⟩, h3⟩
+          by_cases hxX : x + p.1 ∈ X j
+          · exact Or.inl (Or.inr (Or.inr ⟨hxX, h2⟩))
+          · exact Or.inl (Or.inr (Or.inl ⟨hx.1, hxX⟩))
+        · exact Or.inr ⟨hx.1, h3⟩
+      · exact Or.inl (Or.inl ⟨hx.1, h1⟩)
+    have hA : volume ((X j \ (· + p.1) ⁻¹' (X j)) ∪ (· + p.1) ⁻¹' (X j \ Y p.2 j))
+        ≤ volume (X j \ (· + p.1) ⁻¹' (X j)) + volume (X j \ Y p.2 j) := by
+      refine (measure_union_le _ _).trans ?_
+      rw [measure_preimage_add_right]
+    calc volume (X j \ Z p j)
+        ≤ volume ((X j \ Y p.1 j) ∪
+            ((X j \ (· + p.1) ⁻¹' (X j)) ∪ (· + p.1) ⁻¹' (X j \ Y p.2 j)) ∪
+            (X j \ Y (p.1 + p.2) j)) := measure_mono hsub
+      _ ≤ volume ((X j \ Y p.1 j) ∪
+            ((X j \ (· + p.1) ⁻¹' (X j)) ∪ (· + p.1) ⁻¹' (X j \ Y p.2 j))) +
+            volume (X j \ Y (p.1 + p.2) j) := measure_union_le _ _
+      _ ≤ (volume (X j \ Y p.1 j) +
+            volume ((X j \ (· + p.1) ⁻¹' (X j)) ∪ (· + p.1) ⁻¹' (X j \ Y p.2 j))) +
+            volume (X j \ Y (p.1 + p.2) j) :=
+          add_le_add (measure_union_le _ _) le_rfl
+      _ ≤ _ := add_le_add (add_le_add le_rfl hA) le_rfl
+  have hgram : Tendsto (fun p => aux_rig_gram b (Z p) 0) (𝓝 ((0 : ℝ²), (0 : ℝ²))) (𝓝 1) :=
+    aux_rig_gram_tendsto_one b hX Z hZm hZ
+  have hdet : ∀ᶠ p in 𝓝 ((0 : ℝ²), (0 : ℝ²)), IsUnit (aux_rig_gram b (Z p) 0).det := by
+    have hd : Tendsto (fun p => (aux_rig_gram b (Z p) 0).det) (𝓝 ((0 : ℝ²), (0 : ℝ²)))
+        (𝓝 1) := by
+      have h2 := (continuous_id.matrix_det (R := ℝ) (n := Fin d)).continuousAt.tendsto.comp hgram
+      simpa [Function.comp_def] using h2
+    filter_upwards [hd.eventually (eventually_ne_nhds one_ne_zero)] with p hp
+    exact isUnit_iff_ne_zero.mpr hp
+  have hkey : ∀ᶠ p in 𝓝 ((0 : ℝ²), (0 : ℝ²)), Cf (p.1 + p.2) = Cf p.1 * Cf p.2 := by
+    filter_upwards [e1, e2, e3, hdet] with p h1 h2 h3 hdp
+    have hsub1 : ∀ j, Z p j ⊆ Y p.1 j := fun j => inter_subset_left.trans inter_subset_left
+    have hsub2 : ∀ j, Z p j ⊆ (· + p.1) ⁻¹' (Y p.2 j) := fun j =>
+      inter_subset_left.trans inter_subset_right
+    have hsub3 : ∀ j, Z p j ⊆ Y (p.1 + p.2) j := fun j => inter_subset_right
+    have hid1 : ∀ j, ∀ᵐ z ∂(volume.restrict (Z p j)),
+        basisRow b j (z + (p.1 + p.2)) = Matrix.vecMul (basisRow b j z) (Cf (p.1 + p.2)) :=
+      fun j => ae_restrict_of_ae_restrict_of_subset (hsub3 j) (h3.1.2 j)
+    have hid2 : ∀ j, ∀ᵐ z ∂(volume.restrict (Z p j)),
+        basisRow b j (z + (p.1 + p.2)) = Matrix.vecMul (basisRow b j z) (Cf p.1 * Cf p.2) := by
+      intro j
+      have hA : ∀ᵐ z ∂(volume.restrict (Z p j)),
+          basisRow b j (z + p.1) = Matrix.vecMul (basisRow b j z) (Cf p.1) :=
+        ae_restrict_of_ae_restrict_of_subset (hsub1 j) (h1.1.2 j)
+      have hmp : MeasurePreserving (fun x : ℝ² => x + p.1)
+          (volume.restrict ((· + p.1) ⁻¹' (Y p.2 j))) (volume.restrict (Y p.2 j)) :=
+        (measurePreserving_add_right volume p.1).restrict_preimage (h2.2 j).1
+      have hB0 : ∀ᵐ z ∂(volume.restrict ((· + p.1) ⁻¹' (Y p.2 j))),
+          basisRow b j ((z + p.1) + p.2) = Matrix.vecMul (basisRow b j (z + p.1)) (Cf p.2) :=
+        hmp.quasiMeasurePreserving.ae (h2.1.2 j)
+      have hB : ∀ᵐ z ∂(volume.restrict (Z p j)),
+          basisRow b j ((z + p.1) + p.2) = Matrix.vecMul (basisRow b j (z + p.1)) (Cf p.2) :=
+        ae_restrict_of_ae_restrict_of_subset (hsub2 j) hB0
+      filter_upwards [hA, hB] with z hzA hzB
+      have hzz : z + (p.1 + p.2) = (z + p.1) + p.2 := by abel
+      rw [hzz, hzB, hzA, Matrix.vecMul_vecMul]
+    have g1 := aux_rig_gram_mul b (Z p) hX (p.1 + p.2) (Cf (p.1 + p.2)) hid1
+    have g2 := aux_rig_gram_mul b (Z p) hX (p.1 + p.2) (Cf p.1 * Cf p.2) hid2
+    have hcancel : aux_rig_gram b (Z p) 0 * Cf (p.1 + p.2) =
+        aux_rig_gram b (Z p) 0 * (Cf p.1 * Cf p.2) := by rw [← g1, ← g2]
+    calc Cf (p.1 + p.2) = (aux_rig_gram b (Z p) 0)⁻¹ *
+            (aux_rig_gram b (Z p) 0 * Cf (p.1 + p.2)) := by
+          rw [← Matrix.mul_assoc, Matrix.nonsing_inv_mul _ hdp, Matrix.one_mul]
+      _ = (aux_rig_gram b (Z p) 0)⁻¹ * (aux_rig_gram b (Z p) 0 * (Cf p.1 * Cf p.2)) := by
+          rw [hcancel]
+      _ = Cf p.1 * Cf p.2 := by
+          rw [← Matrix.mul_assoc, Matrix.nonsing_inv_mul _ hdp, Matrix.one_mul]
+  rw [Filter.eventually_iff, nhds_prod_eq, Filter.mem_prod_iff] at hkey
+  obtain ⟨U₁, hU₁, U₂, hU₂, hUsub⟩ := hkey
+  obtain ⟨r, hr, hball⟩ := Metric.mem_nhds_iff.1 (Filter.inter_mem hU₁ hU₂)
+  have hgrp : ∀ h k, h ∈ Metric.ball (0 : ℝ²) r → k ∈ Metric.ball (0 : ℝ²) r →
+      Cf (h + k) = Cf h * Cf k := fun h k hh hk =>
+    hUsub (show (h, k) ∈ U₁ ×ˢ U₂ from ⟨(hball hh).1, (hball hk).2⟩)
+  have h0mem : (0 : ℝ²) ∈ Metric.ball (0 : ℝ²) r := Metric.mem_ball_self hr
+  have hC0 : Cf 0 = 1 := by
+    have hu : IsUnit (Cf 0) := hunitC.self_of_nhds
+    have h00 := hgrp 0 0 h0mem h0mem
+    rw [add_zero] at h00
+    exact hu.mul_left_cancel (by rw [← h00, mul_one])
+  refine ⟨F, Y, Cf, ?_, hY, Metric.ball 0 r, Metric.ball_mem_nhds 0 hr, ?_, hC0,
+    fun h k hh hk _ => hgrp h k hh hk⟩
+  · filter_upwards [hgood, hunitC] with h h1 h2
+    exact ⟨h1.1, h2, h1.2⟩
+  · intro h₀ hh₀
+    refine (ContinuousAt.continuousWithinAt ?_)
+    have hshift : Tendsto (fun y : ℝ² => y - h₀) (𝓝 h₀) (𝓝 0) := by
+      simpa using ((continuous_sub_right h₀).tendsto h₀)
+    have hev : ∀ᶠ y in 𝓝 h₀, Cf h₀ * Cf (y - h₀) = Cf y := by
+      filter_upwards [hshift.eventually (Metric.ball_mem_nhds (0 : ℝ²) hr)] with y hy
+      rw [← hgrp h₀ (y - h₀) hh₀ hy, add_sub_cancel]
+    have hlim : Tendsto (fun y => Cf h₀ * Cf (y - h₀)) (𝓝 h₀) (𝓝 (Cf h₀)) := by
+      simpa using (htend.comp hshift).const_mul (Cf h₀)
+    exact hlim.congr' hev
 
 /-! ### Analytic pieces for a scalar kernel (`rig:pieces`) -/
+
+/-- Auxiliary: the analytic representation `P(h) = exp(h₁T₁ + h₂T₂)` of `ℝ²` given by commuting
+matrices (proof of `rig:pieces`, `Auto.rig_pieces`). -/
+def aux_rig_expRep {d : ℕ} (T₁ T₂ : Matrix (Fin d) (Fin d) ℝ) (h : ℝ²) :
+    Matrix (Fin d) (Fin d) ℝ :=
+  NormedSpace.exp (h 0 • T₁ + h 1 • T₂)
+
+/-- Auxiliary: `P` is a homomorphism for commuting `T₁, T₂` (proof of `rig:pieces`). -/
+theorem aux_rig_expRep_add {d : ℕ} (T₁ T₂ : Matrix (Fin d) (Fin d) ℝ) (hT : Commute T₁ T₂)
+    (h k : ℝ²) :
+    aux_rig_expRep T₁ T₂ (h + k) = aux_rig_expRep T₁ T₂ h * aux_rig_expRep T₁ T₂ k := by
+  unfold aux_rig_expRep
+  have hc : Commute (h 0 • T₁ + h 1 • T₂) (k 0 • T₁ + k 1 • T₂) := by
+    apply Commute.add_left <;> apply Commute.add_right <;>
+      apply Commute.smul_left <;> apply Commute.smul_right
+    exacts [Commute.refl _, hT, hT.symm, Commute.refl _]
+  rw [← Matrix.exp_add_of_commute _ _ hc]
+  congr 1
+  simp only [PiLp.add_apply, add_smul]
+  abel
+
+/-- Auxiliary: `P(0) = I` (proof of `rig:pieces`). -/
+theorem aux_rig_expRep_zero {d : ℕ} (T₁ T₂ : Matrix (Fin d) (Fin d) ℝ) :
+    aux_rig_expRep T₁ T₂ 0 = 1 := by
+  simp [aux_rig_expRep, NormedSpace.exp_zero]
+
+/-- Auxiliary: the entries of `P` are continuous (proof of `rig:pieces`). -/
+theorem aux_rig_expRep_continuous {d : ℕ} (T₁ T₂ : Matrix (Fin d) (Fin d) ℝ) (a k : Fin d) :
+    Continuous (fun h => aux_rig_expRep T₁ T₂ h a k) :=
+  continuousOn_univ.mp (ext_matrix_group_analytic T₁ T₂ a k).continuousOn
+
+/-- Auxiliary: the rows `Φ_j` are measurable (proof of `rig:pieces`). -/
+theorem aux_rig_basisRow_measurable {α β : ℝ} {E : Set (ℝ² × Ang)} {X : Fin 3 → Set ℝ²} {d : ℕ}
+    (b : OrthonormalBasis (Fin d) ℝ (kernelSpace α β E X)) (j : Fin 3)
+    (hX : MeasurableSet (X j)) : Measurable (basisRow b j) := by
+  refine measurable_pi_iff.mpr fun k => ?_
+  exact (Lp.stronglyMeasurable _).measurable.indicator hX
+
+/-- Auxiliary: the normalized rows `R_j(z) = Φ_j(z) P(-z)` are measurable (proof of
+`rig:pieces`). -/
+theorem aux_rig_normRow_measurable {α β : ℝ} {E : Set (ℝ² × Ang)} {X : Fin 3 → Set ℝ²} {d : ℕ}
+    (b : OrthonormalBasis (Fin d) ℝ (kernelSpace α β E X)) (j : Fin 3)
+    (hX : MeasurableSet (X j)) (T₁ T₂ : Matrix (Fin d) (Fin d) ℝ) :
+    Measurable (fun z => Matrix.vecMul (basisRow b j z) (aux_rig_expRep T₁ T₂ (-z))) := by
+  have hB := aux_rig_basisRow_measurable b j hX
+  refine measurable_pi_iff.mpr fun k => ?_
+  simp only [Matrix.vecMul, dotProduct]
+  exact Finset.measurable_sum _ fun l _ => (measurable_pi_iff.mp hB l).mul
+    ((aux_rig_expRep_continuous T₁ T₂ l k).measurable.comp measurable_neg)
+
+/-- Auxiliary: atomicity of the normalized rows.  If `Φ_j(z + h) = Φ_j(z) P(h)` for a.e.
+`z ∈ Y_h ⊆ X_j - h`, for all small `h`, with `|X_j \ Y_h| → 0`, then `R_j(z) = Φ_j(z) P(-z)` takes
+only countably many values on `X_j`, up to a null set (proof of `rig:pieces`, `Auto.rig_pieces`;
+this replaces the six-variable change of variables of the manuscript). -/
+theorem aux_rig_atomic {α β : ℝ} {E : Set (ℝ² × Ang)} {X : Fin 3 → Set ℝ²} {d : ℕ}
+    (b : OrthonormalBasis (Fin d) ℝ (kernelSpace α β E X)) (j : Fin 3)
+    (hX : MeasurableSet (X j)) (hfin : volume (X j) ≠ ⊤) (T₁ T₂ : Matrix (Fin d) (Fin d) ℝ)
+    (hT : Commute T₁ T₂) (Y : ℝ² → Set ℝ²)
+    (hYC : ∀ᶠ h in 𝓝 0, (MeasurableSet (Y h) ∧ Y h ⊆ X j ∩ (· + h) ⁻¹' X j) ∧
+      ∀ᵐ z ∂(volume.restrict (Y h)),
+        basisRow b j (z + h) = Matrix.vecMul (basisRow b j z) (aux_rig_expRep T₁ T₂ h))
+    (hY : Tendsto (fun h => volume (X j \ Y h)) (𝓝 0) (𝓝 0)) :
+    ∃ S : Set (Fin d → ℝ), S.Countable ∧
+      ∀ᵐ z ∂(volume.restrict (X j)),
+        Matrix.vecMul (basisRow b j z) (aux_rig_expRep T₁ T₂ (-z)) ∈ S := by
+  set R : ℝ² → (Fin d → ℝ) :=
+    fun z => Matrix.vecMul (basisRow b j z) (aux_rig_expRep T₁ T₂ (-z)) with hRdef
+  have hR : Measurable R := aux_rig_normRow_measurable b j hX T₁ T₂
+  have : IsFiniteMeasure (volume.restrict (X j)) := isFiniteMeasure_restrict.mpr hfin
+  set ν := (volume.restrict (X j)).map R with hνdef
+  set A : Set (Fin d → ℝ) := {B | 0 < ν {B}} with hAdef
+  have hA : A.Countable :=
+    Measure.countable_meas_pos_of_disjoint_iUnion (As := fun B => ({B} : Set (Fin d → ℝ)))
+      (fun _ => measurableSet_singleton _) (fun a b hab => disjoint_singleton.mpr hab)
+  refine ⟨A, hA, ?_⟩
+  set N := X j ∩ R ⁻¹' Aᶜ with hNdef
+  have hNm : MeasurableSet N := hX.inter (hR hA.measurableSet.compl)
+  have hzero : ∀ x ∈ N, volume {y | y ∈ X j ∧ R y = R x} = 0 := by
+    intro x hx
+    have h1 : ν {R x} = 0 := by
+      have := hx.2
+      simp only [mem_preimage, mem_compl_iff, hAdef, mem_ofPred_eq, not_lt,
+        nonpos_iff_eq_zero] at this
+      exact this
+    rw [hνdef, Measure.map_apply hR (measurableSet_singleton _),
+      Measure.restrict_apply (hR (measurableSet_singleton _))] at h1
+    convert h1 using 2
+    ext y; simp [and_comm]
+  set G : Set (ℝ² × ℝ²) := {p | p.1 ∈ N ∧ p.1 + p.2 ∈ X j ∧ R (p.1 + p.2) = R p.1} with hGdef
+  have hGm : MeasurableSet G :=
+    (hNm.preimage measurable_fst).inter ((hX.preimage measurable_add).inter
+      (measurableSet_eq_fun (hR.comp measurable_add) (hR.comp measurable_fst)))
+  have hG0 : (volume.prod volume) G = 0 := by
+    rw [Measure.prod_apply hGm]
+    have : ∀ x, volume (Prod.mk x ⁻¹' G) = 0 := by
+      intro x
+      by_cases hx : x ∈ N
+      · have e : Prod.mk x ⁻¹' G = (fun h => x + h) ⁻¹' {y | y ∈ X j ∧ R y = R x} := by
+          ext h; simp [hGdef, hx]
+        rw [e, measure_preimage_add, hzero x hx]
+      · have e : Prod.mk x ⁻¹' G = ∅ := by
+          ext h; simp [hGdef, hx]
+        rw [e, measure_empty]
+    simp [this]
+  have hae : ∀ᵐ h ∂(volume : Measure ℝ²),
+      volume {x | x ∈ N ∧ x + h ∈ X j ∧ R (x + h) = R x} = 0 := by
+    rw [Measure.prod_apply_symm hGm] at hG0
+    exact (lintegral_eq_zero_iff (measurable_measure_prodMk_right hGm)).mp hG0
+  have hgrp := aux_rig_expRep_add T₁ T₂ hT
+  have hbound : ∀ h, ((MeasurableSet (Y h) ∧ Y h ⊆ X j ∩ (· + h) ⁻¹' X j) ∧
+      ∀ᵐ z ∂(volume.restrict (Y h)),
+        basisRow b j (z + h) = Matrix.vecMul (basisRow b j z) (aux_rig_expRep T₁ T₂ h)) →
+      volume {x | x ∈ N ∧ x + h ∈ X j ∧ R (x + h) = R x} = 0 →
+      volume N ≤ volume (X j \ Y h) := by
+    intro h ⟨hY1, hY2⟩ hEh
+    have hshift : ∀ᵐ x ∂volume, x ∈ Y h → R (x + h) = R x := by
+      rw [← ae_restrict_iff' hY1.1]
+      filter_upwards [hY2] with x hx
+      simp only [hRdef, hx, Matrix.vecMul_vecMul, ← hgrp]
+      congr 2; abel
+    have hNY : volume (N ∩ Y h) = 0 := by
+      rw [ae_iff] at hshift
+      refine measure_mono_null (fun x hx => ?_) (measure_union_null hEh hshift)
+      by_cases hc : R (x + h) = R x
+      · exact Or.inl ⟨hx.1, (hY1.2 hx.2).2, hc⟩
+      · exact Or.inr fun H => hc (H hx.2)
+    calc volume N ≤ volume (N ∩ Y h) + volume (N \ Y h) := measure_le_inter_add_sdiff _ _ _
+      _ = volume (N \ Y h) := by rw [hNY, zero_add]
+      _ ≤ volume (X j \ Y h) := measure_mono (sdiff_subset_sdiff_left inter_subset_left)
+  have hN0 : volume N = 0 := by
+    by_contra hpos
+    have hev : ∀ᶠ h in 𝓝 (0 : ℝ²), ((MeasurableSet (Y h) ∧ Y h ⊆ X j ∩ (· + h) ⁻¹' X j) ∧
+        ∀ᵐ z ∂(volume.restrict (Y h)),
+          basisRow b j (z + h) = Matrix.vecMul (basisRow b j z) (aux_rig_expRep T₁ T₂ h)) ∧
+        volume (X j \ Y h) < volume N :=
+      hYC.and (hY.eventually (gt_mem_nhds (pos_iff_ne_zero.mpr hpos)))
+    obtain ⟨h, hP, hgood⟩ : ∃ h, (((MeasurableSet (Y h) ∧ Y h ⊆ X j ∩ (· + h) ⁻¹' X j) ∧
+        ∀ᵐ z ∂(volume.restrict (Y h)),
+          basisRow b j (z + h) = Matrix.vecMul (basisRow b j z) (aux_rig_expRep T₁ T₂ h)) ∧
+        volume (X j \ Y h) < volume N) ∧
+        volume {x | x ∈ N ∧ x + h ∈ X j ∧ R (x + h) = R x} = 0 := by
+      by_contra H
+      push Not at H
+      have hpos' := Measure.measure_pos_of_mem_nhds (μ := (volume : Measure ℝ²)) hev
+      rw [ae_iff] at hae
+      exact hpos'.ne' (measure_mono_null (fun h hh => H h hh) hae)
+    exact absurd (hbound h hP.1 hgood) (not_le.mpr hP.2)
+  rw [ae_restrict_iff' hX, ae_iff]
+  refine measure_mono_null (fun x hx => ?_) hN0
+  simp only [mem_ofPred_eq, Classical.not_imp] at hx
+  exact ⟨hx.1, hx.2⟩
+
+/-- Auxiliary: an almost-everywhere property of the vertex set `X_j` transfers along `π_j` to
+almost every configuration of `E` (by `rig:degree-integration`; used for `Auto.rig_pieces` and
+`Auto.rig_exact`). -/
+theorem aux_rig_ae_proj {α β : ℝ} {E : Set (ℝ² × Ang)} {X : Fin 3 → Set ℝ²}
+    (hE : IsCoreData α β E X) (j : Fin 3) {P : ℝ² → Prop}
+    (hP : ∀ᵐ z ∂(volume.restrict (X j)), P z) : ∀ᵐ p ∂(μinc.restrict E), P (proj α β j p) := by
+  rw [ae_restrict_iff' (hE.measurableSet_X j)] at hP
+  have h1 := (aux_proj_measurePreserving α β j).quasiMeasurePreserving.ae hP
+  filter_upwards [ae_restrict_of_ae h1, hE.ae_proj_mem j] with p hp hpX
+  exact hp hpX
 
 /-- **Proposition `rig:pieces`**.  Every positive-measure core $E$ has a measurable subset
 $E'\subset E$ of positive measure such that each component of an orthonormal basis of $K_E$,
@@ -104,9 +1164,239 @@ theorem rig_pieces (α β : ℝ) (hβ : β ≠ 0) (E : Set (ℝ² × Ang)) (X : 
     ∃ E' : Set (ℝ² × Ang), E' ⊆ E ∧ MeasurableSet E' ∧ 0 < μinc E' ∧
       ∃ g : Fin d → Fin 3 → ℝ² → ℝ, (∀ i j, AnalyticOnNhd ℝ (g i j) univ) ∧
         ∀ᵐ p ∂(μinc.restrict E'), ∀ i j, basisRow b j (proj α β j p) i = g i j (proj α β j p) := by
-  sorry
+  classical
+  have hX := hE.measurableSet_X
+  have hEm := hE.measurableSet_E
+  have hXfin : ∀ j, volume (X j) ≠ ⊤ := fun j => (hE.isBounded_X j).measure_lt_top.ne
+  obtain ⟨F, Y, C, hgood, hY, U, hU, hcont, hC0, hmul⟩ :=
+    rig_translation_matrices α β hβ E X c hE b
+  -- the matrices are invertible on a smaller neighborhood
+  set U' := U ∩ {h | IsUnit (C h)} with hU'def
+  have hU' : U' ∈ 𝓝 (0 : ℝ²) := Filter.inter_mem hU (hgood.mono fun h hh => hh.2.1)
+  obtain ⟨T₁, T₂, hT, hCP⟩ := ext_matrix_group hU' C (hcont.mono inter_subset_left)
+    (fun h hh => hh.2) hC0 (fun h k hh hk hhk => hmul h k hh.1 hk.1 hhk.1)
+  -- the row identities with `P(h) = exp(h₁T₁ + h₂T₂)`
+  have hYC : ∀ j, ∀ᶠ h in 𝓝 (0 : ℝ²),
+      (MeasurableSet (Y h j) ∧ Y h j ⊆ X j ∩ (· + h) ⁻¹' X j) ∧
+      ∀ᵐ z ∂(volume.restrict (Y h j)),
+        basisRow b j (z + h) = Matrix.vecMul (basisRow b j z) (aux_rig_expRep T₁ T₂ h) := by
+    intro j
+    filter_upwards [hgood, hCP] with h h1 h2
+    refine ⟨⟨h1.1.1.measurableSet_X j, h1.1.2.2.1 j⟩, ?_⟩
+    have h3 := h1.2.2 j
+    rw [h2] at h3
+    exact h3
+  choose S hS hSae using fun j =>
+    aux_rig_atomic b j (hX j) (hXfin j) T₁ T₂ hT (fun h => Y h j) (hYC j) (hY j)
+  -- the normalized rows at the vertices
+  set R : Fin 3 → ℝ² → (Fin d → ℝ) :=
+    fun j z => Matrix.vecMul (basisRow b j z) (aux_rig_expRep T₁ T₂ (-z)) with hRdef
+  set Q : ℝ² × Ang → (Fin 3 → Fin d → ℝ) := fun p j => R j (proj α β j p) with hQdef
+  have hQm : Measurable Q := measurable_pi_iff.mpr fun j =>
+    (aux_rig_normRow_measurable b j (hX j) T₁ T₂).comp (aux_ker_measurable_proj α β j)
+  set S' : Set (Fin 3 → Fin d → ℝ) := Set.pi univ S with hS'def
+  have hS' : S'.Countable := Set.countable_univ_pi hS
+  have hQS : ∀ᵐ p ∂(μinc.restrict E), Q p ∈ S' := by
+    have h1 : ∀ j, ∀ᵐ p ∂(μinc.restrict E), R j (proj α β j p) ∈ S j := fun j =>
+      aux_rig_ae_proj hE.toIsCoreData j (hSae j)
+    filter_upwards [ae_all_iff.2 h1] with p hp
+    exact fun j _ => hp j
+  have hpos : ∃ r ∈ S', 0 < μinc (E ∩ Q ⁻¹' {r}) := by
+    by_contra H
+    push Not at H
+    have h0 : μinc (E ∩ Q ⁻¹' S') = 0 := by
+      have e : E ∩ Q ⁻¹' S' = ⋃ r ∈ S', E ∩ Q ⁻¹' {r} := by
+        ext p; simp [mem_iUnion]
+      rw [e]
+      exact (measure_biUnion_null_iff hS').2 fun r hr => le_antisymm (H r hr) bot_le
+    have hnull : μinc (E \ Q ⁻¹' S') = 0 := by
+      rw [ae_restrict_iff' hEm] at hQS
+      exact measure_mono_null (t := {p | ¬ (p ∈ E → Q p ∈ S')})
+        (fun p hp hpX => hp.2 (hpX hp.1)) (ae_iff.1 hQS)
+    have h2 : μinc E ≤ 0 := by
+      calc μinc E ≤ μinc (E ∩ Q ⁻¹' S') + μinc (E \ Q ⁻¹' S') := measure_le_inter_add_sdiff _ _ _
+        _ = 0 := by rw [h0, hnull, add_zero]
+    exact absurd hE.measure_pos (not_lt.2 h2)
+  obtain ⟨r, -, hr⟩ := hpos
+  have hE'm : MeasurableSet (E ∩ Q ⁻¹' {r}) := hEm.inter (hQm (measurableSet_singleton r))
+  refine ⟨E ∩ Q ⁻¹' {r}, inter_subset_left, hE'm, hr,
+    fun i j z => (Matrix.vecMul (r j) (aux_rig_expRep T₁ T₂ z)) i, fun i j => ?_, ?_⟩
+  · simp only [Matrix.vecMul, dotProduct]
+    exact Finset.analyticOnNhd_fun_sum _ fun l _ =>
+      analyticOnNhd_const.mul (ext_matrix_group_analytic T₁ T₂ l i)
+  · refine ae_restrict_of_forall_mem hE'm fun p hp i j => ?_
+    have hRj : R j (proj α β j p) = r j := congrFun hp.2 j
+    have hinv : aux_rig_expRep T₁ T₂ (-proj α β j p) * aux_rig_expRep T₁ T₂ (proj α β j p) = 1 := by
+      rw [← aux_rig_expRep_add T₁ T₂ hT, neg_add_cancel, aux_rig_expRep_zero]
+    calc basisRow b j (proj α β j p) i
+        = (Matrix.vecMul (Matrix.vecMul (basisRow b j (proj α β j p))
+            (aux_rig_expRep T₁ T₂ (-proj α β j p))) (aux_rig_expRep T₁ T₂ (proj α β j p))) i := by
+          rw [Matrix.vecMul_vecMul, hinv, Matrix.vecMul_one]
+      _ = (Matrix.vecMul (r j) (aux_rig_expRep T₁ T₂ (proj α β j p))) i := by
+          rw [← hRj]
 
 /-! ### Rigidity for analytic fields (`rig:analytic-rigidity`) -/
+
+/-- Auxiliary: `J² = -I` (proof of `rig:analytic-rigidity`). -/
+theorem aux_rig_JJ (x : ℝ²) : J (J x) = -x := by
+  apply aux_vec_ext <;> simp
+
+/-- Auxiliary: `u_{t+π} = -u_t` (proof of `rig:analytic-rigidity`). -/
+theorem aux_rig_uR_add_pi (t : ℝ) : aux_uR (t + π) = -aux_uR t := by
+  apply aux_vec_ext <;> simp [aux_uR, Real.cos_add_pi, Real.sin_add_pi]
+
+/-- Auxiliary: `⟪u_t, u_t⟫ = 1`, `⟪J u_t, J u_t⟫ = 1`, `⟪u_t, J u_t⟫ = ⟪J u_t, u_t⟫ = 0`
+(proof of `rig:analytic-rigidity`). -/
+theorem aux_rig_uR_inner (t : ℝ) :
+    ⟪aux_uR t, aux_uR t⟫_ℝ = 1 ∧ ⟪J (aux_uR t), J (aux_uR t)⟫_ℝ = 1 ∧
+      ⟪aux_uR t, J (aux_uR t)⟫_ℝ = 0 ∧ ⟪J (aux_uR t), aux_uR t⟫_ℝ = 0 := by
+  have h := Real.cos_sq_add_sin_sq t
+  refine ⟨?_, ?_, ?_, ?_⟩ <;> simp only [aux_inner_two, aux_J_apply_zero, aux_J_apply_one] <;>
+    simp [aux_uR] <;> nlinarith
+
+/-- Auxiliary: the derivative of `t ↦ J u_t` is `-u_t` (proof of `rig:analytic-rigidity`). -/
+theorem aux_rig_vR_hasDerivAt (t : ℝ) :
+    HasDerivAt (fun s => J (aux_uR s)) (-aux_uR t) t := by
+  have := J.hasFDerivAt.comp_hasDerivAt t (aux_lw_uR_hasDerivAt t)
+  simpa [Function.comp_def, aux_rig_JJ] using this
+
+/-- Auxiliary: the derivative of the curve `r ↦ x + L u_s - L u_r` at `r = s`
+(proof of `rig:analytic-rigidity`). -/
+theorem aux_rig_curve_hasDerivAt (L : ℝ² →L[ℝ] ℝ²) (x : ℝ²) (s : ℝ) :
+    HasDerivAt (fun r => x + L (aux_uR s) - L (aux_uR r)) (-L (J (aux_uR s))) s := by
+  have := (L.hasFDerivAt.comp_hasDerivAt s (aux_lw_uR_hasDerivAt s)).const_sub
+    (x + L (aux_uR s))
+  simpa [Function.comp_def] using this
+
+/-- Auxiliary: first-order consequence of a transport identity along the curve
+`r ↦ x + L u_s - L u_r` (proof of `rig:analytic-rigidity`, giving `t = vᵀKMv` and
+`t = vᵀMᵀKv` in the notation of the manuscript). -/
+theorem aux_rig_curve_first (g : ℝ² → ℝ²) (x : ℝ²) (hg : DifferentiableAt ℝ g x)
+    (Q L : ℝ² →L[ℝ] ℝ²) (c : ℝ²) (φ : ℝ → ℝ) (s : ℝ)
+    (hyp : ∀ r, Q (g (x + L (aux_uR s) - L (aux_uR r))) + φ r • aux_uR r = c) :
+    φ s = ⟪J (aux_uR s), Q (fderiv ℝ g x (L (J (aux_uR s))))⟫_ℝ := by
+  set y : ℝ → ℝ² := fun r => x + L (aux_uR s) - L (aux_uR r) with hy
+  have hys : y s = x := by simp [hy]
+  have hyd := aux_rig_curve_hasDerivAt L x s
+  have hg' : HasFDerivAt g (fderiv ℝ g x) (y s) := by rw [hys]; exact hg.hasFDerivAt
+  have hQg : HasDerivAt (fun r => Q (g (y r))) (Q (fderiv ℝ g x (-L (J (aux_uR s))))) s :=
+    Q.hasFDerivAt.comp_hasDerivAt s (hg'.comp_hasDerivAt s hyd)
+  have hd1 := (aux_rig_vR_hasDerivAt s).inner ℝ hQg
+  have hd2 := (aux_rig_vR_hasDerivAt s).inner ℝ (hasDerivAt_const s c)
+  have heq : (fun r => ⟪J (aux_uR r), Q (g (y r))⟫_ℝ) = fun r => ⟪J (aux_uR r), c⟫_ℝ := by
+    funext r
+    rw [← hyp r, inner_add_right, real_inner_smul_right, (aux_rig_uR_inner r).2.2.2, mul_zero,
+      add_zero]
+  rw [heq] at hd1
+  have hu := hd1.unique hd2
+  have hc := congrArg (fun w => ⟪aux_uR s, w⟫_ℝ) (hyp s)
+  simp only [inner_add_right, real_inner_smul_right, (aux_rig_uR_inner s).1, mul_one,
+    add_sub_cancel_right] at hc
+  rw [hys] at hu
+  simp only [map_neg, inner_neg_right, inner_neg_left, inner_zero_right] at hu
+  rw [← hc] at hu
+  linarith
+
+/-- Auxiliary: second-order consequence of a transport identity along the curve
+`r ↦ x + L u_s - L u_r`, when the scalar factor is given by the first-order formula
+(proof of `rig:analytic-rigidity`; the `θ`-derivative of `t u_θ` in the manuscript). -/
+theorem aux_rig_curve_second (g : ℝ² → ℝ²) (x : ℝ²) (hg : ∀ y, DifferentiableAt ℝ g y)
+    (hK : DifferentiableAt ℝ (fderiv ℝ g) x)
+    (Q L : ℝ² →L[ℝ] ℝ²) (c : ℝ²) (φ : ℝ → ℝ) (s : ℝ)
+    (hyp : ∀ r, Q (g (x + L (aux_uR s) - L (aux_uR r))) + φ r • aux_uR r = c)
+    (hφ : ∀ r, φ r = ⟪J (aux_uR r),
+      Q (fderiv ℝ g (x + L (aux_uR s) - L (aux_uR r)) (L (J (aux_uR r))))⟫_ℝ) :
+    2 * ⟪aux_uR s, Q (fderiv ℝ g x (L (J (aux_uR s))))⟫_ℝ +
+      ⟪J (aux_uR s), Q (fderiv ℝ g x (L (aux_uR s)))⟫_ℝ +
+      ⟪J (aux_uR s), Q ((fderiv ℝ (fderiv ℝ g) x (L (J (aux_uR s)))) (L (J (aux_uR s))))⟫_ℝ
+      = 0 := by
+  set y : ℝ → ℝ² := fun r => x + L (aux_uR s) - L (aux_uR r) with hy
+  have hys : y s = x := by simp [hy]
+  have hyd := aux_rig_curve_hasDerivAt L x s
+  have hg' : HasFDerivAt g (fderiv ℝ g x) (y s) := by rw [hys]; exact (hg x).hasFDerivAt
+  have hK' : HasFDerivAt (fderiv ℝ g) (fderiv ℝ (fderiv ℝ g) x) (y s) := by
+    rw [hys]; exact hK.hasFDerivAt
+  have hQg : HasDerivAt (fun r => Q (g (y r))) (Q (fderiv ℝ g x (-L (J (aux_uR s))))) s :=
+    Q.hasFDerivAt.comp_hasDerivAt s (hg'.comp_hasDerivAt s hyd)
+  have hKy : HasDerivAt (fun r => fderiv ℝ g (y r))
+      (fderiv ℝ (fderiv ℝ g) x (-L (J (aux_uR s)))) s := hK'.comp_hasDerivAt s hyd
+  have hLv : HasDerivAt (fun r => L (J (aux_uR r))) (L (-aux_uR s)) s :=
+    L.hasFDerivAt.comp_hasDerivAt s (aux_rig_vR_hasDerivAt s)
+  have hQapp := Q.hasFDerivAt.comp_hasDerivAt s (hKy.clm_apply hLv)
+  have hφd := (aux_rig_vR_hasDerivAt s).inner ℝ hQapp
+  have hφeq : φ = fun r => ⟪J (aux_uR r), Q (fderiv ℝ g (y r) (L (J (aux_uR r))))⟫_ℝ := funext hφ
+  have hφd' : HasDerivAt φ (⟪J (aux_uR s), Q (((fderiv ℝ (fderiv ℝ g) x) (-L (J (aux_uR s))))
+      (L (J (aux_uR s))) + (fderiv ℝ g (y s)) (L (-aux_uR s)))⟫_ℝ +
+      ⟪-aux_uR s, Q (fderiv ℝ g (y s) (L (J (aux_uR s))))⟫_ℝ) s := by
+    rw [hφeq]; exact hφd
+  have hd1 := ((aux_lw_uR_hasDerivAt s).inner ℝ hQg).add hφd'
+  have hd2 := (aux_lw_uR_hasDerivAt s).inner ℝ (hasDerivAt_const s c)
+  have heq : (fun r => ⟪aux_uR r, Q (g (y r))⟫_ℝ) + φ = fun r => ⟪aux_uR r, c⟫_ℝ := by
+    funext r
+    rw [Pi.add_apply, ← hyp r, inner_add_right, real_inner_smul_right, (aux_rig_uR_inner r).1,
+      mul_one]
+  rw [heq] at hd1
+  have hu := hd1.unique hd2
+  have hc := congrArg (fun w => ⟪J (aux_uR s), w⟫_ℝ) (hyp s)
+  simp only [inner_add_right, real_inner_smul_right, (aux_rig_uR_inner s).2.2.2, mul_zero,
+    add_zero, add_sub_cancel_right] at hc
+  rw [hys] at hu
+  simp only [map_neg, inner_neg_right, inner_neg_left, inner_zero_right,
+    neg_apply, inner_add_right, map_add] at hu
+  rw [← hc] at hu
+  linarith
+
+/-- Auxiliary: if `2⟪u_s, N v_s⟫ + ⟪v_s, N u_s⟫ + q(s) = 0` for all `s`, with `q` odd under
+`s ↦ s + π`, then `N` is a scalar multiple of the identity (proof of `rig:analytic-rigidity`:
+"a real linear map sending every line through the origin into itself is scalar"). -/
+theorem aux_rig_scalar (N : ℝ² →L[ℝ] ℝ²) (q : ℝ → ℝ) (hq : ∀ s, q (s + π) = -q s)
+    (h : ∀ s, 2 * ⟪aux_uR s, N (J (aux_uR s))⟫_ℝ + ⟪J (aux_uR s), N (aux_uR s)⟫_ℝ + q s = 0) :
+    ∃ l : ℝ, ∀ w, N w = l • w := by
+  have h0 : ∀ s, 2 * ⟪aux_uR s, N (J (aux_uR s))⟫_ℝ + ⟪J (aux_uR s), N (aux_uR s)⟫_ℝ = 0 := by
+    intro s
+    have h1 := h s
+    have h2 := h (s + π)
+    simp only [aux_rig_uR_add_pi, map_neg, inner_neg_left, inner_neg_right, neg_neg, hq] at h2
+    linarith
+  set e0 : ℝ² := EuclideanSpace.single 0 1 with he0
+  set e1 : ℝ² := EuclideanSpace.single 1 1 with he1
+  have hw : ∀ w : ℝ², w = w 0 • e0 + w 1 • e1 := fun w => by
+    apply aux_vec_ext <;> simp [he0, he1]
+  set a := N e0 0
+  set b' := N e0 1
+  set c' := N e1 0
+  set d' := N e1 1
+  have hN : ∀ w : ℝ², N w = !₂[a * w 0 + c' * w 1, b' * w 0 + d' * w 1] := by
+    intro w
+    conv_lhs => rw [hw w]
+    rw [map_add, map_smul, map_smul]
+    apply aux_vec_ext <;> simp <;> ring
+  have hA := h0 0
+  have hB := h0 (π / 2)
+  have hC := h0 (π / 4)
+  simp only [hN, aux_inner_two, aux_J_apply_zero, aux_J_apply_one, aux_uR] at hA hB hC
+  simp only [Real.cos_zero, Real.sin_zero, Real.cos_pi_div_two, Real.sin_pi_div_two,
+    Real.cos_pi_div_four, Real.sin_pi_div_four] at hA hB hC
+  simp at hA hB hC
+  have hk : Real.sqrt 2 / 2 * (Real.sqrt 2 / 2) = 1 / 2 := by
+    rw [← sq, div_pow, Real.sq_sqrt (by norm_num)]; norm_num
+  have hb : b' = 0 := by linarith
+  have hc : c' = 0 := by linarith
+  have hd : d' = a := by nlinarith
+  refine ⟨a, fun w => ?_⟩
+  rw [hN w]
+  apply aux_vec_ext <;> simp [hb, hc, hd]
+
+/-- Auxiliary: a vector orthogonal to `v_s = J u_s` is `⟪u_s, w⟫ u_s` (proof of
+`rig:analytic-rigidity`). -/
+theorem aux_rig_decomp (w : ℝ²) (s : ℝ) (h : ⟪J (aux_uR s), w⟫_ℝ = 0) :
+    w = ⟪aux_uR s, w⟫_ℝ • aux_uR s := by
+  have hc := Real.cos_sq_add_sin_sq s
+  simp only [aux_inner_two, aux_J_apply_zero, aux_J_apply_one, aux_uR] at h ⊢
+  simp at h
+  apply aux_vec_ext
+  · simp; linear_combination (-w 0) * hc - Real.sin s * h
+  · simp; linear_combination (-w 1) * hc + Real.cos s * h
 
 /-- **Lemma `rig:analytic-rigidity`**.  Let $a_j:\mathbb R^2\to\mathbb R^2$ be real analytic and
 suppose that, for every $(x,\theta)\in\mathbb R^2\times\mathbb T$,
@@ -121,9 +1411,138 @@ theorem rig_analytic_rigidity (α β : ℝ) (hβ : β ≠ 0) (a : Fin 3 → ℝ�
       ⟪v θ, a 1 (x + u θ) + ContinuousLinearMap.adjoint (M α β) (a 2 (x + M α β (u θ)))⟫_ℝ = 0) :
     ∀ (x : ℝ²) (θ : Ang),
       a 1 (x + u θ) + ContinuousLinearMap.adjoint (M α β) (a 2 (x + M α β (u θ))) = 0 := by
-  sorry
+  rw [aux_ff_adjoint] at h₂ ⊢
+  set MT := aux_MT α β with hMTdef
+  set Mm := M α β with hMmdef
+  have H1 : ∀ x s, a 0 x + a 1 (x + aux_uR s) + a 2 (x + Mm (aux_uR s)) = 0 := by
+    intro x s
+    have := h₁ x (s : Ang)
+    simpa [Fin.sum_univ_three, Lv, add_assoc] using this
+  have H2 : ∀ x s, ⟪J (aux_uR s), a 1 (x + aux_uR s) + MT (a 2 (x + Mm (aux_uR s)))⟫_ℝ = 0 := by
+    intro x s; simpa [v] using h₂ x (s : Ang)
+  set τ : ℝ² → ℝ → ℝ := fun x s =>
+    ⟪aux_uR s, a 1 (x + aux_uR s) + MT (a 2 (x + Mm (aux_uR s)))⟫_ℝ with hτdef
+  have hW : ∀ x s, a 1 (x + aux_uR s) + MT (a 2 (x + Mm (aux_uR s))) = τ x s • aux_uR s :=
+    fun x s => aux_rig_decomp _ s (H2 x s)
+  have e0 : ∀ x s, a 0 x = -(a 1 (x + aux_uR s) + a 2 (x + Mm (aux_uR s))) := by
+    intro x s
+    have h1 := H1 x s
+    rw [add_assoc] at h1
+    exact eq_neg_of_add_eq_zero_left h1
+  have I2 : ∀ x s, (MT - 1) (a 2 (x + Mm (aux_uR s))) = a 0 x + τ x s • aux_uR s := by
+    intro x s
+    rw [← hW x s, e0 x s, sub_apply, one_apply_eq_self]
+    abel
+  have I1 : ∀ x s, -((MT - 1) (a 1 (x + aux_uR s))) = MT (a 0 x) + τ x s • aux_uR s := by
+    intro x s
+    rw [← hW x s, e0 x s, sub_apply, one_apply_eq_self,
+      map_neg, map_add]
+    abel
+  have hd : ∀ y, DifferentiableAt ℝ (a 0) y := fun y => (ha 0 y trivial).differentiableAt
+  have hK : ∀ y, DifferentiableAt ℝ (fderiv ℝ (a 0)) y := fun y =>
+    ((ha 0).fderiv y trivial).differentiableAt
+  have hyp2 : ∀ x s r, (ContinuousLinearMap.id ℝ ℝ²) (a 0 (x + Mm (aux_uR s) - Mm (aux_uR r))) +
+      τ (x + Mm (aux_uR s) - Mm (aux_uR r)) r • aux_uR r = (MT - 1) (a 2 (x + Mm (aux_uR s))) := by
+    intro x s r
+    have h := I2 (x + Mm (aux_uR s) - Mm (aux_uR r)) r
+    rw [sub_add_cancel] at h
+    rw [h]; rfl
+  have hyp1 : ∀ x s r, MT (a 0 (x + (ContinuousLinearMap.id ℝ ℝ²) (aux_uR s) -
+      (ContinuousLinearMap.id ℝ ℝ²) (aux_uR r))) +
+      τ (x + aux_uR s - aux_uR r) r • aux_uR r = -((MT - 1) (a 1 (x + aux_uR s))) := by
+    intro x s r
+    have h := I1 (x + aux_uR s - aux_uR r) r
+    rw [sub_add_cancel] at h
+    rw [h]; rfl
+  have F2 : ∀ x s, τ x s = ⟪J (aux_uR s), fderiv ℝ (a 0) x (Mm (J (aux_uR s)))⟫_ℝ := by
+    intro x s
+    have h := aux_rig_curve_first (a 0) x (hd x) (ContinuousLinearMap.id ℝ ℝ²) Mm _
+      (fun r => τ (x + Mm (aux_uR s) - Mm (aux_uR r)) r) s (hyp2 x s)
+    simpa using h
+  have F1 : ∀ x s, τ x s = ⟪J (aux_uR s), MT (fderiv ℝ (a 0) x (J (aux_uR s)))⟫_ℝ := by
+    intro x s
+    have h := aux_rig_curve_first (a 0) x (hd x) MT (ContinuousLinearMap.id ℝ ℝ²) _
+      (fun r => τ (x + aux_uR s - aux_uR r) r) s (hyp1 x s)
+    simpa using h
+  intro x θ
+  obtain ⟨s₀, rfl⟩ := QuotientAddGroup.mk_surjective θ
+  -- `KM` and `MᵀK` are scalar
+  obtain ⟨l₁, hl₁⟩ := aux_rig_scalar ((fderiv ℝ (a 0) x).comp Mm)
+    (fun s => ⟪J (aux_uR s), (fderiv ℝ (fderiv ℝ (a 0)) x (Mm (J (aux_uR s))))
+      (Mm (J (aux_uR s)))⟫_ℝ)
+    (fun s => by simp [aux_rig_uR_add_pi])
+    (fun s => by
+      have h := aux_rig_curve_second (a 0) x hd (hK x) (ContinuousLinearMap.id ℝ ℝ²) Mm _
+        (fun r => τ (x + Mm (aux_uR s) - Mm (aux_uR r)) r) s (hyp2 x s)
+        (fun r => by simpa using F2 (x + Mm (aux_uR s) - Mm (aux_uR r)) r)
+      simpa using h)
+  obtain ⟨l₂, hl₂⟩ := aux_rig_scalar (MT.comp (fderiv ℝ (a 0) x))
+    (fun s => ⟪J (aux_uR s), MT ((fderiv ℝ (fderiv ℝ (a 0)) x (J (aux_uR s)))
+      (J (aux_uR s)))⟫_ℝ)
+    (fun s => by simp [aux_rig_uR_add_pi])
+    (fun s => by
+      have h := aux_rig_curve_second (a 0) x hd (hK x) MT (ContinuousLinearMap.id ℝ ℝ²) _
+        (fun r => τ (x + aux_uR s - aux_uR r) r) s (hyp1 x s)
+        (fun r => by simpa using F1 (x + aux_uR s - aux_uR r) r)
+      simpa using h)
+  have hτ1 : ∀ s, τ x s = l₁ := by
+    intro s
+    have h := hl₁ (J (aux_uR s))
+    simp only [ContinuousLinearMap.comp_apply] at h
+    rw [F2, h, real_inner_smul_right, (aux_rig_uR_inner s).2.1, mul_one]
+  have hτ2 : ∀ s, τ x s = l₂ := by
+    intro s
+    have h := hl₂ (J (aux_uR s))
+    simp only [ContinuousLinearMap.comp_apply] at h
+    rw [F1, h, real_inner_smul_right, (aux_rig_uR_inner s).2.1, mul_one]
+  have hl : l₁ = l₂ := by rw [← hτ1 0, hτ2 0]
+  have hl0 : l₁ = 0 := by
+    set e0 : ℝ² := EuclideanSpace.single 0 1 with he0
+    have h1 := hl₂ (Mm e0)
+    have h2 := hl₁ e0
+    simp only [ContinuousLinearMap.comp_apply] at h1 h2
+    rw [h2, map_smul, ← hl] at h1
+    have h3 := congrArg (fun w : ℝ² => w 1) h1
+    simp [hMTdef, hMmdef, simil, he0] at h3
+    have : l₁ * β = 0 := by linarith
+    exact (mul_eq_zero.mp this).resolve_right hβ
+  rw [aux_u_coe, hW x s₀, hτ1 s₀, hl0, zero_smul]
 
 /-! ### Measurable stationarity forces zero displacement frequency (`rig:exact`) -/
+
+/-- Auxiliary: `t ↦ u_t` is real analytic (proof of `rig:exact`). -/
+theorem aux_rig_analyticAt_uR (t : ℝ) : AnalyticAt ℝ aux_uR t := by
+  rw [aux_lw_uR_eq]
+  exact (analyticAt_cos.smul analyticAt_const).add (analyticAt_sin.smul analyticAt_const)
+
+/-- Auxiliary: for an everywhere real analytic field `f` and a linear map `L`, the function
+`(x, t) ↦ f(x + L u_t)` is real analytic on `ℝ² × ℝ` (proof of `rig:exact`). -/
+theorem aux_rig_analytic_vertex (f : ℝ² → ℝ²) (hf : AnalyticOnNhd ℝ f univ)
+    (L : ℝ² →L[ℝ] ℝ²) :
+    AnalyticOnNhd ℝ (fun q : ℝ² × ℝ => f (q.1 + L (aux_uR q.2))) univ := by
+  intro q _
+  have h1 : AnalyticAt ℝ (fun q : ℝ² × ℝ => q.1 + L (aux_uR q.2)) q :=
+    analyticAt_fst.add ((L.analyticAt _).comp
+      ((aux_rig_analyticAt_uR q.2).comp analyticAt_snd))
+  exact (hf _ (mem_univ _)).comp h1
+
+/-- Auxiliary: a function on configuration space with a real analytic lift to `ℝ² × ℝ` that
+vanishes almost everywhere on a set of positive measure vanishes identically
+(`ext:analytic-zero`, as used in the proof of `rig:exact`). -/
+theorem aux_rig_zero_of_ae (G : ℝ² × Ang → ℝ)
+    (hG : AnalyticOnNhd ℝ (fun q : ℝ² × ℝ => G (q.1, (q.2 : Ang))) univ)
+    (E' : Set (ℝ² × Ang)) (hE' : MeasurableSet E') (hpos : 0 < μinc E')
+    (hz : ∀ᵐ p ∂(μinc.restrict E'), G p = 0) : ∀ p, G p = 0 := by
+  refine ext_analytic_zero_config hG ?_
+  have hnull : μinc (E' \ {p | G p = 0}) = 0 := by
+    rw [ae_restrict_iff' hE'] at hz
+    exact measure_mono_null (t := {p | ¬ (p ∈ E' → G p = 0)})
+      (fun p hp hpX => hp.2 (hpX hp.1)) (ae_iff.1 hz)
+  have h1 : μinc E' ≤ μinc {p | G p = 0} := by
+    calc μinc E' ≤ μinc (E' ∩ {p | G p = 0}) + μinc (E' \ {p | G p = 0}) :=
+          measure_le_inter_add_sdiff _ _ _
+      _ ≤ μinc {p | G p = 0} := by rw [hnull, add_zero]; exact measure_mono inter_subset_right
+  exact lt_of_lt_of_le hpos h1
 
 /-- **Theorem `rig:exact`**.  Let $(E;X_0,X_1,X_2)$ be a core of positive degree, and let
 $a_j\in L^2(X_j;\mathbb R^2)$ satisfy, for almost every $p=(x,\theta)\in E$,
@@ -140,6 +1559,168 @@ theorem rig_exact (α β : ℝ) (hβ : β ≠ 0) (E : Set (ℝ² × Ang)) (X : F
         = 0) :
     ∀ᵐ p ∂(μinc.restrict E),
       a 1 (proj α β 1 p) + ContinuousLinearMap.adjoint (M α β) (a 2 (proj α β 2 p)) = 0 := by
-  sorry
+  classical
+  have hX := hE.measurableSet_X
+  have hEm := hE.measurableSet_E
+  set MT := ContinuousLinearMap.adjoint (M α β) with hMT
+  -- measurable representatives of the fields
+  set A : Fin 3 → ℝ² → ℝ² := fun j => (ha j).1.mk (a j) with hAdef
+  have hAm : ∀ j, Measurable (A j) := fun j => (ha j).1.stronglyMeasurable_mk.measurable
+  have hAae : ∀ j, a j =ᵐ[volume.restrict (X j)] A j := fun j => (ha j).1.ae_eq_mk
+  have hAE : ∀ j, ∀ᵐ p ∂(μinc.restrict E), a j (proj α β j p) = A j (proj α β j p) :=
+    fun j => aux_rig_ae_proj hE.toIsCoreData j (hAae j)
+  have hA1 : ∀ᵐ p ∂(μinc.restrict E), ∑ j, A j (proj α β j p) = 0 := by
+    filter_upwards [h₁, hAE 0, hAE 1, hAE 2] with p hp h0 h1 h2
+    rw [Fin.sum_univ_three] at hp ⊢
+    rw [← h0, ← h1, ← h2]; exact hp
+  set V : ℝ² × Ang → ℝ² := fun p => A 1 (proj α β 1 p) + MT (A 2 (proj α β 2 p)) with hVdef
+  have hA2 : ∀ᵐ p ∂(μinc.restrict E), ⟪v p.2, V p⟫_ℝ = 0 := by
+    filter_upwards [h₂, hAE 1, hAE 2] with p hp h1 h2
+    rw [h1, h2] at hp; exact hp
+  have hVm : Measurable V := ((hAm 1).comp (aux_ker_measurable_proj α β 1)).add
+    (MT.continuous.measurable.comp ((hAm 2).comp (aux_ker_measurable_proj α β 2)))
+  suffices hV : ∀ᵐ p ∂(μinc.restrict E), V p = 0 by
+    filter_upwards [hV, hAE 1, hAE 2] with p hp h1 h2
+    rw [h1, h2]; exact hp
+  by_contra hcon
+  set G := E ∩ V ⁻¹' {0}ᶜ with hGdef
+  have hGm : MeasurableSet G := hEm.inter (hVm (measurableSet_singleton 0).compl)
+  have hGpos : 0 < μinc G := by
+    rw [ae_iff, Measure.restrict_apply' hEm] at hcon
+    rw [pos_iff_ne_zero]
+    convert hcon using 2
+    ext p; simp [hGdef, and_comm]
+  -- a positive-measure core inside `G`
+  have hGdata : IsCoreData α β G X :=
+    { measurableSet_X := hX
+      isBounded_X := hE.isBounded_X
+      measurableSet_E := hGm
+      ae_proj_mem := fun j =>
+        ae_restrict_of_ae_restrict_of_subset inter_subset_left (hE.ae_proj_mem j) }
+  have hSfin : ∑ j, volume (X j) ≠ ⊤ :=
+    ENNReal.sum_ne_top.2 fun j _ => (hE.isBounded_X j).measure_lt_top.ne
+  have hq : 0 < μinc G / ∑ j, volume (X j) := ENNReal.div_pos hGpos.ne' hSfin
+  obtain ⟨c', -, hc'pos, hc'lt⟩ := ENNReal.lt_iff_exists_real_btwn.1 hq
+  have hc' : 0 < c' := ENNReal.ofReal_pos.1 hc'pos
+  obtain ⟨F, Y, hY, -, hFG, hF, -⟩ := rig_prune α β G X hGdata hGpos c' hc' hc'lt
+  have hYm : ∀ j, MeasurableSet (Y j) := fun j => (hY j).1
+  have hYX : ∀ j, Y j ⊆ X j := fun j => (hY j).2
+  have hFE : F ⊆ E := hFG.trans inter_subset_left
+  -- the scalar coordinate triples of the fields belong to `K_F`
+  have hmem : ∀ (i : Fin 2) j, MemLp (fun z => A j z i) 2 (volume.restrict (Y j)) := by
+    intro i j
+    have h1 : MemLp (A j) 2 (volume.restrict (X j)) := (ha j).ae_eq (hAae j)
+    exact ((EuclideanSpace.proj i : ℝ² →L[ℝ] ℝ).comp_memLp' h1).mono_measure
+      (Measure.restrict_mono (hYX j) le_rfl)
+  set g : Fin 2 → HE Y := fun i => WithLp.toLp 2 (fun j => (hmem i j).toLp (fun z => A j z i))
+    with hgdef
+  have hgcoe : ∀ i j, ((g i) j : ℝ² → ℝ) =ᵐ[volume.restrict (Y j)] fun z => A j z i :=
+    fun i j => (hmem i j).coeFn_toLp
+  have hgF : ∀ i j, ∀ᵐ p ∂(μinc.restrict F),
+      (Y j).indicator ((g i) j : ℝ² → ℝ) (proj α β j p) = A j (proj α β j p) i := by
+    intro i j
+    filter_upwards [aux_rig_ae_proj hF.toIsCoreData j (hgcoe i j), hF.ae_proj_mem j]
+      with p hp hpY
+    rw [indicator_of_mem hpY, hp]
+  have hgK : ∀ i, g i ∈ kernelSpace α β F Y := by
+    intro i
+    rw [aux_mem_kernel_iff α β F Y hYm]
+    filter_upwards [ae_restrict_of_ae_restrict_of_subset hFE hA1, hgF i 0, hgF i 1, hgF i 2]
+      with p hp h0 h1 h2
+    simp only [incidenceFun, Fin.sum_univ_three, Pi.zero_apply, h0, h1, h2]
+    have := congrArg (fun w : ℝ² => w i) hp
+    simpa [Fin.sum_univ_three] using this
+  -- an orthonormal basis of `K_F` and the analytic pieces
+  have hfd := rig_kernel_gap_finiteDimensional α β hβ F Y c' hF
+  obtain ⟨d, b, -⟩ : ∃ d, ∃ _b : OrthonormalBasis (Fin d) ℝ (kernelSpace α β F Y), True :=
+    ⟨_, stdOrthonormalBasis ℝ _, trivial⟩
+  obtain ⟨E', hE'F, hE'm, hE'pos, gf, hgfa, hgf⟩ := rig_pieces α β hβ F Y c' hF b
+  obtain ⟨coef, hcoef⟩ : ∃ coef : Fin 2 → Fin d → ℝ,
+      coef = fun i l => b.repr ⟨g i, hgK i⟩ l := ⟨_, rfl⟩
+  obtain ⟨at', hat⟩ : ∃ at' : Fin 3 → ℝ² → ℝ², at' = fun j z =>
+      (∑ l, coef 0 l * gf l j z) • (EuclideanSpace.single 0 1 : ℝ²) +
+        (∑ l, coef 1 l * gf l j z) • (EuclideanSpace.single 1 1 : ℝ²) := ⟨_, rfl⟩
+  have hat_an : ∀ j, AnalyticOnNhd ℝ (at' j) univ := by
+    intro j z _
+    rw [hat]
+    have hs : ∀ i : Fin 2, AnalyticAt ℝ (fun z => ∑ l, coef i l * gf l j z) z := fun i =>
+      Finset.analyticAt_fun_sum _ fun l _ => analyticAt_const.mul (hgfa l j z (mem_univ _))
+    exact ((hs 0).smul analyticAt_const).add ((hs 1).smul analyticAt_const)
+  -- on `E'` the analytic fields agree with the original ones
+  have hagree : ∀ j, ∀ᵐ p ∂(μinc.restrict E'), A j (proj α β j p) = at' j (proj α β j p) := by
+    intro j
+    have hexp : ∀ i, ∀ᵐ p ∂(μinc.restrict F),
+        A j (proj α β j p) i = ∑ l, coef i l * basisRow b j (proj α β j p) l := by
+      intro i
+      filter_upwards [hgF i j, aux_rig_ae_proj hF.toIsCoreData j
+        (aux_rig_expand b ⟨g i, hgK i⟩ j), hF.ae_proj_mem j] with p h1 h2 h3
+      rw [← h1, indicator_of_mem h3]
+      refine h2.trans (Finset.sum_congr rfl fun l _ => ?_)
+      simp only [basisRow, indicator_of_mem h3, hcoef]
+    filter_upwards [ae_restrict_of_ae_restrict_of_subset hE'F (hexp 0),
+      ae_restrict_of_ae_restrict_of_subset hE'F (hexp 1), hgf] with p h0 h1 hg
+    apply aux_vec_ext
+    · rw [h0]; simp [hat, hg]
+    · rw [h1]; simp [hat, hg]
+  have hE'1 : ∀ᵐ p ∂(μinc.restrict E'), ∑ j, A j (proj α β j p) = 0 :=
+    ae_restrict_of_ae_restrict_of_subset (hE'F.trans hFE) hA1
+  have hE'2 : ∀ᵐ p ∂(μinc.restrict E'), ⟪v p.2, V p⟫_ℝ = 0 :=
+    ae_restrict_of_ae_restrict_of_subset (hE'F.trans hFE) hA2
+  -- the stationary identities for the analytic fields hold everywhere
+  have hS1 : ∀ (i : Fin 2) (p : ℝ² × Ang), (∑ j, at' j (p.1 + Lv α β j (u p.2))) i = 0 := by
+    intro i
+    refine aux_rig_zero_of_ae (fun p => (∑ j, at' j (p.1 + Lv α β j (u p.2))) i) ?_
+      E' hE'm hE'pos ?_
+    · intro q _
+      have h1 : AnalyticAt ℝ (fun q : ℝ² × ℝ => ∑ j, at' j (q.1 + Lv α β j (aux_uR q.2))) q :=
+        Finset.analyticAt_fun_sum _ fun j _ =>
+          aux_rig_analytic_vertex (at' j) (hat_an j) (Lv α β j) q (mem_univ _)
+      exact ((EuclideanSpace.proj i : ℝ² →L[ℝ] ℝ).analyticAt _).comp h1
+    · filter_upwards [hagree 0, hagree 1, hagree 2, hE'1] with p h0 h1 h2 hp
+      have : ∑ j, at' j (proj α β j p) = 0 := by
+        rw [Fin.sum_univ_three, ← h0, ← h1, ← h2]; rw [Fin.sum_univ_three] at hp; exact hp
+      have h3 := congrArg (fun w : ℝ² => w i) this
+      simpa [proj] using h3
+  have hS2 : ∀ p : ℝ² × Ang,
+      ⟪v p.2, at' 1 (p.1 + u p.2) + MT (at' 2 (p.1 + M α β (u p.2)))⟫_ℝ = 0 := by
+    refine aux_rig_zero_of_ae _ ?_ E' hE'm hE'pos ?_
+    · have hv1 := aux_rig_analytic_vertex (at' 1) (hat_an 1) (ContinuousLinearMap.id ℝ ℝ²)
+      have hv2 := aux_rig_analytic_vertex (at' 2) (hat_an 2) (M α β)
+      simp only [ContinuousLinearMap.id_apply] at hv1
+      intro q _
+      have hW : AnalyticAt ℝ (fun q : ℝ² × ℝ =>
+          at' 1 (q.1 + aux_uR q.2) + MT (at' 2 (q.1 + M α β (aux_uR q.2)))) q :=
+        (hv1 q (mem_univ _)).add ((MT.analyticAt _).comp (hv2 q (mem_univ _)))
+      have hJ : AnalyticAt ℝ (fun q : ℝ² × ℝ => J (aux_uR q.2)) q :=
+        (J.analyticAt _).comp ((aux_rig_analyticAt_uR q.2).comp analyticAt_snd)
+      have e : (fun q : ℝ² × ℝ => ⟪v ((q.2 : ℝ) : Ang), at' 1 (q.1 + u (q.2 : Ang)) +
+          MT (at' 2 (q.1 + M α β (u (q.2 : Ang))))⟫_ℝ) = fun q =>
+          (J (aux_uR q.2)) 0 * (at' 1 (q.1 + aux_uR q.2) + MT (at' 2 (q.1 + M α β (aux_uR q.2)))) 0
+          + (J (aux_uR q.2)) 1 * (at' 1 (q.1 + aux_uR q.2) +
+            MT (at' 2 (q.1 + M α β (aux_uR q.2)))) 1 := by
+        funext q; rw [aux_inner_two]; rfl
+      change AnalyticAt ℝ (fun q : ℝ² × ℝ => ⟪v ((q.2 : ℝ) : Ang), at' 1 (q.1 + u (q.2 : Ang)) +
+          MT (at' 2 (q.1 + M α β (u (q.2 : Ang))))⟫_ℝ) q
+      rw [e]
+      have p0 := (EuclideanSpace.proj (0 : Fin 2) : ℝ² →L[ℝ] ℝ).analyticAt
+      have p1 := (EuclideanSpace.proj (1 : Fin 2) : ℝ² →L[ℝ] ℝ).analyticAt
+      exact (((p0 _).comp hJ).mul ((p0 _).comp hW)).add (((p1 _).comp hJ).mul ((p1 _).comp hW))
+    · filter_upwards [hagree 1, hagree 2, hE'2] with p h1 h2 hp
+      simp only [hVdef, h1, h2] at hp
+      simpa [proj, Lv] using hp
+  have hrig := rig_analytic_rigidity α β hβ at' hat_an
+    (fun x θ => aux_vec_ext (by simpa using hS1 0 (x, θ)) (by simpa using hS1 1 (x, θ)))
+    (fun x θ => hS2 (x, θ))
+  -- contradiction: the displacement-frequency vector vanishes on `E' ⊆ G`
+  have hV0 : ∀ᵐ p ∂(μinc.restrict E'), V p = 0 := by
+    filter_upwards [hagree 1, hagree 2] with p h1 h2
+    simp only [hVdef, h1, h2]
+    simpa [proj, Lv] using hrig p.1 p.2
+  have h0 : μinc E' = 0 := by
+    rw [ae_restrict_iff' hE'm] at hV0
+    refine measure_mono_null (fun p hp => ?_) (ae_iff.1 hV0)
+    have hpG : p ∈ G := hFG (hE'F hp)
+    exact fun H => hpG.2 (H hp)
+  exact absurd h0 hE'pos.ne'
 
 end Auto

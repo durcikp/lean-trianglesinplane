@@ -31,7 +31,7 @@ Formalization of the section `tail:section` ("Summation over frequency annuli") 
 -/
 
 open MeasureTheory Real Set Filter Topology
-open scoped ENNReal NNReal InnerProductSpace FourierTransform
+open scoped ENNReal NNReal InnerProductSpace FourierTransform SchwartzMap
 
 noncomputable section
 
@@ -60,6 +60,143 @@ def tailK (χ : ℝ² → ℝ) (r : ℝ) : ℝ² → ℂ := scaleR r (𝓕⁻ (t
 def tailForm (α β : ℝ) (χ : ℝ² → ℝ) (r : ℝ) (f₀ f₁ f₂ : ℝ² → ℂ) : ℂ :=
   form α β (FCMeasure.sigma.conv (FCMeasure.ofDensity (tailK χ r))) f₀ f₁ f₂
 
+/-- Auxiliary for `tail:annular-definition`: the cutoff `χ` of `Auto.aux_IsTailCutoff` vanishes
+outside the open ball of radius `2`. -/
+theorem aux_tail_chi_support (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ) :
+    Function.support χ ⊆ Metric.closedBall (0 : ℝ²) 2 := by
+  intro b hb
+  by_contra h
+  simp only [Metric.mem_closedBall, not_le] at h
+  rw [dist_zero_right] at h
+  exact hb (hχ.2.2.2 b h.le)
+
+/-- Auxiliary for `tail:annular-definition`: the complexified cutoff `χ` is smooth and compactly
+supported. -/
+theorem aux_tail_chiC (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ) :
+    ContDiff ℝ (⊤ : ℕ∞) (fun b => (χ b : ℂ)) ∧ HasCompactSupport (fun b => (χ b : ℂ)) := by
+  refine ⟨Complex.ofRealCLM.contDiff.comp hχ.1, ?_⟩
+  refine (HasCompactSupport.intro (isCompact_closedBall (0 : ℝ²) 2) fun b hb => ?_)
+  have : χ b = 0 := by
+    by_contra h
+    exact hb (aux_tail_chi_support χ hχ h)
+  simp [this]
+
+/-- Auxiliary for `tail:annular-definition`: the annular function `ψ = tailPsi χ` is smooth and
+compactly supported. -/
+theorem aux_tail_psi_smooth (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ) :
+    ContDiff ℝ (⊤ : ℕ∞) (tailPsi χ) ∧ HasCompactSupport (tailPsi χ) := by
+  obtain ⟨h1, h2⟩ := aux_tail_chiC χ hχ
+  have he : tailPsi χ = fun b => (χ ((2 : ℝ)⁻¹ • b) : ℂ) - (χ b : ℂ) := by
+    funext b; simp [tailPsi]
+  rw [he]
+  refine ⟨(h1.comp (contDiff_const_smul _)).sub h1, ?_⟩
+  refine HasCompactSupport.sub ?_ h2
+  exact h2.comp_smul (by norm_num)
+
+/-- Auxiliary for `tail:annular-definition`: `ψ(b) ≠ 0` forces `1 ≤ |b| < 4`. -/
+theorem aux_tail_psi_ne_zero (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ) (b : ℝ²)
+    (hb : tailPsi χ b ≠ 0) : 1 ≤ ‖b‖ ∧ ‖b‖ < 4 := by
+  have hn : ‖(2 : ℝ)⁻¹ • b‖ = ‖b‖ / 2 := by
+    rw [norm_smul]; simp [div_eq_inv_mul]
+  constructor
+  · by_contra h
+    push Not at h
+    apply hb
+    simp only [tailPsi]
+    rw [hχ.2.2.1 b h, hχ.2.2.1 _ (by rw [hn]; linarith [norm_nonneg b])]
+    simp
+  · by_contra h
+    push Not at h
+    apply hb
+    simp only [tailPsi]
+    rw [hχ.2.2.2 b (by linarith), hχ.2.2.2 _ (by rw [hn]; linarith)]
+    simp
+
+/-- Auxiliary for `tail:annular-definition`: `𝓕(𝓕⁻ g) = g` for smooth compactly supported `g`. -/
+theorem aux_tail_fourier_fourierInv (g : ℝ² → ℂ) (hg : ContDiff ℝ (⊤ : ℕ∞) g)
+    (hgc : HasCompactSupport g) : 𝓕 (𝓕⁻ g) = g := by
+  set gS : 𝓢(ℝ², ℂ) := hgc.toSchwartzMap hg
+  have hgS : (gS : ℝ² → ℂ) = g := rfl
+  rw [← hgS]
+  exact gS.continuous.fourier_fourierInv_eq gS.integrable (by
+    rw [← SchwartzMap.fourier_coe]; exact (𝓕 gS).integrable)
+
+/-- Auxiliary for `tail:annular-definition`: `𝓕⁻ g` is integrable for smooth compactly supported
+`g`. -/
+theorem aux_tail_fourierInv_integrable (g : ℝ² → ℂ) (hg : ContDiff ℝ (⊤ : ℕ∞) g)
+    (hgc : HasCompactSupport g) : Integrable (𝓕⁻ g) := by
+  set gS : 𝓢(ℝ², ℂ) := hgc.toSchwartzMap hg
+  have hinv : 𝓕⁻ g = ((𝓕⁻ gS : 𝓢(ℝ², ℂ)) : ℝ² → ℂ) := by
+    rw [SchwartzMap.fourierInv_coe]; rfl
+  rw [hinv]; exact (𝓕⁻ gS).integrable
+
+/-- Auxiliary for `tail:annular-definition`: `∫ h_R = ∫ h` for `R > 0`. -/
+theorem aux_tail_integral_scaleR (h : ℝ² → ℂ) (R : ℝ) (hR : 0 < R) :
+    ∫ u, scaleR R h u = ∫ u, h u := by
+  unfold scaleR
+  rw [integral_const_mul, Measure.integral_comp_smul, finrank_euclideanSpace_fin,
+    abs_of_nonneg (by positivity), Complex.real_smul, ← mul_assoc]
+  push_cast
+  rw [mul_inv_cancel₀ (by exact_mod_cast (pow_pos hR 2).ne'), one_mul]
+
+/-- Auxiliary for `tail:annular-definition`: `∫ |h_R| = ∫ |h|` for `R > 0`. -/
+theorem aux_tail_integral_norm_scaleR (h : ℝ² → ℂ) (R : ℝ) (hR : 0 < R) :
+    ∫ u, ‖scaleR R h u‖ = ∫ u, ‖h u‖ := by
+  unfold scaleR
+  simp only [norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (pow_nonneg hR.le 2)]
+  rw [integral_const_mul, Measure.integral_comp_smul (μ := (volume : Measure ℝ²))
+    (f := fun u => ‖h u‖),
+    finrank_euclideanSpace_fin, abs_of_nonneg (by positivity), smul_eq_mul, ← mul_assoc,
+    mul_inv_cancel₀ (pow_pos hR 2).ne', one_mul]
+
+/-- Auxiliary for `tail:annular-definition`: the scaling identity
+`𝓕⁻[χ(·/2)](y) = 4 𝓕⁻χ(2y)`. -/
+theorem aux_tail_fourierInv_half (g : ℝ² → ℂ) (y : ℝ²) :
+    𝓕⁻ (fun b => g ((2 : ℝ)⁻¹ • b)) y = 4 * 𝓕⁻ g ((2 : ℝ) • y) := by
+  rw [aux_s2a_fourierInv_e, aux_s2a_fourierInv_e]
+  have := Measure.integral_comp_smul (μ := (volume : Measure ℝ²))
+    (fun w => e ⟪w, (2 : ℝ) • y⟫_ℝ * g w) (2 : ℝ)⁻¹
+  simp only [finrank_euclideanSpace_fin] at this
+  have e1 : ∀ v : ℝ², e ⟪(2 : ℝ)⁻¹ • v, (2 : ℝ) • y⟫_ℝ = e ⟪v, y⟫_ℝ := by
+    intro v
+    rw [inner_smul_left, inner_smul_right]
+    congr 1; simp
+  simp only [e1] at this
+  rw [this]
+  norm_num [Complex.real_smul]
+
+/-- Auxiliary for `tail:annular-definition`: `k_r = q_{2r} - q_r`. -/
+theorem aux_tail_K_eq (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ) (r : ℝ) :
+    tailK χ r = fun u => tailQ χ (2 * r) u - tailQ χ r u := by
+  obtain ⟨h1, h2⟩ := aux_tail_chiC χ hχ
+  set g : ℝ² → ℂ := fun b => (χ b : ℂ)
+  have hcont : Continuous g := h1.continuous
+  have hpsi : tailPsi χ = fun b => g ((2 : ℝ)⁻¹ • b) - g b := by
+    funext b; simp [tailPsi, g]
+  have hint1 : ∀ y : ℝ², Integrable (fun v : ℝ² => e ⟪v, y⟫_ℝ * g ((2 : ℝ)⁻¹ • v)) := by
+    intro y
+    have hc : HasCompactSupport (fun v : ℝ² => g ((2 : ℝ)⁻¹ • v)) := h2.comp_smul (by norm_num)
+    refine Continuous.integrable_of_hasCompactSupport ?_ (hc.mul_left)
+    have hc1 : Continuous fun v : ℝ² => e ⟪v, y⟫_ℝ :=
+      (aux_continuous_ea y).congr fun v => by simp [aux_ea, real_inner_comm]
+    exact hc1.mul (hcont.comp (continuous_const_smul _))
+  have hint2 : ∀ y : ℝ², Integrable (fun v : ℝ² => e ⟪v, y⟫_ℝ * g v) := by
+    intro y
+    refine Continuous.integrable_of_hasCompactSupport ?_ (h2.mul_left)
+    have hc1 : Continuous fun v : ℝ² => e ⟪v, y⟫_ℝ :=
+      (aux_continuous_ea y).congr fun v => by simp [aux_ea, real_inner_comm]
+    exact hc1.mul hcont
+  have hinv : ∀ y, 𝓕⁻ (tailPsi χ) y = 4 * 𝓕⁻ g ((2 : ℝ) • y) - 𝓕⁻ g y := by
+    intro y
+    rw [hpsi, ← aux_tail_fourierInv_half, aux_s2a_fourierInv_e, aux_s2a_fourierInv_e,
+      aux_s2a_fourierInv_e, ← integral_sub (hint1 y) (hint2 y)]
+    congr 1; funext v; ring
+  funext u
+  simp only [tailK, tailQ, scaleR, hinv, smul_smul]
+  push_cast
+  ring_nf
+  rfl
+
 /-- Auxiliary: the assertions contained in `\label{tail:annular-definition}`: $\psi$ is supported
 in $\{1\le|b|\le4\}$, $\int q_R=\chi(0)=1$, and for every $r>0$, $k_r=q_{2r}-q_r$ and
 $\|k_r\|_1=\|\check\psi\|_1$. -/
@@ -68,7 +205,22 @@ theorem aux_tail_annular_definition (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff
     (∀ R : ℝ, 0 < R → ∫ u, tailQ χ R u = 1) ∧
     (∀ r : ℝ, 0 < r → tailK χ r = fun u => tailQ χ (2 * r) u - tailQ χ r u) ∧
     (∀ r : ℝ, 0 < r → ∫ u, ‖tailK χ r u‖ = ∫ u, ‖𝓕⁻ (tailPsi χ) u‖) := by
-  sorry
+  refine ⟨?_, ?_, fun r _ => aux_tail_K_eq χ hχ r, fun r hr => aux_tail_integral_norm_scaleR _ r hr⟩
+  · refine closure_minimal (fun b hb => ?_) ?_
+    · have := aux_tail_psi_ne_zero χ hχ b hb
+      exact ⟨this.1, this.2.le⟩
+    · exact (isClosed_le continuous_const continuous_norm).inter
+        (isClosed_le continuous_norm continuous_const)
+  · intro R hR
+    obtain ⟨h1, h2⟩ := aux_tail_chiC χ hχ
+    rw [tailQ, aux_tail_integral_scaleR _ R hR]
+    have hF := congrFun (aux_tail_fourier_fourierInv _ h1 h2) 0
+    rw [aux_s2a_fourier_e] at hF
+    simp only [inner_zero_right, neg_zero] at hF
+    have he0 : e 0 = 1 := by simp [e]
+    simp only [he0, one_mul] at hF
+    rw [hF, hχ.2.2.1 0 (by simp)]
+    simp
 
 /-! ### Frequency representation with compact spectral supports (`tail:fourier`) -/
 
@@ -78,6 +230,601 @@ theorem aux_tail_annular_definition (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff
 def aux_l2Fourier (f : ℝ² → ℂ) : ℝ² → ℂ := by
   classical
   exact if hf : MemLp f 2 volume then ⇑(𝓕 (hf.toLp f) : Lp ℂ 2 (volume : Measure ℝ²)) else 0
+
+/-! ### Physical side: the form as a product integral and its continuity -/
+
+/-- Auxiliary for `tail:fourier` and `tail:partition`: for `L²` inputs the form
+`Λ_{σ*κ}` is the integral of its (integrable) integrand over the product space. -/
+theorem aux_tail_form_eq_prod (α β : ℝ) (hβ : β ≠ 0) (κ : FCMeasure) (f₀ f₁ f₂ : ℝ² → ℂ)
+    (h₀ : MemLp f₀ 2 volume) (h₁ : MemLp f₁ 2 volume) (h₂ : MemLp f₂ 2 volume) :
+    Integrable (fun p : (FCMeasure.sigma.conv κ).Z × ℝ² => f₀ p.2 *
+        f₁ (p.2 + (FCMeasure.sigma.conv κ).φ p.1) *
+        f₂ (p.2 + M α β ((FCMeasure.sigma.conv κ).φ p.1)) * (FCMeasure.sigma.conv κ).w p.1)
+        ((FCMeasure.sigma.conv κ).m.prod volume) ∧
+    form α β (FCMeasure.sigma.conv κ) f₀ f₁ f₂ =
+      ∫ p : (FCMeasure.sigma.conv κ).Z × ℝ², f₀ p.2 *
+        f₁ (p.2 + (FCMeasure.sigma.conv κ).φ p.1) *
+        f₂ (p.2 + M α β ((FCMeasure.sigma.conv κ).φ p.1)) * (FCMeasure.sigma.conv κ).w p.1
+        ∂((FCMeasure.sigma.conv κ).m.prod volume) := by
+  obtain ⟨C, -, hC⟩ := lem_triple_l2 α β hβ
+  have hf : ∀ j, MemLp (![f₀, f₁, f₂] j) 2 volume := by
+    intro j; fin_cases j <;> simpa
+  have hI := (hC κ ![f₀, f₁, f₂] hf).1
+  simp only [Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two, Matrix.head_cons,
+    Matrix.tail_cons] at hI
+  refine ⟨hI, ?_⟩
+  rw [integral_prod _ hI]
+  unfold form
+  congr 1; funext z
+  exact (integral_mul_const _ _).symm
+
+/-- Auxiliary for `tail:fourier`, `tail:partition`: the difference of the form at two `L²`
+triples, expanded by trilinearity. -/
+theorem aux_tail_form_sub (α β : ℝ) (hβ : β ≠ 0) (κ : FCMeasure) (f g : Fin 3 → ℝ² → ℂ)
+    (hf : ∀ j, MemLp (f j) 2 volume) (hg : ∀ j, MemLp (g j) 2 volume) :
+    form α β (FCMeasure.sigma.conv κ) (g 0) (g 1) (g 2) -
+        form α β (FCMeasure.sigma.conv κ) (f 0) (f 1) (f 2) =
+      form α β (FCMeasure.sigma.conv κ) (g 0 - f 0) (g 1) (g 2) +
+        form α β (FCMeasure.sigma.conv κ) (f 0) (g 1 - f 1) (g 2) +
+        form α β (FCMeasure.sigma.conv κ) (f 0) (f 1) (g 2 - f 2) := by
+  have P := fun a b c ha hb hc => aux_tail_form_eq_prod α β hβ κ a b c ha hb hc
+  obtain ⟨i1, e1⟩ := P _ _ _ (hg 0) (hg 1) (hg 2)
+  obtain ⟨i2, e2⟩ := P _ _ _ (hf 0) (hf 1) (hf 2)
+  obtain ⟨i3, e3⟩ := P _ _ _ ((hg 0).sub (hf 0)) (hg 1) (hg 2)
+  obtain ⟨i4, e4⟩ := P _ _ _ (hf 0) ((hg 1).sub (hf 1)) (hg 2)
+  obtain ⟨i5, e5⟩ := P _ _ _ (hf 0) (hf 1) ((hg 2).sub (hf 2))
+  set ν := FCMeasure.sigma.conv κ
+  have i34 : Integrable (fun p : ν.Z × ℝ² =>
+      (g 0 - f 0) p.2 * g 1 (p.2 + ν.φ p.1) * g 2 (p.2 + M α β (ν.φ p.1)) * ν.w p.1 +
+        f 0 p.2 * (g 1 - f 1) (p.2 + ν.φ p.1) * g 2 (p.2 + M α β (ν.φ p.1)) * ν.w p.1)
+      (ν.m.prod volume) := i3.add i4
+  rw [e1, e2, e3, e4, e5, ← integral_sub i1 i2, ← integral_add i3 i4, ← integral_add i34 i5]
+  congr 1; funext p
+  simp only [Pi.sub_apply]
+  ring
+
+/-- Auxiliary for `tail:fourier`, `tail:partition`: Lipschitz bound for the form of
+`σ*κ` on `L²` triples (from `lem:triple-l2`). -/
+theorem aux_tail_form_lip (α β : ℝ) (hβ : β ≠ 0) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (κ : FCMeasure) (f g : Fin 3 → ℝ² → ℂ),
+      (∀ j, MemLp (f j) 2 volume) → (∀ j, MemLp (g j) 2 volume) →
+      ‖form α β (FCMeasure.sigma.conv κ) (g 0) (g 1) (g 2) -
+          form α β (FCMeasure.sigma.conv κ) (f 0) (f 1) (f 2)‖ₑ ≤
+        ENNReal.ofReal C * κ.tv *
+          (eLpNorm (g 0 - f 0) 2 volume * eLpNorm (g 1) 2 volume * eLpNorm (g 2) 2 volume +
+            eLpNorm (f 0) 2 volume * eLpNorm (g 1 - f 1) 2 volume * eLpNorm (g 2) 2 volume +
+            eLpNorm (f 0) 2 volume * eLpNorm (f 1) 2 volume * eLpNorm (g 2 - f 2) 2 volume) := by
+  obtain ⟨C, hC0, hC⟩ := lem_triple_l2 α β hβ
+  refine ⟨C, hC0, fun κ f g hf hg => ?_⟩
+  rw [aux_tail_form_sub α β hβ κ f g hf hg]
+  have B := fun (a b c : ℝ² → ℂ) (ha : MemLp a 2 volume) (hb : MemLp b 2 volume)
+      (hc : MemLp c 2 volume) => by
+    have h := (hC κ ![a, b, c] (by intro j; fin_cases j <;> simpa)).2
+    simp only [Fin.prod_univ_three, Matrix.cons_val_zero, Matrix.cons_val_one,
+      Matrix.cons_val_two, Matrix.head_cons, Matrix.tail_cons] at h
+    exact h
+  refine (enorm_add_le _ _).trans ?_
+  refine (add_le_add (enorm_add_le _ _) le_rfl).trans ?_
+  rw [mul_add, mul_add]
+  refine add_le_add (add_le_add ?_ ?_) ?_
+  · have := B _ _ _ ((hg 0).sub (hf 0)) (hg 1) (hg 2); rwa [mul_assoc (eLpNorm _ _ _)] at this ⊢
+  · have := B _ _ _ (hf 0) ((hg 1).sub (hf 1)) (hg 2); rwa [mul_assoc (eLpNorm _ _ _)] at this ⊢
+  · have := B _ _ _ (hf 0) (hf 1) ((hg 2).sub (hf 2)); rwa [mul_assoc (eLpNorm _ _ _)] at this ⊢
+
+/-! ### Frequency side -/
+
+/-- Auxiliary for `tail:fourier`: the frequency-side trilinear expression
+$\iint G_0(-\xi_1-\xi_2)G_1(\xi_1)G_2(\xi_2)\widehat\sigma(b)\psi(b/r)\,d\xi_1d\xi_2$,
+$b=\xi_1+M^T\xi_2$, appearing in `Auto.tail_fourier`. -/
+def aux_tailI (α β : ℝ) (χ : ℝ² → ℝ) (r : ℝ) (G₀ G₁ G₂ : ℝ² → ℂ) : ℂ :=
+  ∫ ξ : ℝ² × ℝ², G₀ (-ξ.1 - ξ.2) * G₁ ξ.1 * G₂ ξ.2 *
+    (FCMeasure.sigma.fourier (ξ.1 + ContinuousLinearMap.adjoint (M α β) ξ.2) *
+      tailPsi χ (r⁻¹ • (ξ.1 + ContinuousLinearMap.adjoint (M α β) ξ.2)))
+
+/-- Auxiliary for `tail:fourier`: `|σ̂| ≤ 1`. -/
+theorem aux_tail_sigma_fourier_le (ξ : ℝ²) : ‖FCMeasure.sigma.fourier ξ‖ ≤ 1 := by
+  unfold FCMeasure.fourier FCMeasure.integral
+  refine (norm_integral_le_integral_norm _).trans ?_
+  have : ∀ z : FCMeasure.sigma.Z, ‖Complex.exp (-(2 * π * ⟪FCMeasure.sigma.φ z, ξ⟫_ℝ : ℝ) *
+      Complex.I) * FCMeasure.sigma.w z‖ = 1 := by
+    intro z
+    simp only [norm_mul, FCMeasure.sigma]
+    rw [show (-(2 * π * ⟪u z, ξ⟫_ℝ : ℝ) : ℂ) * Complex.I =
+      ((-(2 * π * ⟪u z, ξ⟫_ℝ) : ℝ) : ℂ) * Complex.I by push_cast; ring,
+      Complex.norm_exp_ofReal_mul_I]
+    simp
+  simp only [this]
+  show ∫ _ : Ang, (1 : ℝ) ∂σ ≤ 1
+  rw [integral_const]; simp
+
+/-- Auxiliary for `tail:fourier`: `σ̂` is continuous. -/
+theorem aux_tail_sigma_fourier_cont : Continuous FCMeasure.sigma.fourier := by
+  have h : FCMeasure.sigma.fourier = fun ξ : ℝ² =>
+      ∫ θ, Complex.exp (-(2 * π * ⟪u θ, ξ⟫_ℝ : ℝ) * Complex.I) ∂σ := by
+    funext ξ; simp [FCMeasure.fourier, FCMeasure.integral, FCMeasure.sigma]; rfl
+  rw [h]
+  have hc : Continuous (Function.uncurry fun (ξ : ℝ²) (θ : Ang) =>
+      Complex.exp (-(2 * π * ⟪u θ, ξ⟫_ℝ : ℝ) * Complex.I)) := by
+    have hu := aux_lw_u_continuous
+    fun_prop
+  have := continuous_parametric_integral_of_continuous (μ := σ) hc isCompact_univ
+  simpa [Measure.restrict_univ] using this
+
+/-- Auxiliary for `tail:fourier`: `ψ` is bounded. -/
+theorem aux_tail_psi_bound (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ) :
+    ∃ Mψ : ℝ, 0 ≤ Mψ ∧ ∀ b, ‖tailPsi χ b‖ ≤ Mψ := by
+  obtain ⟨h1, h2⟩ := aux_tail_psi_smooth χ hχ
+  obtain ⟨C, hC⟩ := h1.continuous.bounded_above_of_compact_support h2
+  exact ⟨max C 0, le_max_right _ _, fun b => (hC b).trans (le_max_left _ _)⟩
+
+/-- Auxiliary for `tail:fourier`: the multiplier `σ̂(b)ψ(b/r)` is continuous. -/
+theorem aux_tail_mult_cont (α β : ℝ) (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ) (r : ℝ) :
+    Continuous (fun ξ : ℝ² × ℝ² =>
+      FCMeasure.sigma.fourier (ξ.1 + ContinuousLinearMap.adjoint (M α β) ξ.2) *
+        tailPsi χ (r⁻¹ • (ξ.1 + ContinuousLinearMap.adjoint (M α β) ξ.2))) := by
+  have h1 := aux_tail_sigma_fourier_cont
+  have h2 := (aux_tail_psi_smooth χ hχ).1.continuous
+  have hA := (ContinuousLinearMap.adjoint (M α β)).continuous
+  fun_prop
+
+/-- Auxiliary for `tail:fourier`: the map `(ξ₁, ξ₂) ↦ -ξ₁ - ξ₂` is quasi-measure-preserving. -/
+theorem aux_tail_qmp_negsum :
+    Measure.QuasiMeasurePreserving (fun ξ : ℝ² × ℝ² => -ξ.1 - ξ.2)
+      ((volume : Measure ℝ²).prod volume) volume := by
+  have h1 : Measure.QuasiMeasurePreserving (fun ξ : ℝ² × ℝ² => ξ.1 + ξ.2)
+      ((volume : Measure ℝ²).prod volume) volume := quasiMeasurePreserving_add _ _
+  have h2 := (Measure.measurePreserving_neg (volume : Measure ℝ²)).quasiMeasurePreserving
+  have := h2.comp h1
+  convert this using 1
+  funext ξ; simp only [Function.comp]; abel
+
+/-- Auxiliary for `tail:fourier`: measure preservation of `ξ₁ ↦ -ξ₁ - ξ₂`. -/
+theorem aux_tail_mp_negsub (ξ₂ : ℝ²) :
+    MeasurePreserving (fun ξ₁ : ℝ² => -ξ₁ - ξ₂) volume volume :=
+  (measurePreserving_sub_right volume ξ₂).comp (Measure.measurePreserving_neg volume)
+
+/-- Auxiliary for `tail:fourier`: the basic bound
+$\iint|G_0(-\xi_1-\xi_2)G_1(\xi_1)G_2(\xi_2)|\le\|G_0\|_2\|G_1\|_2\|G_2\|_1$. -/
+theorem aux_tail_triple_lintegral_le (G₀ G₁ G₂ : ℝ² → ℂ) (h₀ : AEStronglyMeasurable G₀ volume)
+    (h₁ : AEStronglyMeasurable G₁ volume) (h₂ : AEStronglyMeasurable G₂ volume) :
+    ∫⁻ ξ : ℝ² × ℝ², ‖G₀ (-ξ.1 - ξ.2)‖ₑ * ‖G₁ ξ.1‖ₑ * ‖G₂ ξ.2‖ₑ ∂((volume : Measure ℝ²).prod volume) ≤
+      eLpNorm G₀ 2 volume * eLpNorm G₁ 2 volume * eLpNorm G₂ 1 volume := by
+  have hm : AEMeasurable (fun ξ : ℝ² × ℝ² => ‖G₀ (-ξ.1 - ξ.2)‖ₑ * ‖G₁ ξ.1‖ₑ * ‖G₂ ξ.2‖ₑ)
+      ((volume : Measure ℝ²).prod volume) :=
+    (((h₀.comp_quasiMeasurePreserving aux_tail_qmp_negsum).enorm).mul
+      ((h₁.comp_quasiMeasurePreserving Measure.quasiMeasurePreserving_fst).enorm)).mul
+      ((h₂.comp_quasiMeasurePreserving Measure.quasiMeasurePreserving_snd).enorm)
+  rw [lintegral_prod_symm _ hm]
+  have hin : ∀ ξ₂ : ℝ², ∫⁻ ξ₁, ‖G₀ (-ξ₁ - ξ₂)‖ₑ * ‖G₁ ξ₁‖ₑ * ‖G₂ ξ₂‖ₑ ≤
+      eLpNorm G₀ 2 volume * eLpNorm G₁ 2 volume * ‖G₂ ξ₂‖ₑ := by
+    intro ξ₂
+    rw [lintegral_mul_const' _ _ enorm_ne_top]
+    gcongr ?_ * _
+    have hc := h₀.comp_measurePreserving (aux_tail_mp_negsub ξ₂)
+    refine (aux_s2a_holder hc h₁ 2 2).trans (le_of_eq ?_)
+    rw [eLpNorm_comp_measurePreserving h₀ (aux_tail_mp_negsub ξ₂)]
+  refine (lintegral_mono hin).trans (le_of_eq ?_)
+  rw [lintegral_const_mul'' _ h₂.enorm, eLpNorm_one_eq_lintegral_enorm]
+
+/-- Auxiliary for `tail:fourier`: the frequency-side integrand of `Auto.aux_tailI`. -/
+theorem aux_tailI_lintegral_le (α β : ℝ) (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ) :
+    ∃ Mψ : ℝ, 0 ≤ Mψ ∧ ∀ (r : ℝ) (G₀ G₁ G₂ : ℝ² → ℂ), AEStronglyMeasurable G₀ volume →
+      AEStronglyMeasurable G₁ volume → AEStronglyMeasurable G₂ volume →
+      ∫⁻ ξ : ℝ² × ℝ², ‖G₀ (-ξ.1 - ξ.2) * G₁ ξ.1 * G₂ ξ.2 *
+        (FCMeasure.sigma.fourier (ξ.1 + ContinuousLinearMap.adjoint (M α β) ξ.2) *
+          tailPsi χ (r⁻¹ • (ξ.1 + ContinuousLinearMap.adjoint (M α β) ξ.2)))‖ₑ ≤
+        ENNReal.ofReal Mψ * (eLpNorm G₀ 2 volume * eLpNorm G₁ 2 volume * eLpNorm G₂ 1 volume) := by
+  obtain ⟨Mψ, hM0, hM⟩ := aux_tail_psi_bound χ hχ
+  refine ⟨Mψ, hM0, fun r G₀ G₁ G₂ h₀ h₁ h₂ => ?_⟩
+  rw [Measure.volume_eq_prod]
+  refine le_trans (lintegral_mono (g := fun ξ : ℝ² × ℝ² =>
+    ENNReal.ofReal Mψ * (‖G₀ (-ξ.1 - ξ.2)‖ₑ * ‖G₁ ξ.1‖ₑ * ‖G₂ ξ.2‖ₑ)) fun ξ => ?_) ?_
+  · dsimp only
+    rw [enorm_mul, mul_comm]
+    simp only [enorm_mul (G₀ _), enorm_mul (_ * _) (G₂ _)]
+    gcongr ?_ * _
+    rw [enorm_mul, ← ofReal_norm, ← ofReal_norm, ← ENNReal.ofReal_mul
+      (norm_nonneg _)]
+    refine ENNReal.ofReal_le_ofReal ?_
+    calc _ ≤ 1 * Mψ := mul_le_mul (aux_tail_sigma_fourier_le _) (hM _) (norm_nonneg _) zero_le_one
+      _ = Mψ := one_mul _
+  · rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+    gcongr
+    exact aux_tail_triple_lintegral_le G₀ G₁ G₂ h₀ h₁ h₂
+
+/-- Auxiliary for `tail:fourier`: integrability of the integrand of `Auto.aux_tailI` for
+`G₀, G₁ ∈ L²` and `G₂ ∈ L¹`. -/
+theorem aux_tailI_integrable (α β : ℝ) (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ) (r : ℝ)
+    (G₀ G₁ G₂ : ℝ² → ℂ) (h₀ : MemLp G₀ 2 volume) (h₁ : MemLp G₁ 2 volume)
+    (h₂ : MemLp G₂ 1 volume) :
+    Integrable (fun ξ : ℝ² × ℝ² => G₀ (-ξ.1 - ξ.2) * G₁ ξ.1 * G₂ ξ.2 *
+        (FCMeasure.sigma.fourier (ξ.1 + ContinuousLinearMap.adjoint (M α β) ξ.2) *
+          tailPsi χ (r⁻¹ • (ξ.1 + ContinuousLinearMap.adjoint (M α β) ξ.2)))) volume := by
+  obtain ⟨Mψ, -, hM⟩ := aux_tailI_lintegral_le α β χ hχ
+  refine ⟨?_, ?_⟩
+  · rw [Measure.volume_eq_prod]
+    exact (((h₀.1.comp_quasiMeasurePreserving aux_tail_qmp_negsum).mul
+      (h₁.1.comp_quasiMeasurePreserving Measure.quasiMeasurePreserving_fst)).mul
+      (h₂.1.comp_quasiMeasurePreserving Measure.quasiMeasurePreserving_snd)).mul
+      (aux_tail_mult_cont α β χ hχ r).aestronglyMeasurable
+  · refine lt_of_le_of_lt (hM r G₀ G₁ G₂ h₀.1 h₁.1 h₂.1) ?_
+    exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+      (ENNReal.mul_lt_top (ENNReal.mul_lt_top h₀.2 h₁.2) h₂.2)
+
+/-- Auxiliary for `tail:fourier`: Lipschitz bound for `Auto.aux_tailI`. -/
+theorem aux_tailI_lip (α β : ℝ) (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ) :
+    ∃ Mψ : ℝ, 0 ≤ Mψ ∧ ∀ (r : ℝ) (G G' : Fin 3 → ℝ² → ℂ),
+      MemLp (G 0) 2 volume → MemLp (G 1) 2 volume → MemLp (G 2) 1 volume →
+      MemLp (G' 0) 2 volume → MemLp (G' 1) 2 volume → MemLp (G' 2) 1 volume →
+      ‖aux_tailI α β χ r (G' 0) (G' 1) (G' 2) - aux_tailI α β χ r (G 0) (G 1) (G 2)‖ₑ ≤
+        ENNReal.ofReal Mψ *
+          (eLpNorm (G' 0 - G 0) 2 volume * eLpNorm (G' 1) 2 volume * eLpNorm (G' 2) 1 volume +
+            eLpNorm (G 0) 2 volume * eLpNorm (G' 1 - G 1) 2 volume * eLpNorm (G' 2) 1 volume +
+            eLpNorm (G 0) 2 volume * eLpNorm (G 1) 2 volume * eLpNorm (G' 2 - G 2) 1 volume) := by
+  obtain ⟨Mψ, hM0, hM⟩ := aux_tailI_lintegral_le α β χ hχ
+  refine ⟨Mψ, hM0, fun r G G' a0 a1 a2 b0 b1 b2 => ?_⟩
+  have I := fun (A B C : ℝ² → ℂ) (hA : MemLp A 2 volume) (hB : MemLp B 2 volume)
+    (hC : MemLp C 1 volume) => aux_tailI_integrable α β χ hχ r A B C hA hB hC
+  have i1 := I _ _ _ b0 b1 b2
+  have i2 := I _ _ _ a0 a1 a2
+  have i3 := I _ _ _ (b0.sub a0) b1 b2
+  have i4 := I _ _ _ a0 (b1.sub a1) b2
+  have i5 := I _ _ _ a0 a1 (b2.sub a2)
+  have i34 : Integrable (fun ξ : ℝ² × ℝ² =>
+      (G' 0 - G 0) (-ξ.1 - ξ.2) * G' 1 ξ.1 * G' 2 ξ.2 *
+        (FCMeasure.sigma.fourier (ξ.1 + ContinuousLinearMap.adjoint (M α β) ξ.2) *
+          tailPsi χ (r⁻¹ • (ξ.1 + ContinuousLinearMap.adjoint (M α β) ξ.2))) +
+        G 0 (-ξ.1 - ξ.2) * (G' 1 - G 1) ξ.1 * G' 2 ξ.2 *
+        (FCMeasure.sigma.fourier (ξ.1 + ContinuousLinearMap.adjoint (M α β) ξ.2) *
+          tailPsi χ (r⁻¹ • (ξ.1 + ContinuousLinearMap.adjoint (M α β) ξ.2)))) volume :=
+    i3.add i4
+  have e : aux_tailI α β χ r (G' 0) (G' 1) (G' 2) - aux_tailI α β χ r (G 0) (G 1) (G 2) =
+      aux_tailI α β χ r (G' 0 - G 0) (G' 1) (G' 2) + aux_tailI α β χ r (G 0) (G' 1 - G 1) (G' 2) +
+        aux_tailI α β χ r (G 0) (G 1) (G' 2 - G 2) := by
+    unfold aux_tailI
+    rw [← integral_sub i1 i2, ← integral_add i3 i4, ← integral_add i34 i5]
+    congr 1; funext ξ
+    simp only [Pi.sub_apply]
+    ring
+  rw [e]
+  have B := fun (A B C : ℝ² → ℂ) (hA : MemLp A 2 volume) (hB : MemLp B 2 volume)
+      (hC : MemLp C 1 volume) =>
+    (enorm_integral_le_lintegral_enorm _).trans (hM r A B C hA.1 hB.1 hC.1)
+  refine (enorm_add_le _ _).trans ?_
+  refine (add_le_add (enorm_add_le _ _) le_rfl).trans ?_
+  rw [mul_add, mul_add]
+  exact add_le_add (add_le_add (B _ _ _ (b0.sub a0) b1 b2) (B _ _ _ a0 (b1.sub a1) b2))
+    (B _ _ _ a0 a1 (b2.sub a2))
+
+/-- Auxiliary for `tail:fourier`: `Auto.aux_tailI` only depends on the a.e. classes of its
+arguments. -/
+theorem aux_tailI_congr_ae (α β : ℝ) (χ : ℝ² → ℝ) (r : ℝ) {G₀ G₁ G₂ G₀' G₁' G₂' : ℝ² → ℂ}
+    (h₀ : G₀ =ᵐ[volume] G₀') (h₁ : G₁ =ᵐ[volume] G₁') (h₂ : G₂ =ᵐ[volume] G₂') :
+    aux_tailI α β χ r G₀ G₁ G₂ = aux_tailI α β χ r G₀' G₁' G₂' := by
+  unfold aux_tailI
+  refine integral_congr_ae ?_
+  rw [Measure.volume_eq_prod]
+  filter_upwards [aux_tail_qmp_negsum.ae_eq h₀,
+    Measure.quasiMeasurePreserving_fst.ae_eq h₁, Measure.quasiMeasurePreserving_snd.ae_eq h₂]
+    with ξ e0 e1 e2
+  simp only [Function.comp] at e0 e1 e2
+  rw [e0, e1, e2]
+
+/-! ### `L²` Fourier transforms and approximation -/
+
+/-- Auxiliary: the `L²` Fourier transform `Auto.aux_l2Fourier` of an `L²` function. -/
+theorem aux_tail_l2F_eq {f : ℝ² → ℂ} (hf : MemLp f 2 volume) :
+    aux_l2Fourier f = ⇑(𝓕 (hf.toLp f) : Lp ℂ 2 (volume : Measure ℝ²)) := by
+  simp [aux_l2Fourier, hf]
+
+/-- Auxiliary: `Auto.aux_l2Fourier f` is square integrable. -/
+theorem aux_tail_l2F_memLp (f : ℝ² → ℂ) : MemLp (aux_l2Fourier f) 2 volume := by
+  unfold aux_l2Fourier
+  split_ifs
+  · exact Lp.memLp _
+  · exact MemLp.zero
+
+/-- Auxiliary: Plancherel for differences, `‖ĝ - f̂‖₂ = ‖g - f‖₂`. -/
+theorem aux_tail_l2F_sub {f g : ℝ² → ℂ} (hf : MemLp f 2 volume) (hg : MemLp g 2 volume) :
+    eLpNorm (aux_l2Fourier g - aux_l2Fourier f) 2 volume = eLpNorm (g - f) 2 volume := by
+  rw [aux_tail_l2F_eq hf, aux_tail_l2F_eq hg, ← Lp.edist_def]
+  have : edist (𝓕 (hg.toLp g) : Lp ℂ 2 (volume : Measure ℝ²)) (𝓕 (hf.toLp f)) =
+      edist (hg.toLp g) (hf.toLp f) :=
+    (Lp.fourierTransformₗᵢ ℝ² ℂ).isometry.edist_eq _ _
+  rw [this, Lp.edist_def]
+  exact eLpNorm_congr_ae (hg.coeFn_toLp.sub hf.coeFn_toLp)
+
+/-- Auxiliary: Plancherel, `‖f̂‖₂ = ‖f‖₂`. -/
+theorem aux_tail_l2F_norm {f : ℝ² → ℂ} (hf : MemLp f 2 volume) :
+    eLpNorm (aux_l2Fourier f) 2 volume = eLpNorm f 2 volume := by
+  have h := aux_tail_l2F_sub (MemLp.zero (μ := (volume : Measure ℝ²)) (p := 2)
+    (ε := ℂ)) hf
+  have h0 : aux_l2Fourier (0 : ℝ² → ℂ) =ᵐ[volume] 0 := by
+    rw [aux_tail_l2F_eq (MemLp.zero (ε := ℂ))]
+    have e : (MemLp.zero (ε := ℂ) (μ := (volume : Measure ℝ²)) (p := 2)).toLp (0 : ℝ² → ℂ) = 0 :=
+      MemLp.toLp_zero _
+    rw [e, show (𝓕 (0 : Lp ℂ 2 (volume : Measure ℝ²))) = 0 from
+      (Lp.fourierTransformₗᵢ ℝ² ℂ).map_zero]
+    exact Lp.coeFn_zero _ _ _
+  rw [sub_zero] at h
+  rw [← h]
+  exact eLpNorm_congr_ae (by filter_upwards [h0] with x hx; simp [hx])
+
+/-- Auxiliary: for a Schwartz function, the `L²` Fourier transform agrees a.e. with the
+pointwise one. -/
+theorem aux_tail_l2F_schwartz (s : 𝓢(ℝ², ℂ)) :
+    aux_l2Fourier ⇑s =ᵐ[volume] 𝓕 (⇑s) := by
+  rw [aux_tail_l2F_eq (s.memLp 2 volume)]
+  have : (s.memLp 2 volume).toLp ⇑s = s.toLp 2 volume := rfl
+  rw [this, SchwartzMap.toLp_fourier_eq]
+  filter_upwards [SchwartzMap.coeFn_toLp (𝓕 s) 2 volume] with ξ h
+  rw [h, SchwartzMap.fourier_coe]
+
+/-- Auxiliary: Schwartz functions are dense in `L²`, as a sequence statement. -/
+theorem aux_tail_schwartz_approx {f : ℝ² → ℂ} (hf : MemLp f 2 volume) :
+    ∃ s : ℕ → 𝓢(ℝ², ℂ), Tendsto (fun n => eLpNorm (⇑(s n) - f) 2 volume) atTop (𝓝 0) := by
+  have hd := SchwartzMap.denseRange_toLpCLM (E := ℝ²) (F := ℂ) (p := 2) (μ := volume)
+    ENNReal.ofNat_ne_top
+  have hx : ∀ n : ℕ, ∃ s : 𝓢(ℝ², ℂ),
+      dist (hf.toLp f) (SchwartzMap.toLpCLM ℝ ℂ 2 volume s) < 1 / ((n : ℝ) + 1) :=
+    fun n => Metric.denseRange_iff.1 hd _ _ (by positivity)
+  choose s hs using hx
+  refine ⟨s, ?_⟩
+  have he : ∀ n, eLpNorm (⇑(s n) - f) 2 volume = edist ((s n).toLp 2 volume) (hf.toLp f) := by
+    intro n
+    rw [Lp.edist_def]
+    exact eLpNorm_congr_ae ((SchwartzMap.coeFn_toLp (s n) 2 volume).sub hf.coeFn_toLp).symm
+  simp_rw [he]
+  refine tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds
+    (g := fun _ => 0) (h := fun n : ℕ => ENNReal.ofReal (1 / ((n : ℝ) + 1))) ?_
+    (fun n => zero_le) (fun n => ?_)
+  · rw [← ENNReal.ofReal_zero]
+    exact ENNReal.tendsto_ofReal tendsto_one_div_add_atTop_nhds_zero_nat
+  · rw [edist_dist, dist_comm]
+    exact ENNReal.ofReal_le_ofReal (by simpa using (hs n).le)
+
+/-- Auxiliary for `tail:fourier`: equality of two limits of one sequence. -/
+theorem aux_tail_eq_of_approx {a b : ℂ} (x : ℕ → ℂ) (ε : ℕ → ℝ≥0∞)
+    (hε : Tendsto ε atTop (𝓝 0)) (ha : ∀ᶠ n in atTop, ‖x n - a‖ₑ ≤ ε n)
+    (hb : ∀ᶠ n in atTop, ‖x n - b‖ₑ ≤ ε n) : a = b := by
+  have h : ∀ᶠ n in atTop, ‖a - b‖ₑ ≤ 2 * ε n := by
+    filter_upwards [ha, hb] with n h1 h2
+    calc ‖a - b‖ₑ = ‖(x n - b) - (x n - a)‖ₑ := by ring_nf
+      _ ≤ ‖x n - b‖ₑ + ‖x n - a‖ₑ := enorm_sub_le
+      _ ≤ ε n + ε n := add_le_add h2 h1
+      _ = 2 * ε n := by ring
+  have ht : Tendsto (fun n => 2 * ε n) atTop (𝓝 0) := by
+    simpa using ENNReal.Tendsto.const_mul hε (Or.inr ENNReal.ofNat_ne_top)
+  have := ge_of_tendsto ht h
+  rw [← sub_eq_zero]
+  exact enorm_eq_zero.1 (le_antisymm this bot_le)
+
+/-- Auxiliary: `‖a‖_p ≤ ‖a - b‖_p + ‖b‖_p`. -/
+theorem aux_tail_eLpNorm_le_sub_add {a b : ℝ² → ℂ} (ha : AEStronglyMeasurable a volume)
+    (hb : AEStronglyMeasurable b volume) {p : ℝ≥0∞} (hp : 1 ≤ p) :
+    eLpNorm a p volume ≤ eLpNorm (a - b) p volume + eLpNorm b p volume :=
+  calc eLpNorm a p volume = eLpNorm ((a - b) + b) p volume := by rw [sub_add_cancel]
+    _ ≤ _ := eLpNorm_add_le (ha.sub hb) hb hp
+
+/-- Auxiliary for `tail:fourier`: passing the frequency representation of `Auto.tailForm` to a
+limit of `L²` inputs (with `L¹` convergence of the third Fourier transform). -/
+theorem aux_tail_fourier_extend (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ)
+    (r : ℝ) (f : Fin 3 → ℝ² → ℂ) (hf : ∀ j, MemLp (f j) 2 volume)
+    (hF : MemLp (aux_l2Fourier (f 2)) 1 volume) (g : ℕ → Fin 3 → ℝ² → ℂ)
+    (hg : ∀ n j, MemLp (g n j) 2 volume) (hG : ∀ n, MemLp (aux_l2Fourier (g n 2)) 1 volume)
+    (hid : ∀ n, tailForm α β χ r (g n 0) (g n 1) (g n 2) =
+      aux_tailI α β χ r (aux_l2Fourier (g n 0)) (aux_l2Fourier (g n 1)) (aux_l2Fourier (g n 2)))
+    (hconv : Tendsto (fun n => eLpNorm (g n 0 - f 0) 2 volume + eLpNorm (g n 1 - f 1) 2 volume +
+      eLpNorm (g n 2 - f 2) 2 volume +
+      eLpNorm (aux_l2Fourier (g n 2) - aux_l2Fourier (f 2)) 1 volume) atTop (𝓝 0)) :
+    tailForm α β χ r (f 0) (f 1) (f 2) =
+      aux_tailI α β χ r (aux_l2Fourier (f 0)) (aux_l2Fourier (f 1)) (aux_l2Fourier (f 2)) := by
+  obtain ⟨C, -, hC⟩ := aux_tail_form_lip α β hβ
+  obtain ⟨Mψ, -, hM⟩ := aux_tailI_lip α β χ hχ
+  set κ := FCMeasure.ofDensity (tailK χ r)
+  set F := aux_l2Fourier
+  set d : ℕ → ℝ≥0∞ := fun n => eLpNorm (g n 0 - f 0) 2 volume + eLpNorm (g n 1 - f 1) 2 volume +
+      eLpNorm (g n 2 - f 2) 2 volume + eLpNorm (F (g n 2) - F (f 2)) 1 volume with hd
+  set A : ℝ≥0∞ := eLpNorm (f 0) 2 volume + eLpNorm (f 1) 2 volume + eLpNorm (f 2) 2 volume +
+      eLpNorm (F (f 2)) 1 volume with hA
+  set S : ℝ≥0∞ := A + 1 with hS
+  have hSt : S ≠ ⊤ := by
+    simp only [hS, hA, ne_eq, ENNReal.add_eq_top, ENNReal.one_ne_top, or_false, not_or]
+    exact ⟨⟨⟨(hf 0).2.ne, (hf 1).2.ne⟩, (hf 2).2.ne⟩, hF.2.ne⟩
+  have htv : κ.tv ≠ ⊤ := κ.integrable_w.2.ne
+  set K : ℝ≥0∞ := 3 * (ENNReal.ofReal C * κ.tv + ENNReal.ofReal Mψ) * S ^ 2 with hK
+  have hKt : K ≠ ⊤ := by
+    refine ENNReal.mul_ne_top (ENNReal.mul_ne_top ENNReal.ofNat_ne_top (ENNReal.add_ne_top.2 ⟨ENNReal.mul_ne_top ENNReal.ofReal_ne_top htv,
+      ENNReal.ofReal_ne_top⟩)) (ENNReal.pow_ne_top hSt)
+  have hev : ∀ᶠ n in atTop, d n ≤ 1 := hconv.eventually_le_const zero_lt_one
+  have hε : Tendsto (fun n => K * d n) atTop (𝓝 0) := by
+    simpa using ENNReal.Tendsto.const_mul hconv (Or.inr hKt)
+  have one_le_two : (1 : ℝ≥0∞) ≤ 2 := by norm_num
+  have hFm : ∀ h : ℝ² → ℂ, AEStronglyMeasurable (F h) volume :=
+    fun h => (aux_tail_l2F_memLp h).1
+  -- the individual pieces of `d n`
+  have p0 : ∀ n, eLpNorm (g n 0 - f 0) 2 volume ≤ d n :=
+    fun n => le_add_right (le_add_right (le_add_right le_rfl))
+  have p1 : ∀ n, eLpNorm (g n 1 - f 1) 2 volume ≤ d n :=
+    fun n => le_add_right (le_add_right le_add_self)
+  have p2 : ∀ n, eLpNorm (g n 2 - f 2) 2 volume ≤ d n := fun n => le_add_right le_add_self
+  have p3 : ∀ n, eLpNorm (F (g n 2) - F (f 2)) 1 volume ≤ d n := fun n => le_add_self
+  have af0 : eLpNorm (f 0) 2 volume ≤ A := le_add_right (le_add_right (le_add_right le_rfl))
+  have af1 : eLpNorm (f 1) 2 volume ≤ A := le_add_right (le_add_right le_add_self)
+  have af2 : eLpNorm (f 2) 2 volume ≤ A := le_add_right le_add_self
+  have aF : eLpNorm (F (f 2)) 1 volume ≤ A := le_add_self
+  have hAS : A ≤ S := le_add_right le_rfl
+  have bnd : ∀ n, d n ≤ 1 → ∀ j, eLpNorm (f j) 2 volume ≤ A →
+      eLpNorm (g n j - f j) 2 volume ≤ d n → eLpNorm (g n j) 2 volume ≤ S := by
+    intro n hn j hj hdj
+    calc eLpNorm (g n j) 2 volume ≤ eLpNorm (g n j - f j) 2 volume + eLpNorm (f j) 2 volume :=
+          aux_tail_eLpNorm_le_sub_add (hg n j).1 (hf j).1 one_le_two
+      _ ≤ 1 + A := add_le_add (hdj.trans hn) hj
+      _ = S := add_comm _ _
+  have bndF : ∀ n, d n ≤ 1 → eLpNorm (F (g n 2)) 1 volume ≤ S := by
+    intro n hn
+    calc eLpNorm (F (g n 2)) 1 volume ≤ eLpNorm (F (g n 2) - F (f 2)) 1 volume +
+          eLpNorm (F (f 2)) 1 volume := aux_tail_eLpNorm_le_sub_add (hFm _) (hFm _) le_rfl
+      _ ≤ 1 + A := add_le_add ((p3 n).trans hn) aF
+      _ = S := add_comm _ _
+  refine aux_tail_eq_of_approx (fun n => tailForm α β χ r (g n 0) (g n 1) (g n 2))
+    (fun n => K * d n) hε ?_ ?_
+  · filter_upwards [hev] with n hn
+    have b1 := bnd n hn 1 af1 (p1 n)
+    have b2 := bnd n hn 2 af2 (p2 n)
+    refine (hC κ f (g n) hf (hg n)).trans ?_
+    calc ENNReal.ofReal C * κ.tv *
+          (eLpNorm (g n 0 - f 0) 2 volume * eLpNorm (g n 1) 2 volume * eLpNorm (g n 2) 2 volume +
+            eLpNorm (f 0) 2 volume * eLpNorm (g n 1 - f 1) 2 volume * eLpNorm (g n 2) 2 volume +
+            eLpNorm (f 0) 2 volume * eLpNorm (f 1) 2 volume * eLpNorm (g n 2 - f 2) 2 volume)
+        ≤ ENNReal.ofReal C * κ.tv * (d n * S * S + S * d n * S + S * S * d n) := by
+          gcongr
+          · exact p0 n
+          · exact af0.trans hAS
+          · exact p1 n
+          · exact af0.trans hAS
+          · exact af1.trans hAS
+          · exact p2 n
+      _ = 3 * (ENNReal.ofReal C * κ.tv) * S ^ 2 * d n := by ring
+      _ ≤ K * d n := by
+          simp only [hK]; gcongr; exact le_self_add
+  · filter_upwards [hev] with n hn
+    have b1 := bnd n hn 1 af1 (p1 n)
+    have bF := bndF n hn
+    have e0 := aux_tail_l2F_sub (hf 0) (hg n 0)
+    have e1 := aux_tail_l2F_sub (hf 1) (hg n 1)
+    have n0 := aux_tail_l2F_norm (hf 0)
+    have n1 := aux_tail_l2F_norm (hf 1)
+    have m1 := aux_tail_l2F_norm (hg n 1)
+    rw [hid n]
+    refine (hM r (fun j => F (f j)) (fun j => F (g n j)) (aux_tail_l2F_memLp _)
+      (aux_tail_l2F_memLp _) hF (aux_tail_l2F_memLp _) (aux_tail_l2F_memLp _) (hG n)).trans ?_
+    beta_reduce
+    rw [e0, e1, n0, n1, m1]
+    calc ENNReal.ofReal Mψ *
+          (eLpNorm (g n 0 - f 0) 2 volume * eLpNorm (g n 1) 2 volume *
+              eLpNorm (F (g n 2)) 1 volume +
+            eLpNorm (f 0) 2 volume * eLpNorm (g n 1 - f 1) 2 volume *
+              eLpNorm (F (g n 2)) 1 volume +
+            eLpNorm (f 0) 2 volume * eLpNorm (f 1) 2 volume *
+              eLpNorm (F (g n 2) - F (f 2)) 1 volume)
+        ≤ ENNReal.ofReal Mψ * (d n * S * S + S * d n * S + S * S * d n) := by
+          gcongr
+          · exact p0 n
+          · exact af0.trans hAS
+          · exact p1 n
+          · exact af0.trans hAS
+          · exact af1.trans hAS
+          · exact p3 n
+      _ = 3 * ENNReal.ofReal Mψ * S ^ 2 * d n := by ring
+      _ ≤ K * d n := by
+          simp only [hK]; gcongr; exact le_add_self
+
+/-- Auxiliary for `tail:fourier`: an `L²` function with compact Fourier support has integrable
+Fourier transform. -/
+theorem aux_tail_l2F_memLp_one {f : ℝ² → ℂ} (hf : MemLp f 2 volume) {K : Set ℝ²}
+    (hK : IsCompact K) (hs : HasL2FourierSupportIn K (hf.toLp f)) :
+    MemLp (aux_l2Fourier f) 1 volume := by
+  have h2 := aux_tail_l2F_memLp f
+  have hae : aux_l2Fourier f =ᵐ[volume] K.indicator (aux_l2Fourier f) := by
+    rw [aux_tail_l2F_eq hf]
+    filter_upwards [hs] with ξ hξ
+    by_cases h : ξ ∈ K
+    · simp [h]
+    · simp [h, hξ h]
+  refine (memLp_congr_ae hae).2 ?_
+  rw [memLp_indicator_iff_restrict hK.measurableSet]
+  have : IsFiniteMeasure (volume.restrict K) := ⟨by simpa using hK.measure_lt_top⟩
+  exact (h2.restrict K).mono_exponent (by norm_num)
+
+/-- Auxiliary for `tail:fourier`: approximation of an `L²` function with compact Fourier support
+by Schwartz functions, in `L²` and with `L¹` convergence of the Fourier transforms. -/
+theorem aux_tail_approx_l1 {f : ℝ² → ℂ} (hf : MemLp f 2 volume) {K : Set ℝ²} (hK : IsCompact K)
+    (hs : HasL2FourierSupportIn K (hf.toLp f)) :
+    ∃ u : ℕ → 𝓢(ℝ², ℂ), Tendsto (fun n => eLpNorm (⇑(u n) - f) 2 volume +
+      eLpNorm (aux_l2Fourier ⇑(u n) - aux_l2Fourier f) 1 volume) atTop (𝓝 0) := by
+  obtain ⟨ρ, hρ⟩ := hK.isBounded.subset_closedBall 0
+  set θ : ContDiffBump (0 : ℝ²) := ⟨max ρ 0 + 1, max ρ 0 + 2, by positivity, by linarith⟩
+  obtain ⟨t, ht⟩ := aux_tail_schwartz_approx hf
+  have hG : ∀ n, ContDiff ℝ (⊤ : ℕ∞) (fun ξ => (θ ξ : ℂ) * 𝓕 ⇑(t n) ξ) ∧
+      HasCompactSupport (fun ξ => (θ ξ : ℂ) * 𝓕 ⇑(t n) ξ) := by
+    intro n
+    refine ⟨(Complex.ofRealCLM.contDiff.comp θ.contDiff).mul ?_, ?_⟩
+    · rw [← SchwartzMap.fourier_coe]; exact (𝓕 (t n)).smooth _
+    · exact (θ.hasCompactSupport.comp_left Complex.ofReal_zero).mul_right
+  set G : ℕ → 𝓢(ℝ², ℂ) := fun n => (hG n).2.toSchwartzMap (hG n).1
+  set u : ℕ → 𝓢(ℝ², ℂ) := fun n => 𝓕⁻ (G n)
+  refine ⟨u, ?_⟩
+  have hFu : ∀ n, aux_l2Fourier ⇑(u n) =ᵐ[volume] fun ξ => (θ ξ : ℂ) * 𝓕 ⇑(t n) ξ := by
+    intro n
+    refine (aux_tail_l2F_schwartz (u n)).trans (Eventually.of_forall fun ξ => ?_)
+    rw [← SchwartzMap.fourier_coe]
+    simp only [u, FourierInvPair.fourier_fourierInv_eq]
+    rfl
+  have hθF : aux_l2Fourier f =ᵐ[volume] fun ξ => (θ ξ : ℂ) * aux_l2Fourier f ξ := by
+    rw [aux_tail_l2F_eq hf]
+    filter_upwards [hs] with ξ hξ
+    by_cases h : ξ ∈ K
+    · rw [θ.one_of_mem_closedBall]
+      · simp
+      · have := hρ h
+        simp only [Metric.mem_closedBall] at this ⊢
+        show dist ξ 0 ≤ max ρ 0 + 1
+        linarith [le_max_left ρ 0]
+    · simp [hξ h]
+  set H : ℕ → ℝ² → ℂ := fun n ξ => (θ ξ : ℂ) * (aux_l2Fourier ⇑(t n) ξ - aux_l2Fourier f ξ)
+  have hHe : ∀ n, aux_l2Fourier ⇑(u n) - aux_l2Fourier f =ᵐ[volume] H n := by
+    intro n
+    filter_upwards [hFu n, aux_tail_l2F_schwartz (t n), hθF] with ξ h1 h2 h3
+    simp only [Pi.sub_apply, H, h1, h2]
+    conv_lhs => rw [h3]
+    ring
+  have hHm : ∀ n, AEStronglyMeasurable (H n) volume := fun n =>
+    (Complex.continuous_ofReal.comp θ.continuous).aestronglyMeasurable.mul
+      ((aux_tail_l2F_memLp _).1.sub (aux_tail_l2F_memLp _).1)
+  have hH2 : ∀ n, eLpNorm (H n) 2 volume ≤ eLpNorm (⇑(t n) - f) 2 volume := by
+    intro n
+    rw [← aux_tail_l2F_sub hf ((t n).memLp 2 volume)]
+    refine eLpNorm_mono fun ξ => ?_
+    simp only [H, norm_mul, Pi.sub_apply, Complex.norm_real, Real.norm_eq_abs,
+      abs_of_nonneg (θ.nonneg' ξ)]
+    exact mul_le_of_le_one_left (norm_nonneg _) θ.le_one
+  set S : Set ℝ² := Metric.ball (0 : ℝ²) (max ρ 0 + 2)
+  set c : ℝ≥0∞ := volume S ^ (1 / (1 : ℝ≥0∞).toReal - 1 / (2 : ℝ≥0∞).toReal)
+  have hc : c ≠ ⊤ := ENNReal.rpow_ne_top_of_nonneg (by norm_num) measure_ball_lt_top.ne
+  have hH1 : ∀ n, eLpNorm (H n) 1 volume ≤ eLpNorm (⇑(t n) - f) 2 volume * c := by
+    intro n
+    have hsupp : Function.support (H n) ⊆ S := by
+      intro ξ hξ
+      have : θ ξ ≠ 0 := by
+        intro h0; apply hξ; simp [H, h0]
+      have := θ.support_eq ▸ (show ξ ∈ Function.support θ from this)
+      exact this
+    rw [← eLpNorm_restrict_eq_of_support_subset hsupp]
+    have : IsFiniteMeasure (volume.restrict S) := ⟨by simpa using measure_ball_lt_top⟩
+    refine (eLpNorm_le_eLpNorm_mul_rpow_measure_univ (by norm_num : (1 : ℝ≥0∞) ≤ 2)
+      (hHm n).restrict).trans ?_
+    rw [Measure.restrict_apply_univ]
+    gcongr
+    exact (eLpNorm_mono_measure _ Measure.restrict_le_self).trans (hH2 n)
+  have hb : ∀ n, eLpNorm (⇑(u n) - f) 2 volume +
+      eLpNorm (aux_l2Fourier ⇑(u n) - aux_l2Fourier f) 1 volume ≤
+        (1 + c) * eLpNorm (⇑(t n) - f) 2 volume := by
+    intro n
+    rw [← aux_tail_l2F_sub hf ((u n).memLp 2 volume), eLpNorm_congr_ae (hHe n),
+      eLpNorm_congr_ae (hHe n)]
+    calc eLpNorm (H n) 2 volume + eLpNorm (H n) 1 volume ≤
+        eLpNorm (⇑(t n) - f) 2 volume + eLpNorm (⇑(t n) - f) 2 volume * c :=
+          add_le_add (hH2 n) (hH1 n)
+      _ = (1 + c) * eLpNorm (⇑(t n) - f) 2 volume := by ring
+  refine tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds ?_ (fun n => zero_le) hb
+  simpa using ENNReal.Tendsto.const_mul ht (Or.inr (ENNReal.add_ne_top.2 ⟨ENNReal.one_ne_top, hc⟩))
+
+/-- Auxiliary for `tail:fourier`: `ψ` is even (as `χ` is radial). -/
+theorem aux_tail_psi_even (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ) (b : ℝ²) :
+    tailPsi χ (-b) = tailPsi χ b := by
+  simp only [tailPsi, smul_neg]
+  rw [hχ.2.1 (-((2 : ℝ)⁻¹ • b)) ((2 : ℝ)⁻¹ • b) (norm_neg _), hχ.2.1 (-b) b (norm_neg _)]
 
 /-- **Lemma `tail:fourier`** (Frequency representation with compact spectral supports).
 Suppose that $f_0,f_1,f_2\in L^2(\mathbb R^2)$ have compact Fourier supports.  Then
@@ -96,7 +843,49 @@ theorem tail_fourier (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (hχ : 
         aux_l2Fourier (f 1) ξ.1 * aux_l2Fourier (f 2) ξ.2 *
         (FCMeasure.sigma.fourier (ξ.1 + ContinuousLinearMap.adjoint (M α β) ξ.2) *
           tailPsi χ (r⁻¹ • (ξ.1 + ContinuousLinearMap.adjoint (M α β) ξ.2))) := by
-  sorry
+  obtain ⟨K₂, hK₂, hs₂⟩ := hK 2
+  have hF2 := aux_tail_l2F_memLp_one (hf 2) hK₂ hs₂
+  refine ⟨aux_tailI_integrable α β χ hχ r _ _ _ (aux_tail_l2F_memLp _) (aux_tail_l2F_memLp _)
+    hF2, ?_⟩
+  have hψ := aux_tail_psi_smooth χ hχ
+  set F := aux_l2Fourier
+  have hF1 : ∀ s : 𝓢(ℝ², ℂ), MemLp (F ⇑s) 1 volume := fun s =>
+    (memLp_congr_ae (aux_tail_l2F_schwartz s)).2 (by
+      rw [← SchwartzMap.fourier_coe]; exact (𝓕 s).memLp 1 volume)
+  have hS : ∀ s₀ s₁ s₂ : 𝓢(ℝ², ℂ), tailForm α β χ r s₀ s₁ s₂ =
+      aux_tailI α β χ r (F s₀) (F s₁) (F s₂) := by
+    intro s₀ s₁ s₂
+    rw [aux_tailI_congr_ae α β χ r (aux_tail_l2F_schwartz s₀) (aux_tail_l2F_schwartz s₁)
+      (aux_tail_l2F_schwartz s₂)]
+    exact lem_fourier_form_multiplier α β (tailPsi χ) hψ.1 hψ.2 (aux_tail_psi_even χ hχ) r hr
+      s₀ s₁ s₂
+  have E := aux_tail_fourier_extend α β hβ χ hχ r
+  have h1 : ∀ f₀ : ℝ² → ℂ, MemLp f₀ 2 volume → ∀ s₁ s₂ : 𝓢(ℝ², ℂ),
+      tailForm α β χ r f₀ s₁ s₂ = aux_tailI α β χ r (F f₀) (F s₁) (F s₂) := by
+    intro f₀ hf₀ s₁ s₂
+    obtain ⟨t, ht⟩ := aux_tail_schwartz_approx hf₀
+    have := E ![f₀, s₁, s₂] (by intro j; fin_cases j <;> simp [hf₀, SchwartzMap.memLp])
+      (by simpa using hF1 s₂) (fun n => ![t n, s₁, s₂])
+      (by intro n j; fin_cases j <;> simp [SchwartzMap.memLp]) (fun n => by simpa using hF1 s₂)
+      (fun n => by simpa using hS (t n) s₁ s₂) (by simpa using ht)
+    simpa using this
+  have h2 : ∀ f₀ f₁ : ℝ² → ℂ, MemLp f₀ 2 volume → MemLp f₁ 2 volume → ∀ s₂ : 𝓢(ℝ², ℂ),
+      tailForm α β χ r f₀ f₁ s₂ = aux_tailI α β χ r (F f₀) (F f₁) (F s₂) := by
+    intro f₀ f₁ hf₀ hf₁ s₂
+    obtain ⟨t, ht⟩ := aux_tail_schwartz_approx hf₁
+    have := E ![f₀, f₁, s₂] (by intro j; fin_cases j <;> simp [hf₀, hf₁, SchwartzMap.memLp])
+      (by simpa using hF1 s₂) (fun n => ![f₀, t n, s₂])
+      (by intro n j; fin_cases j <;> simp [hf₀, SchwartzMap.memLp])
+      (fun n => by simpa using hF1 s₂)
+      (fun n => by simpa using h1 f₀ hf₀ (t n) s₂) (by simpa using ht)
+    simpa using this
+  obtain ⟨t, ht⟩ := aux_tail_approx_l1 (hf 2) hK₂ hs₂
+  have := E ![f 0, f 1, f 2] (by intro j; fin_cases j <;> simp [hf])
+    (by simpa using hF2) (fun n => ![f 0, f 1, t n])
+    (by intro n j; fin_cases j <;> simp [hf, SchwartzMap.memLp])
+    (fun n => by simpa using hF1 (t n))
+    (fun n => by simpa using h2 (f 0) (f 1) (hf 0) (hf 1) (t n)) (by simpa using ht)
+  simpa [aux_tailI] using this
 
 /-! ### Common frequency coordinates (`tail:coordinates`) -/
 
@@ -116,6 +905,58 @@ def tailT (α β : ℝ) : Fin 3 → (ℝ² →L[ℝ] ℝ²) :=
 def tailV (α β : ℝ) (w : ℝ²) : Fin 3 → ℝ² :=
   ![(tailA α β - 1) w, -(tailA α β w), w]
 
+/-- Auxiliary for `tail:separation`: `simil 1 0 = 1`. -/
+theorem aux_tail_simil_one : simil 1 0 = 1 := by
+  apply aux_clm_ext; intro x; constructor <;> simp [aux_lw_simil0, aux_lw_simil1]
+
+/-- Auxiliary for `tail:separation`: the inverse of a nonzero similarity `aI + bJ`. -/
+theorem aux_tail_inverse_simil (a b : ℝ) (h : a ^ 2 + b ^ 2 ≠ 0) :
+    Ring.inverse (simil a b) = simil (a / (a ^ 2 + b ^ 2)) (-b / (a ^ 2 + b ^ 2)) := by
+  have h1 : simil a b * simil (a / (a ^ 2 + b ^ 2)) (-b / (a ^ 2 + b ^ 2)) = 1 := by
+    rw [ContinuousLinearMap.mul_def, aux_simil_comp, ← aux_tail_simil_one]
+    congr 1 <;> field_simp <;> ring
+  have h2 : simil (a / (a ^ 2 + b ^ 2)) (-b / (a ^ 2 + b ^ 2)) * simil a b = 1 := by
+    rw [ContinuousLinearMap.mul_def, aux_simil_comp, ← aux_tail_simil_one]
+    congr 1 <;> field_simp <;> ring
+  exact Ring.inverse_unit ⟨_, _, h1, h2⟩
+
+/-- Auxiliary for `tail:separation`: `A = Mᵀ` is the similarity `αI - βJ`. -/
+theorem aux_tail_A_eq (α β : ℝ) : tailA α β = simil α (-β) := aux_ff_adjoint α β
+
+/-- Auxiliary for `tail:separation`: `A - I` is the similarity `(α-1)I - βJ`. -/
+theorem aux_tail_AI_eq (α β : ℝ) : tailA α β - 1 = simil (α - 1) (-β) := by
+  rw [aux_tail_A_eq]
+  apply aux_clm_ext; intro x
+  constructor <;> simp [aux_lw_simil0, aux_lw_simil1] <;> ring
+
+/-- Auxiliary for `tail:separation`: the coefficients of `T₀ = (A-I)⁻¹`. -/
+def aux_tailT0c (α β : ℝ) : ℝ × ℝ :=
+  ((α - 1) / ((α - 1) ^ 2 + β ^ 2), β / ((α - 1) ^ 2 + β ^ 2))
+
+/-- Auxiliary for `tail:separation`: the coefficients of `A⁻¹`. -/
+def aux_tailAinvc (α β : ℝ) : ℝ × ℝ := (α / (α ^ 2 + β ^ 2), β / (α ^ 2 + β ^ 2))
+
+/-- Auxiliary for `tail:separation`: `(A - I)⁻¹` as a similarity. -/
+theorem aux_tail_T0_eq (α β : ℝ) (hβ : β ≠ 0) :
+    Ring.inverse (tailA α β - 1) = simil (aux_tailT0c α β).1 (aux_tailT0c α β).2 := by
+  have : 0 < β ^ 2 := by positivity
+  rw [aux_tail_AI_eq, aux_tail_inverse_simil (α - 1) (-β)
+    (by rw [neg_sq]; exact ne_of_gt (add_pos_of_nonneg_of_pos (sq_nonneg _) this))]
+  simp [aux_tailT0c, neg_div]
+
+/-- Auxiliary for `tail:separation`: `A⁻¹` as a similarity. -/
+theorem aux_tail_Ainv_eq (α β : ℝ) (hβ : β ≠ 0) :
+    Ring.inverse (tailA α β) = simil (aux_tailAinvc α β).1 (aux_tailAinvc α β).2 := by
+  have : 0 < β ^ 2 := by positivity
+  rw [aux_tail_A_eq, aux_tail_inverse_simil α (-β)
+    (by rw [neg_sq]; exact ne_of_gt (add_pos_of_nonneg_of_pos (sq_nonneg _) this))]
+  simp [aux_tailAinvc, neg_div]
+
+/-- Auxiliary for `tail:separation`: the coordinates of `simil a b x`. -/
+theorem aux_tail_simil_coord (a b : ℝ) (x : ℝ²) :
+    simil a b x 0 = a * x 0 - b * x 1 ∧ simil a b x 1 = a * x 1 + b * x 0 :=
+  ⟨aux_lw_simil0 a b x, aux_lw_simil1 a b x⟩
+
 /-- **Lemma `tail:separation`** (the three identities).
 For the coordinates of Definition `tail:coordinates`,
 $$z_0-z_2=-(A-I)^{-1}b,\quad z_1-z_2=-A^{-1}b,\quad z_1-z_0=A^{-1}(A-I)^{-1}b.$$
@@ -131,7 +972,33 @@ theorem tail_separation_identities (α β : ℝ) (hβ : β ≠ 0) (ξ : Fin 3 �
     tailT α β 1 (ξ 1) - tailT α β 2 (ξ 2) = -(Ring.inverse (tailA α β) (ξ 1 + tailA α β (ξ 2))) ∧
     tailT α β 1 (ξ 1) - tailT α β 0 (ξ 0) =
         Ring.inverse (tailA α β) (Ring.inverse (tailA α β - 1) (ξ 1 + tailA α β (ξ 2))) := by
-  sorry
+  have h0 : ξ 0 = -ξ 1 - ξ 2 := by
+    rw [Fin.sum_univ_three] at hξ
+    rw [eq_sub_iff_add_eq, eq_neg_iff_add_eq_zero]; rw [← hξ]; abel
+  have hb2 : 0 < β ^ 2 := by positivity
+  have hn0 : (α - 1) ^ 2 + β ^ 2 ≠ 0 := ne_of_gt (add_pos_of_nonneg_of_pos (sq_nonneg _) hb2)
+  have hn1 : α ^ 2 + β ^ 2 ≠ 0 := ne_of_gt (add_pos_of_nonneg_of_pos (sq_nonneg _) hb2)
+  simp only [tailT, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
+    Matrix.head_cons, Matrix.tail_cons, neg_apply,
+    ContinuousLinearMap.one_apply, aux_tail_T0_eq α β hβ, aux_tail_Ainv_eq α β hβ, h0]
+  rw [aux_tail_A_eq]
+  refine ⟨aux_vec_ext ?_ ?_, aux_vec_ext ?_ ?_, aux_vec_ext ?_ ?_⟩ <;>
+    simp [aux_lw_simil0, aux_lw_simil1, aux_tailT0c, aux_tailAinvc] <;> field_simp <;> ring
+
+/-- Auxiliary for `tail:separation`: `‖(aI+bJ)x‖ = √(a²+b²)‖x‖`. -/
+theorem aux_tail_norm_simil (a b : ℝ) (x : ℝ²) :
+    ‖simil a b x‖ = Real.sqrt (a ^ 2 + b ^ 2) * ‖x‖ := aux_lw_norm_M a b x
+
+/-- Auxiliary for `tail:separation`: the similarity factors of `(A-I)⁻¹` and `A⁻¹` are
+positive. -/
+theorem aux_tail_factor_pos (α β : ℝ) (hβ : β ≠ 0) :
+    0 < Real.sqrt ((aux_tailT0c α β).1 ^ 2 + (aux_tailT0c α β).2 ^ 2) ∧
+      0 < Real.sqrt ((aux_tailAinvc α β).1 ^ 2 + (aux_tailAinvc α β).2 ^ 2) := by
+  have hb2 : 0 < β ^ 2 := by positivity
+  have hn0 : 0 < (α - 1) ^ 2 + β ^ 2 := add_pos_of_nonneg_of_pos (sq_nonneg _) hb2
+  have hn1 : 0 < α ^ 2 + β ^ 2 := add_pos_of_nonneg_of_pos (sq_nonneg _) hb2
+  constructor <;> refine Real.sqrt_pos.2 (add_pos_of_nonneg_of_pos (sq_nonneg _) ?_) <;>
+    simp only [aux_tailT0c, aux_tailAinvc] <;> positivity
 
 /-- **Lemma `tail:separation`** (pairwise distances comparable to `r`).
 For the coordinates of Definition `tail:coordinates`,
@@ -144,7 +1011,55 @@ theorem tail_separation_comparable (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² �
       tailPsi χ (r⁻¹ • (ξ 1 + tailA α β (ξ 2))) ≠ 0 → ∀ i j : Fin 3, i ≠ j →
         c * r ≤ ‖tailT α β i (ξ i) - tailT α β j (ξ j)‖ ∧
           ‖tailT α β i (ξ i) - tailT α β j (ξ j)‖ ≤ C * r := by
-  sorry
+  obtain ⟨hs0, hs1⟩ := aux_tail_factor_pos α β hβ
+  set s0 := Real.sqrt ((aux_tailT0c α β).1 ^ 2 + (aux_tailT0c α β).2 ^ 2)
+  set s1 := Real.sqrt ((aux_tailAinvc α β).1 ^ 2 + (aux_tailAinvc α β).2 ^ 2)
+  set c := min (min s0 s1) (s1 * s0)
+  set C := 4 * max (max s0 s1) (s1 * s0)
+  have hc : 0 < c := lt_min (lt_min hs0 hs1) (mul_pos hs1 hs0)
+  have hcm : c ≤ max (max s0 s1) (s1 * s0) :=
+    (min_le_left _ _).trans ((min_le_left _ _).trans ((le_max_left _ _).trans (le_max_left _ _)))
+  refine ⟨c, C, hc, by linarith, fun r hr ξ hξ hψ i j hij => ?_⟩
+  set b := ξ 1 + tailA α β (ξ 2)
+  have hb := aux_tail_psi_ne_zero χ hχ _ hψ
+  rw [norm_smul, Real.norm_eq_abs, abs_inv, abs_of_pos hr] at hb
+  have hb1 : r ≤ ‖b‖ := by
+    have := hb.1; rwa [inv_mul_eq_div, le_div_iff₀ hr, one_mul] at this
+  have hb4 : ‖b‖ ≤ 4 * r := by
+    have := hb.2.le; rwa [inv_mul_eq_div, div_le_iff₀ hr] at this
+  obtain ⟨e02, e12, e10⟩ := tail_separation_identities α β hβ ξ hξ
+  simp only [aux_tail_T0_eq α β hβ, aux_tail_Ainv_eq α β hβ] at e02 e12 e10
+  have n02 : ‖tailT α β 0 (ξ 0) - tailT α β 2 (ξ 2)‖ = s0 * ‖b‖ := by
+    rw [e02, norm_neg, aux_tail_norm_simil]
+  have n12 : ‖tailT α β 1 (ξ 1) - tailT α β 2 (ξ 2)‖ = s1 * ‖b‖ := by
+    rw [e12, norm_neg, aux_tail_norm_simil]
+  have n10 : ‖tailT α β 1 (ξ 1) - tailT α β 0 (ξ 0)‖ = s1 * s0 * ‖b‖ := by
+    rw [e10, aux_tail_norm_simil, aux_tail_norm_simil, mul_assoc]
+  have key : ∃ s, c ≤ s ∧ s ≤ max (max s0 s1) (s1 * s0) ∧
+      ‖tailT α β i (ξ i) - tailT α β j (ξ j)‖ = s * ‖b‖ := by
+    have l0 : c ≤ s0 := (min_le_left _ _).trans (min_le_left _ _)
+    have l1 : c ≤ s1 := (min_le_left _ _).trans (min_le_right _ _)
+    have l2 : c ≤ s1 * s0 := min_le_right _ _
+    have u0 : s0 ≤ max (max s0 s1) (s1 * s0) := (le_max_left _ _).trans (le_max_left _ _)
+    have u1 : s1 ≤ max (max s0 s1) (s1 * s0) := (le_max_right _ _).trans (le_max_left _ _)
+    have u2 : s1 * s0 ≤ max (max s0 s1) (s1 * s0) := le_max_right _ _
+    fin_cases i <;> fin_cases j
+    · exact absurd rfl hij
+    · exact ⟨s1 * s0, l2, u2, by rw [norm_sub_rev]; exact n10⟩
+    · exact ⟨s0, l0, u0, n02⟩
+    · exact ⟨s1 * s0, l2, u2, n10⟩
+    · exact absurd rfl hij
+    · exact ⟨s1, l1, u1, n12⟩
+    · exact ⟨s0, l0, u0, by rw [norm_sub_rev]; exact n02⟩
+    · exact ⟨s1, l1, u1, by rw [norm_sub_rev]; exact n12⟩
+    · exact absurd rfl hij
+  obtain ⟨s, hcs, hsm, he⟩ := key
+  rw [he]
+  constructor
+  · exact mul_le_mul hcs hb1 hr.le (hc.le.trans hcs)
+  · calc s * ‖b‖ ≤ max (max s0 s1) (s1 * s0) * (4 * r) :=
+          mul_le_mul hsm hb4 (norm_nonneg _) (hc.le.trans hcm)
+      _ = C * r := by ring
 
 /-- **Lemma `tail:separation`** (modulation invariance).
 For $w\in\mathbb R^2$ set $v_0=(A-I)w$, $v_1=-Aw$, $v_2=w$.  Replacing each $f_j(x)$ by
@@ -155,7 +1070,26 @@ theorem tail_separation_modulation (α β : ℝ) (ν : FCMeasure) (w : ℝ²) (f
         (fun x => e (-⟪tailV α β w 1, x⟫_ℝ) * f 1 x)
         (fun x => e (-⟪tailV α β w 2, x⟫_ℝ) * f 2 x) =
       form α β ν (f 0) (f 1) (f 2) := by
-  sorry
+  unfold form
+  congr 1; funext z; congr 1; congr 1; funext x
+  have key : e (-⟪tailV α β w 0, x⟫_ℝ) * e (-⟪tailV α β w 1, x + ν.φ z⟫_ℝ) *
+      e (-⟪tailV α β w 2, x + M α β (ν.φ z)⟫_ℝ) = 1 := by
+    rw [aux_e_add, aux_e_add]
+    have hA : ⟪tailA α β w, ν.φ z⟫_ℝ = ⟪w, M α β (ν.φ z)⟫_ℝ :=
+      ContinuousLinearMap.adjoint_inner_left _ _ _
+    have : -⟪tailV α β w 0, x⟫_ℝ + -⟪tailV α β w 1, x + ν.φ z⟫_ℝ +
+        -⟪tailV α β w 2, x + M α β (ν.φ z)⟫_ℝ = 0 := by
+      simp only [tailV, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
+        Matrix.head_cons, Matrix.tail_cons, ContinuousLinearMap.sub_apply,
+        ContinuousLinearMap.one_apply, inner_add_right, inner_sub_left, inner_neg_left, hA]
+      ring
+    rw [this]; simp [e]
+  calc e (-⟪tailV α β w 0, x⟫_ℝ) * f 0 x * (e (-⟪tailV α β w 1, x + ν.φ z⟫_ℝ) * f 1 (x + ν.φ z)) *
+        (e (-⟪tailV α β w 2, x + M α β (ν.φ z)⟫_ℝ) * f 2 (x + M α β (ν.φ z)))
+      = (e (-⟪tailV α β w 0, x⟫_ℝ) * e (-⟪tailV α β w 1, x + ν.φ z⟫_ℝ) *
+          e (-⟪tailV α β w 2, x + M α β (ν.φ z)⟫_ℝ)) *
+        (f 0 x * f 1 (x + ν.φ z) * f 2 (x + M α β (ν.φ z))) := by ring
+    _ = _ := by rw [key, one_mul]
 
 /-- **Lemma `tail:separation`** (translation of the `z`-frequency supports).
 The replacement $f_j(x)\mapsto\mathrm e(-v_j\cdot x)f_j(x)$ translates all three $z$-frequency
@@ -163,7 +1097,17 @@ supports by $-w$: indeed $T_jv_j=w$ for every $j$ (and the modulation by $\mathr
 translates the $\xi$-frequency support by $-v_j$). -/
 theorem tail_separation_translate (α β : ℝ) (hβ : β ≠ 0) (w : ℝ²) (j : Fin 3) :
     tailT α β j (tailV α β w j) = w := by
-  sorry
+  have hb2 : 0 < β ^ 2 := by positivity
+  have hn0 : (α - 1) ^ 2 + β ^ 2 ≠ 0 := ne_of_gt (add_pos_of_nonneg_of_pos (sq_nonneg _) hb2)
+  have hn1 : α ^ 2 + β ^ 2 ≠ 0 := ne_of_gt (add_pos_of_nonneg_of_pos (sq_nonneg _) hb2)
+  fin_cases j <;>
+    simp only [tailT, tailV, Fin.zero_eta, Fin.mk_one, Fin.reduceFinMk, Matrix.cons_val_zero,
+      Matrix.cons_val_one, Matrix.cons_val_two, Matrix.head_cons, Matrix.tail_cons,
+      neg_apply, ContinuousLinearMap.one_apply] <;>
+    simp only [aux_tail_T0_eq α β hβ, aux_tail_Ainv_eq α β hβ] <;>
+    simp only [aux_tail_AI_eq, aux_tail_A_eq] <;>
+    refine aux_vec_ext ?_ ?_ <;>
+    simp [aux_lw_simil0, aux_lw_simil1, aux_tailT0c, aux_tailAinvc] <;> field_simp <;> ring
 
 /-! ### Smooth frequency partitions and spectral mass (`tail:partition-definition`) -/
 
@@ -240,6 +1184,1029 @@ structure aux_TailPartitionScale (α β : ℝ) (χ : ℝ² → ℝ) (φ : ℝ² 
       tailForm α β χ r (tailP α β φ h 0 (q.1 0) r (f 0)) (tailP α β φ h 1 (q.1 1) r (f 1))
         (tailP α β φ h 2 (q.1 2) r (f 2))) (tailForm α β χ r (f 0) (f 1) (f 2))
 
+/-- Auxiliary for `tail:partition`: a coordinate of a planar vector is bounded by its norm. -/
+theorem aux_tail_coord_le (v : ℝ²) (i : Fin 2) : |v i| ≤ ‖v‖ := by
+  have h := aux_lw_norm_sq v
+  refine abs_le_of_sq_le_sq' ?_ (norm_nonneg _) |> fun h' => abs_le.2 h'
+  fin_cases i <;> simp <;> nlinarith [sq_nonneg (v 0), sq_nonneg (v 1)]
+
+/-- Auxiliary for `tail:partition`: a planar vector with both coordinates bounded by `l` has norm
+at most `2l`. -/
+theorem aux_tail_norm_le_of_coord (v : ℝ²) (l : ℝ) (hl : 0 ≤ l) (h : ∀ i, |v i| ≤ l) :
+    ‖v‖ ≤ 2 * l := by
+  have h0 := h 0; have h1 := h 1
+  have hs := aux_lw_norm_sq v
+  have : ‖v‖ ^ 2 ≤ (2 * l) ^ 2 := by
+    rw [hs]
+    nlinarith [sq_abs (v 0), sq_abs (v 1), abs_nonneg (v 0), abs_nonneg (v 1),
+      mul_self_le_mul_self (abs_nonneg (v 0)) h0, mul_self_le_mul_self (abs_nonneg (v 1)) h1]
+  exact (pow_le_pow_iff_left₀ (norm_nonneg _) (by positivity) two_ne_zero).1 this
+
+/-- Auxiliary for `tail:partition`: number of integer points of a box with side `L`. -/
+theorem aux_tail_lattice_count {ι : Type*} [Fintype ι] [DecidableEq ι] (a : ι → ℝ) (L : ℝ)
+    (hL : 0 ≤ L) :
+    {q : ι → ℤ | ∀ i, a i ≤ q i ∧ (q i : ℝ) ≤ a i + L}.encard ≤
+      ((⌊L⌋₊ + 1) ^ Fintype.card ι : ℕ) := by
+  set T := Fintype.piFinset fun i => Finset.Icc ⌈a i⌉ ⌊a i + L⌋
+  have hsub : {q : ι → ℤ | ∀ i, a i ≤ q i ∧ (q i : ℝ) ≤ a i + L} ⊆ ↑T := by
+    intro q hq
+    simp only [Fintype.coe_piFinset, Set.mem_pi, Set.mem_univ,
+      Finset.coe_Icc, Set.mem_Icc, forall_const, T]
+    intro i
+    exact ⟨Int.ceil_le.2 (hq i).1, Int.le_floor.2 (hq i).2⟩
+  refine (Set.encard_le_encard hsub).trans ?_
+  rw [Set.encard_coe_eq_coe_finsetCard]
+  norm_cast
+  rw [Fintype.card_piFinset, ← Finset.card_univ, ← Finset.prod_const]
+  refine Finset.prod_le_prod' fun i _ => ?_
+  rw [Int.card_Icc]
+  have h1 : ⌊a i + L⌋ - ⌈a i⌉ ≤ (⌊L⌋₊ : ℤ) := by
+    rw [Int.natCast_floor_eq_floor hL]
+    refine Int.le_floor.2 ?_
+    push_cast
+    linarith [Int.floor_le (a i + L), Int.le_ceil (a i)]
+  omega
+
+/-- Auxiliary for `tail:partition`: number of integer points of a box in `ℤ^{3×2}`. -/
+theorem aux_tail_lattice_count3 (a : Fin 3 → Fin 2 → ℝ) (L : ℝ) (hL : 0 ≤ L) :
+    {q : Fin 3 → Fin 2 → ℤ | ∀ i k, a i k ≤ q i k ∧ (q i k : ℝ) ≤ a i k + L}.encard ≤
+      (((⌊L⌋₊ + 1) ^ 2) ^ 3 : ℕ) := by
+  set T := Fintype.piFinset fun i => Fintype.piFinset fun k => Finset.Icc ⌈a i k⌉ ⌊a i k + L⌋
+  have hsub : {q : Fin 3 → Fin 2 → ℤ | ∀ i k, a i k ≤ q i k ∧ (q i k : ℝ) ≤ a i k + L} ⊆ ↑T := by
+    intro q hq
+    simp only [Fintype.coe_piFinset, Set.mem_pi, Set.mem_univ, forall_const, T,
+      Finset.mem_coe, Fintype.mem_piFinset, Finset.mem_Icc]
+    intro i k
+    exact ⟨Int.ceil_le.2 (hq i k).1, Int.le_floor.2 (hq i k).2⟩
+  refine (Set.encard_le_encard hsub).trans ?_
+  rw [Set.encard_coe_eq_coe_finsetCard]
+  norm_cast
+  rw [Fintype.card_piFinset]
+  have : ((⌊L⌋₊ + 1) ^ 2) ^ 3 = ∏ _i : Fin 3, ∏ _k : Fin 2, (⌊L⌋₊ + 1) := by
+    simp [Finset.prod_const]
+  rw [this]
+  refine Finset.prod_le_prod' fun i _ => ?_
+  rw [Fintype.card_piFinset]
+  refine Finset.prod_le_prod' fun k _ => ?_
+  rw [Int.card_Icc]
+  have h1 : ⌊a i k + L⌋ - ⌈a i k⌉ ≤ (⌊L⌋₊ : ℤ) := by
+    rw [Int.natCast_floor_eq_floor hL]
+    refine Int.le_floor.2 ?_
+    push_cast
+    linarith [Int.floor_le (a i k + L), Int.le_ceil (a i k)]
+  omega
+
+/-- Auxiliary for `tail:partition`: membership in the square `Q_{q,r} = hr(q+Q_*)`. -/
+theorem aux_tail_mem_square (Qstar : Set ℝ²) (h r : ℝ) (hhr : 0 < h * r) (q : Fin 2 → ℤ)
+    (x : ℝ²) : x ∈ tailSquare Qstar h r q ↔ (h * r)⁻¹ • x - latticePt q ∈ Qstar := by
+  constructor
+  · rintro ⟨z, hz, rfl⟩
+    rwa [smul_smul, inv_mul_cancel₀ hhr.ne', one_smul, add_sub_cancel_left]
+  · intro hx
+    refine ⟨_, hx, ?_⟩
+    simp only [add_sub_cancel, smul_smul, mul_inv_cancel₀ hhr.ne', one_smul]
+
+/-- Auxiliary for `tail:partition`: the coordinates of a lattice point. -/
+@[simp] theorem aux_tail_latticePt_apply (q : Fin 2 → ℤ) (i : Fin 2) :
+    latticePt q i = q i := by simp [latticePt]
+
+/-- Auxiliary for `tail:partition`: the square `Q_{q,r}` has diameter at most `2lhr`. -/
+theorem aux_tail_square_diam (c : ℝ²) (l : ℝ) (hl : 0 < l) (h r : ℝ) (hhr : 0 < h * r)
+    (q q' : Fin 2 → ℤ) (x y : ℝ²)
+    (hx : x ∈ tailSquare {x : ℝ² | ∀ i, x i ∈ Icc (c i) (c i + l)} h r q)
+    (hy : y ∈ tailSquare {x : ℝ² | ∀ i, x i ∈ Icc (c i) (c i + l)} h r q') :
+    ‖x - y - (h * r) • (latticePt q - latticePt q')‖ ≤ 2 * l * (h * r) := by
+  rw [aux_tail_mem_square _ _ _ hhr] at hx hy
+  have he : x - y - (h * r) • (latticePt q - latticePt q') =
+      (h * r) • (((h * r)⁻¹ • x - latticePt q) - ((h * r)⁻¹ • y - latticePt q')) := by
+    simp only [smul_sub, smul_smul, mul_inv_cancel₀ hhr.ne', one_smul]; abel
+  rw [he, norm_smul, Real.norm_eq_abs, abs_of_pos hhr, mul_comm]
+  gcongr
+  refine aux_tail_norm_le_of_coord _ l hl.le fun i => ?_
+  have h1 := hx i; have h2 := hy i
+  simp only [Set.mem_Icc] at h1 h2
+  rw [PiLp.sub_apply, abs_le]
+  constructor <;> linarith [h1.1, h1.2, h2.1, h2.2]
+
+/-- Auxiliary for `tail:partition` (part 1, bounded overlap). -/
+theorem aux_tail_overlap (c : ℝ²) (l : ℝ) (hl : 0 < l) (h : ℝ) (hh : 0 < h) :
+    ∃ N : ℕ, ∀ r : ℝ, 0 < r → ∀ x : ℝ²,
+      {q : Fin 2 → ℤ | x ∈ tailSquare {x : ℝ² | ∀ i, x i ∈ Icc (c i) (c i + l)} h r q}.encard
+        ≤ N := by
+  refine ⟨(⌊l⌋₊ + 1) ^ Fintype.card (Fin 2), fun r hr x => ?_⟩
+  have hhr : 0 < h * r := mul_pos hh hr
+  refine le_trans (Set.encard_le_encard ?_) (aux_tail_lattice_count
+    (fun i => ((h * r)⁻¹ • x) i - c i - l) l hl.le)
+  intro q hq
+  simp only [Set.mem_ofPred_eq, aux_tail_mem_square _ _ _ hhr] at hq ⊢
+  intro i
+  have := hq i
+  simp only [Set.mem_Icc, PiLp.sub_apply, aux_tail_latticePt_apply] at this
+  constructor <;> linarith [this.1, this.2]
+
+/-- Auxiliary for `tail:partition`: the corner point `hr(q + c)` lies in `Q_{q,r}`. -/
+theorem aux_tail_corner_mem (c : ℝ²) (l : ℝ) (hl : 0 < l) (h r : ℝ) (q : Fin 2 → ℤ) :
+    (h * r) • (latticePt q + c) ∈ tailSquare {x : ℝ² | ∀ i, x i ∈ Icc (c i) (c i + l)} h r q :=
+  ⟨c, fun i => ⟨le_rfl, by linarith⟩, rfl⟩
+
+/-- Auxiliary for `tail:partition` (part 1, separation and diameter of contributing triples),
+for the scale `h = c₀/(8l)` with `c₀` from `Auto.tail_separation_comparable`. -/
+theorem aux_tail_separation_field (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ)
+    (c : ℝ²) (l : ℝ) (hl : 0 < l) :
+    ∃ h : ℝ, 0 < h ∧ ∃ d D : ℝ, 0 < d ∧ 0 < D ∧ ∀ r : ℝ, 0 < r → ∀ q : Fin 3 → Fin 2 → ℤ,
+      tailContributing α β χ {x : ℝ² | ∀ i, x i ∈ Icc (c i) (c i + l)} h r q → ∀ i j : Fin 3,
+        ∀ x ∈ tailSquare {x : ℝ² | ∀ i, x i ∈ Icc (c i) (c i + l)} h r (q i),
+        ∀ y ∈ tailSquare {x : ℝ² | ∀ i, x i ∈ Icc (c i) (c i + l)} h r (q j),
+          (i ≠ j → d * r ≤ ‖x - y‖) ∧ ‖x - y‖ ≤ D * r := by
+  obtain ⟨c₀, C₀, hc₀, hcC, hcomp⟩ := tail_separation_comparable α β hβ χ hχ
+  refine ⟨c₀ / (8 * l), by positivity, c₀ / 2, C₀ + c₀ / 2, by positivity, by linarith,
+    fun r hr q hq i j x hx y hy => ?_⟩
+  obtain ⟨ξ, hξ, hT, hψ⟩ := hq
+  have hhr : 0 < c₀ / (8 * l) * r := by positivity
+  have hdiam : 2 * l * (c₀ / (8 * l) * r) = c₀ * r / 4 := by field_simp; ring
+  have dx := aux_tail_square_diam c l hl _ r hhr (q i) (q i) x _ hx (hT i)
+  have dy := aux_tail_square_diam c l hl _ r hhr (q j) (q j) y _ hy (hT j)
+  simp only [sub_self, smul_zero, sub_zero, hdiam] at dx dy
+  set zi := tailT α β i (ξ i)
+  set zj := tailT α β j (ξ j)
+  have e : x - y = (x - zi) + (zi - zj) - (y - zj) := by abel
+  have hup : ‖x - y‖ ≤ ‖zi - zj‖ + c₀ * r / 2 := by
+    rw [e]
+    calc ‖(x - zi) + (zi - zj) - (y - zj)‖ ≤ ‖x - zi‖ + ‖zi - zj‖ + ‖y - zj‖ :=
+          (norm_sub_le _ _).trans (add_le_add_left (norm_add_le _ _) _)
+      _ ≤ _ := by linarith
+  have hlow : ‖zi - zj‖ - c₀ * r / 2 ≤ ‖x - y‖ := by
+    have : zi - zj = (zi - x) + (x - y) + (y - zj) := by abel
+    have h2 : ‖zi - zj‖ ≤ ‖zi - x‖ + ‖x - y‖ + ‖y - zj‖ := by
+      rw [this]; exact (norm_add_le _ _).trans (add_le_add_left (norm_add_le _ _) _)
+    rw [norm_sub_rev zi x] at h2
+    linarith
+  constructor
+  · intro hij
+    have := (hcomp r hr ξ hξ hψ i j hij).1
+    linarith
+  · by_cases hij : i = j
+    · subst hij
+      have : ‖zi - zi‖ = 0 := by simp
+      simp only [zj, zi] at hup
+      rw [sub_self, norm_zero] at hup
+      nlinarith
+    · have := (hcomp r hr ξ hξ hψ i j hij).2
+      linarith
+
+/-- Auxiliary for `tail:partition` (part 1, bounded number of partners). -/
+theorem aux_tail_partners (α β : ℝ) (χ : ℝ² → ℝ) (c : ℝ²) (l : ℝ) (hl : 0 < l) (h : ℝ)
+    (hh : 0 < h) (D : ℝ) (hD : 0 < D)
+    (hsep : ∀ r : ℝ, 0 < r → ∀ q : Fin 3 → Fin 2 → ℤ,
+      tailContributing α β χ {x : ℝ² | ∀ i, x i ∈ Icc (c i) (c i + l)} h r q → ∀ i j : Fin 3,
+        ∀ x ∈ tailSquare {x : ℝ² | ∀ i, x i ∈ Icc (c i) (c i + l)} h r (q i),
+        ∀ y ∈ tailSquare {x : ℝ² | ∀ i, x i ∈ Icc (c i) (c i + l)} h r (q j), ‖x - y‖ ≤ D * r) :
+    ∃ K : ℕ, ∀ r : ℝ, 0 < r → ∀ (j : Fin 3) (q₀ : Fin 2 → ℤ),
+      {q : Fin 3 → Fin 2 → ℤ | tailContributing α β χ {x : ℝ² | ∀ i, x i ∈ Icc (c i) (c i + l)}
+        h r q ∧ q j = q₀}.encard ≤ K := by
+  refine ⟨((⌊2 * (D / h)⌋₊ + 1) ^ 2) ^ 3, fun r hr j q₀ => ?_⟩
+  have hhr : 0 < h * r := mul_pos hh hr
+  refine le_trans (Set.encard_le_encard ?_) (aux_tail_lattice_count3
+    (fun _ k => (q₀ k : ℝ) - D / h) (2 * (D / h)) (by positivity))
+  rintro q ⟨hq, hqj⟩
+  simp only [Set.mem_ofPred_eq]
+  intro i k
+  have h1 := hsep r hr q hq i j _ (aux_tail_corner_mem c l hl h r (q i)) _
+    (aux_tail_corner_mem c l hl h r (q j))
+  rw [hqj] at h1
+  have he : (h * r) • (latticePt (q i) + c) - (h * r) • (latticePt q₀ + c) =
+      (h * r) • (latticePt (q i) - latticePt q₀) := by rw [← smul_sub]; abel_nf
+  rw [he, norm_smul, Real.norm_eq_abs, abs_of_pos hhr] at h1
+  have h2 := aux_tail_coord_le (latticePt (q i) - latticePt q₀) k
+  rw [PiLp.sub_apply, aux_tail_latticePt_apply, aux_tail_latticePt_apply] at h2
+  have h3 : |((q i k : ℤ) : ℝ) - q₀ k| ≤ D / h := by
+    rw [le_div_iff₀ hh]
+    have := mul_le_mul_of_nonneg_left h2 hhr.le
+    nlinarith
+  rw [abs_le] at h3
+  constructor <;> linarith [h3.1, h3.2]
+
+/-- Auxiliary for `tail:partition`: an `L²` function `G` satisfies `|G| ≤ 1 + |G|²` with `|G|²`
+integrable (the form used by `Auto.aux_integrable_mul_schwartz`). -/
+theorem aux_tail_l2_dom {G : ℝ² → ℂ} (hG : MemLp G 2 volume) :
+    Integrable (fun x => ‖G x‖ ^ 2) volume ∧ ∀ x, ‖G x‖ ≤ 1 + 1 * ‖G x‖ ^ 2 := by
+  refine ⟨(memLp_two_iff_integrable_sq_norm hG.1).1 hG, fun x => ?_⟩
+  nlinarith [norm_nonneg (G x), sq_nonneg (‖G x‖ - 1)]
+
+/-- Auxiliary for `tail:partition` (the convolution theorem on `L²`): for a smooth compactly
+supported multiplier `m` and `f ∈ L²`, the convolution `𝓕⁻m * f` is in `L²` and its `L²` Fourier
+transform is `m f̂`. -/
+theorem aux_tail_conv_key (m : ℝ² → ℂ) (hm : ContDiff ℝ (⊤ : ℕ∞) m) (hmc : HasCompactSupport m)
+    {f : ℝ² → ℂ} (hf : MemLp f 2 volume) :
+    MemLp (fun x => ∫ y, 𝓕⁻ m y * f (x - y)) 2 volume ∧
+    aux_l2Fourier (fun x => ∫ y, 𝓕⁻ m y * f (x - y)) =ᵐ[volume]
+      fun ξ => m ξ * aux_l2Fourier f ξ := by
+  set mS : 𝓢(ℝ², ℂ) := hmc.toSchwartzMap hm
+  set p : 𝓢(ℝ², ℂ) := 𝓕⁻ mS
+  have hp : (p : ℝ² → ℂ) = 𝓕⁻ m := by
+    simp only [p, SchwartzMap.fourierInv_coe]; rfl
+  have hpF : 𝓕 (p : ℝ² → ℂ) = m := by
+    rw [← SchwartzMap.fourier_coe]
+    simp only [p, FourierInvPair.fourier_fourierInv_eq]; rfl
+  rw [← hp]
+  set g : ℝ² → ℂ := fun x => ∫ y, p y * f (x - y)
+  have hg' := hf.1
+  set f' := hg'.mk f
+  have hf'm : StronglyMeasurable f' := hg'.stronglyMeasurable_mk
+  have hff' : f =ᵐ[volume] f' := hg'.ae_eq_mk
+  set F : ℝ² → ℂ := fun x => ∫ z, p (x - z) * f' z
+  have hF : ∀ x, g x = F x := by
+    intro x
+    have hae : ∀ᵐ y ∂(volume : Measure ℝ²), f (x - y) = f' (x - y) :=
+      (quasiMeasurePreserving_sub_left volume x).ae hff'
+    simp only [g]
+    rw [integral_congr_ae (hae.mono fun y hy => by rw [hy])]
+    have := integral_sub_left_eq_self (μ := (volume : Measure ℝ²))
+      (fun z => p (x - z) * f' z) x
+    simp only [sub_sub_cancel] at this
+    exact this
+  have hFm : AEStronglyMeasurable F volume := by
+    have : StronglyMeasurable (Function.uncurry fun x z : ℝ² => p (x - z) * f' z) :=
+      (p.continuous.comp (continuous_fst.sub continuous_snd)).stronglyMeasurable.mul
+        (hf'm.comp_measurable measurable_snd)
+    exact (this.integral_prod_right (ν := (volume : Measure ℝ²))).aestronglyMeasurable
+  have hgm : AEStronglyMeasurable g volume := by
+    rw [show g = F from funext hF]; exact hFm
+  -- `L²` via Young
+  have hk : Integrable (p : ℝ² → ℂ) := p.integrable
+  have hconv : ∀ x, g x = (FCMeasure.ofDensity p).convFun f x := by
+    intro x
+    simp only [g, FCMeasure.convFun, FCMeasure.integral, FCMeasure.ofDensity, hk, if_true, id]
+    congr 1; funext y; ring
+  have hg2 : MemLp g 2 volume := by
+    refine ⟨hgm, ?_⟩
+    rw [show g = (FCMeasure.ofDensity p).convFun f from funext hconv]
+    refine lt_of_le_of_lt (ext_young_two _ f hf.1) (ENNReal.mul_lt_top ?_ hf.2)
+    exact (FCMeasure.ofDensity p).integrable_w.2
+  refine ⟨hg2, ?_⟩
+  -- the Fourier identity, tested against Schwartz functions
+  obtain ⟨hh, hb⟩ := aux_tail_l2_dom hf
+  have hH : ∀ {u : ℝ² → ℂ}, Integrable u volume → ∀ {U : ℝ}, (∀ x, ‖u x‖ ≤ U) →
+      Integrable (fun q : ℝ² × ℝ² => u q.1 * p (q.1 - q.2) * f' q.2)
+        ((volume : Measure ℝ²).prod volume) := fun hu _ hub =>
+    aux_conv_prod_integrable hu hub p.integrable hf'm.aestronglyMeasurable hh zero_le_one
+      (by filter_upwards [hff'] with z hz; rw [← hz]; exact hb z)
+  have hkey : ∀ u : 𝓢(ℝ², ℂ), ∫ x, u x * aux_l2Fourier g x =
+      ∫ x, u x * (m x * aux_l2Fourier f x) := by
+    intro u
+    have hub : ∀ x, ‖(𝓕 u : 𝓢(ℝ², ℂ)) x‖ ≤ SchwartzMap.seminorm ℂ 0 0 (𝓕 u) :=
+      SchwartzMap.norm_le_seminorm ℂ _
+    have e1 : ∫ x, u x * aux_l2Fourier g x = ∫ x, g x * 𝓕 (⇑u) x := by
+      rw [aux_parseval_L2 hg2 u, aux_tail_l2F_eq hg2]
+    have e2 : ∫ x, g x * 𝓕 (⇑u) x = ∫ z, f' z * ∫ x, 𝓕 (⇑u) x * p (x - z) := by
+      calc ∫ x, g x * 𝓕 (⇑u) x = ∫ x, ∫ z, 𝓕 (⇑u) x * p (x - z) * f' z := by
+            congr 1; funext x; rw [hF x]; simp only [F]; rw [← integral_mul_const]
+            congr 1; funext z; ring
+        _ = ∫ z, ∫ x, 𝓕 (⇑u) x * p (x - z) * f' z := by
+            refine integral_integral_swap ?_
+            have := hH (𝓕 u).integrable hub
+            simp only [SchwartzMap.fourier_coe] at this
+            exact this
+        _ = _ := by
+            congr 1; funext z; rw [← integral_const_mul]; congr 1; funext x; ring
+    have hpt : (⇑(𝓕 p : 𝓢(ℝ², ℂ))).HasTemperateGrowth := (𝓕 p : 𝓢(ℝ², ℂ)).hasTemperateGrowth
+    set q : 𝓢(ℝ², ℂ) := SchwartzMap.smulLeftCLM ℂ (⇑(𝓕 p : 𝓢(ℝ², ℂ))) u
+    have hq : ∀ ξ, q ξ = m ξ * u ξ := fun ξ => by
+      simp only [q]
+      rw [SchwartzMap.smulLeftCLM_apply_apply hpt, smul_eq_mul, SchwartzMap.fourier_coe, hpF]
+    have e3 : ∀ z, ∫ x, 𝓕 (⇑u) x * p (x - z) = 𝓕 (⇑q) z := by
+      intro z
+      rw [aux_conv_fourier_identity u p z, hpF]
+      have : (fun ξ => m ξ * u ξ) = ⇑q := funext fun ξ => (hq ξ).symm
+      rw [this]
+    have e4 : ∫ z, f' z * 𝓕 (⇑q) z = ∫ z, f z * 𝓕 (⇑q) z :=
+      integral_congr_ae (by filter_upwards [hff'] with z hz; rw [hz])
+    rw [e1, e2]
+    simp_rw [e3]
+    rw [e4, aux_parseval_L2 hf q, ← aux_tail_l2F_eq hf]
+    congr 1; funext x; rw [hq]; ring
+  -- conclude
+  have hmb : ∃ Cm, ∀ x, ‖m x‖ ≤ Cm := hm.continuous.bounded_above_of_compact_support hmc
+  obtain ⟨Cm, hCm⟩ := hmb
+  have hF2 := aux_tail_l2F_memLp f
+  have hG2 := aux_tail_l2F_memLp g
+  have hmF : MemLp (fun ξ => m ξ * aux_l2Fourier f ξ) 2 volume := by
+    refine hF2.of_le_mul (c := Cm) (hm.continuous.aestronglyMeasurable.mul hF2.1)
+      (Eventually.of_forall fun x => ?_)
+    rw [norm_mul]; exact mul_le_mul_of_nonneg_right (hCm x) (norm_nonneg _)
+  have hD : LocallyIntegrable (fun ξ => aux_l2Fourier g ξ - m ξ * aux_l2Fourier f ξ) volume :=
+    (hG2.sub hmF).locallyIntegrable (by norm_num)
+  have hz := ae_eq_zero_of_integral_contDiff_smul_eq_zero hD ?_
+  · filter_upwards [hz] with x hx
+    exact sub_eq_zero.1 hx
+  intro ψ hψ hψc
+  have hφ : ContDiff ℝ (⊤ : ℕ∞) (fun x => (ψ x : ℂ)) := Complex.ofRealCLM.contDiff.comp hψ
+  have hφc : HasCompactSupport (fun x => (ψ x : ℂ)) := hψc.comp_left Complex.ofReal_zero
+  set u := hφc.toSchwartzMap hφ
+  have hu : ∀ x, u x = (ψ x : ℂ) := fun x => rfl
+  obtain ⟨h1, b1⟩ := aux_tail_l2_dom hG2
+  obtain ⟨h2, b2⟩ := aux_tail_l2_dom hmF
+  have i1 := aux_integrable_mul_schwartz hG2.1 h1 zero_le_one (Eventually.of_forall b1) u
+  have i2 := aux_integrable_mul_schwartz hmF.1 h2 zero_le_one (Eventually.of_forall b2) u
+  have := hkey u
+  calc ∫ x, ψ x • (aux_l2Fourier g x - m x * aux_l2Fourier f x)
+      = ∫ x, (aux_l2Fourier g x * u x - m x * aux_l2Fourier f x * u x) := by
+        congr 1; funext x; simp [hu, Complex.real_smul]; ring
+    _ = 0 := by
+        rw [integral_sub i1 i2, sub_eq_zero]
+        simpa [mul_comm] using this
+
+/-- Auxiliary for `tail:partition`: the multiplier $\varphi(T_j\xi/(hr)-q)$ of
+$P_{j,q,r}$ (`Auto.tailP`). -/
+def aux_tailM (α β : ℝ) (φ : ℝ² → ℝ) (h : ℝ) (j : Fin 3) (q : Fin 2 → ℤ) (r : ℝ) : ℝ² → ℂ :=
+  fun ξ => (φ ((h * r)⁻¹ • tailT α β j ξ - latticePt q) : ℂ)
+
+/-- Auxiliary for `tail:partition`: `P_{j,q,r}` is convolution with `𝓕⁻` of `Auto.aux_tailM`. -/
+theorem aux_tailP_eq (α β : ℝ) (φ : ℝ² → ℝ) (h : ℝ) (j : Fin 3) (q : Fin 2 → ℤ) (r : ℝ)
+    (f : ℝ² → ℂ) :
+    tailP α β φ h j q r f = fun x => ∫ y, 𝓕⁻ (aux_tailM α β φ h j q r) y * f (x - y) := rfl
+
+/-- Auxiliary for `tail:partition`: the inverses `V₀ = A - I`, `V₁ = -A`, `V₂ = I` of the maps
+`T_j` of `tail:coordinates`. -/
+def aux_tailVmap (α β : ℝ) : Fin 3 → (ℝ² →L[ℝ] ℝ²) := ![tailA α β - 1, -tailA α β, 1]
+
+/-- Auxiliary for `tail:partition`: `T_j V_j = I`. -/
+theorem aux_tail_TV (α β : ℝ) (hβ : β ≠ 0) (j : Fin 3) (w : ℝ²) :
+    tailT α β j (aux_tailVmap α β j w) = w := by
+  have := tail_separation_translate α β hβ w j
+  convert this using 2
+  fin_cases j <;> simp [aux_tailVmap, tailV]
+
+/-- Auxiliary for `tail:partition`: `V_j T_j = I`. -/
+theorem aux_tail_VT (α β : ℝ) (hβ : β ≠ 0) (j : Fin 3) (ξ : ℝ²) :
+    aux_tailVmap α β j (tailT α β j ξ) = ξ := by
+  have hb2 : 0 < β ^ 2 := by positivity
+  have hn0 : (α - 1) ^ 2 + β ^ 2 ≠ 0 := ne_of_gt (add_pos_of_nonneg_of_pos (sq_nonneg _) hb2)
+  have hn1 : α ^ 2 + β ^ 2 ≠ 0 := ne_of_gt (add_pos_of_nonneg_of_pos (sq_nonneg _) hb2)
+  fin_cases j <;>
+    simp only [tailT, aux_tailVmap, Fin.zero_eta, Fin.mk_one, Fin.reduceFinMk,
+      Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two, Matrix.head_cons,
+      Matrix.tail_cons, neg_apply, ContinuousLinearMap.one_apply] <;>
+    simp only [aux_tail_T0_eq α β hβ, aux_tail_Ainv_eq α β hβ] <;>
+    simp only [aux_tail_AI_eq, aux_tail_A_eq] <;>
+    refine aux_vec_ext ?_ ?_ <;>
+    simp [aux_lw_simil0, aux_lw_simil1, aux_tailT0c, aux_tailAinvc] <;> field_simp <;> ring
+
+/-- Auxiliary for `tail:partition`: smoothness and compact support of `Auto.aux_tailM`. -/
+theorem aux_tailM_smooth (α β : ℝ) (hβ : β ≠ 0) (φ : ℝ² → ℝ) (hφs : ContDiff ℝ (⊤ : ℕ∞) φ)
+    (hφc : HasCompactSupport φ) (h : ℝ) (j : Fin 3) (q : Fin 2 → ℤ) (r : ℝ) (hhr : h * r ≠ 0) :
+    ContDiff ℝ (⊤ : ℕ∞) (aux_tailM α β φ h j q r) ∧ HasCompactSupport (aux_tailM α β φ h j q r) := by
+  constructor
+  · refine Complex.ofRealCLM.contDiff.comp (hφs.comp ?_)
+    exact ((contDiff_const_smul _).comp (tailT α β j).contDiff).sub contDiff_const
+  · refine HasCompactSupport.intro (K := (fun z => aux_tailVmap α β j ((h * r) •
+      (latticePt q + z))) '' tsupport φ) (hφc.isCompact.image (by fun_prop)) fun ξ hξ => ?_
+    by_contra hne
+    apply hξ
+    refine ⟨(h * r)⁻¹ • tailT α β j ξ - latticePt q, subset_tsupport _ ?_, ?_⟩
+    · intro h0; exact hne (by simp only [aux_tailM, h0, Complex.ofReal_zero])
+    · simp only [add_sub_cancel, smul_smul, mul_inv_cancel₀ hhr, one_smul, aux_tail_VT α β hβ]
+
+/-- Auxiliary for `tail:partition`: the kernel of `P_{j,q,r}` is a modulated `L¹`-normalized
+dilate of `𝓕⁻(φ ∘ T_j)`; in particular its absolute value is that of the dilate. -/
+theorem aux_tailM_kernel_norm (α β : ℝ) (hβ : β ≠ 0) (φ : ℝ² → ℝ) (h r : ℝ) (hhr : 0 < h * r)
+    (j : Fin 3) (q : Fin 2 → ℤ) (y : ℝ²) :
+    ‖𝓕⁻ (aux_tailM α β φ h j q r) y‖ =
+      ‖scaleR (h * r) (𝓕⁻ (fun ζ => (φ (tailT α β j ζ) : ℂ))) y‖ := by
+  set R := h * r
+  set a := aux_tailVmap α β j (latticePt q)
+  set g0 : ℝ² → ℂ := fun ζ => (φ (tailT α β j ζ) : ℂ)
+  have hm : aux_tailM α β φ h j q r = fun v => g0 (R⁻¹ • v - a) := by
+    funext v
+    simp only [aux_tailM, g0, map_sub, map_smul, a, aux_tail_TV α β hβ]
+    rfl
+  have h1 : 𝓕⁻ (aux_tailM α β φ h j q r) y =
+      ((R ^ 2 : ℝ) : ℂ) * ∫ w, e ⟪R • w, y⟫_ℝ * g0 (w - a) := by
+    rw [hm, aux_s2a_fourierInv_e]
+    have := Measure.integral_comp_smul (μ := (volume : Measure ℝ²))
+      (fun v => e ⟪v, y⟫_ℝ * g0 (R⁻¹ • v - a)) R
+    simp only [finrank_euclideanSpace_fin, smul_smul, inv_mul_cancel₀ hhr.ne', one_smul] at this
+    rw [this, abs_of_pos (by positivity), Complex.real_smul, ← mul_assoc]
+    push_cast
+    rw [mul_inv_cancel₀ (by exact_mod_cast (pow_pos hhr 2).ne'), one_mul]
+  have h2 : ∫ w, e ⟪R • w, y⟫_ℝ * g0 (w - a) = e ⟪R • a, y⟫_ℝ * 𝓕⁻ g0 (R • y) := by
+    rw [← integral_add_right_eq_self (fun w => e ⟪R • w, y⟫_ℝ * g0 (w - a)) a]
+    simp only [add_sub_cancel_right, smul_add, inner_add_left]
+    rw [aux_s2a_fourierInv_e, ← integral_const_mul]
+    congr 1; funext w
+    rw [← mul_assoc, aux_e_add, real_inner_smul_left, real_inner_smul_right]
+    ring_nf
+  rw [h1, h2, scaleR, norm_mul, norm_mul, norm_mul, aux_norm_e, one_mul]
+
+/-- Auxiliary for `tail:partition`: the `L¹` norm of the kernel of `P_{j,q,r}` does not depend
+on `q, r`. -/
+theorem aux_tailM_kernel_l1 (α β : ℝ) (hβ : β ≠ 0) (φ : ℝ² → ℝ) (hφs : ContDiff ℝ (⊤ : ℕ∞) φ)
+    (hφc : HasCompactSupport φ) (h r : ℝ) (hhr : 0 < h * r)
+    (j : Fin 3) (q : Fin 2 → ℤ) :
+    ∫⁻ y, ‖𝓕⁻ (aux_tailM α β φ h j q r) y‖ₑ =
+      ENNReal.ofReal (∫ y, ‖𝓕⁻ (fun ζ => (φ (tailT α β j ζ) : ℂ)) y‖) := by
+  rw [← aux_tail_integral_norm_scaleR _ _ hhr]
+  have hg0 : (fun ζ => (φ (tailT α β j ζ) : ℂ)) = aux_tailM α β φ 1 j 0 1 := by
+    funext ζ
+    have : latticePt (0 : Fin 2 → ℤ) = 0 := by ext i; simp
+    simp [aux_tailM, this]
+  have hint : Integrable (scaleR (h * r) (𝓕⁻ (fun ζ => (φ (tailT α β j ζ) : ℂ)))) := by
+    have := (aux_tailM_smooth α β hβ φ hφs hφc 1 j 0 1 (by norm_num))
+    rw [← hg0] at this
+    exact ((aux_tail_fourierInv_integrable _ this.1 this.2).comp_smul hhr.ne').const_mul _
+  rw [ofReal_integral_norm_eq_lintegral_enorm hint]
+  refine lintegral_congr fun y => ?_
+  rw [← ofReal_norm, ← ofReal_norm, aux_tailM_kernel_norm α β hβ φ h r hhr j q y]
+
+/-- Auxiliary for `tail:partition`: the square `Q_*` (a closed box) is compact. -/
+theorem aux_tail_box_compact (c : ℝ²) (l : ℝ) :
+    IsCompact {x : ℝ² | ∀ i, x i ∈ Icc (c i) (c i + l)} := by
+  refine Metric.isCompact_of_isClosed_isBounded ?_ ?_
+  · simp only [Set.setOf_forall]
+    exact isClosed_iInter fun i => isClosed_Icc.preimage (by fun_prop)
+  · refine (Metric.isBounded_closedBall (x := (0 : ℝ²)) (r := 2 * (‖c‖ + |l|))).subset ?_
+    intro x hx
+    simp only [Metric.mem_closedBall, dist_zero_right]
+    refine aux_tail_norm_le_of_coord x _ (by positivity) fun i => ?_
+    have h1 := hx i
+    have h2 := aux_tail_coord_le c i
+    simp only [Set.mem_Icc] at h1
+    rw [abs_le] at h2 ⊢
+    constructor <;> cases abs_cases l <;> linarith [h1.1, h1.2]
+
+/-- Auxiliary for `tail:partition`: the squares `Q_{q,r}` are measurable. -/
+theorem aux_tail_square_meas (c : ℝ²) (l h r : ℝ) (q : Fin 2 → ℤ) :
+    MeasurableSet (tailSquare {x : ℝ² | ∀ i, x i ∈ Icc (c i) (c i + l)} h r q) :=
+  ((aux_tail_box_compact c l).image (by fun_prop)).isClosed.measurableSet
+
+/-- Auxiliary for `tail:partition`: the multiplier of `P_{j,q,r}` vanishes unless `T_jξ` lies in
+`Q_{q,r}`. -/
+theorem aux_tailM_supp (α β : ℝ) (φ : ℝ² → ℝ) (Qstar : Set ℝ²) (hφQ : tsupport φ ⊆ Qstar)
+    (h r : ℝ) (hhr : 0 < h * r) (j : Fin 3) (q : Fin 2 → ℤ) (ξ : ℝ²)
+    (hξ : aux_tailM α β φ h j q r ξ ≠ 0) : tailT α β j ξ ∈ tailSquare Qstar h r q := by
+  rw [aux_tail_mem_square _ _ _ hhr]
+  exact hφQ (subset_tsupport _ fun h0 => hξ (by simp only [aux_tailM, h0, Complex.ofReal_zero]))
+
+/-- Auxiliary for `tail:partition`: `|φ| ≤ Φ`. -/
+theorem aux_tail_phi_bound (φ : ℝ² → ℝ) (hφs : ContDiff ℝ (⊤ : ℕ∞) φ) (hφc : HasCompactSupport φ) :
+    ∃ Φ : ℝ, 0 ≤ Φ ∧ ∀ z, ‖φ z‖ ≤ Φ := by
+  obtain ⟨C, hC⟩ := hφs.continuous.bounded_above_of_compact_support hφc
+  exact ⟨max C 0, le_max_right _ _, fun z => (hC z).trans (le_max_left _ _)⟩
+
+/-- Auxiliary for `tail:partition` (part 2, the `L^∞` bound). -/
+theorem aux_tail_bound_top (α β : ℝ) (hβ : β ≠ 0) (φ : ℝ² → ℝ) (hφs : ContDiff ℝ (⊤ : ℕ∞) φ)
+    (hφc : HasCompactSupport φ) (h r : ℝ) (hhr : 0 < h * r) (j : Fin 3) (q : Fin 2 → ℤ)
+    (g : ℝ² → ℂ) (hg : AEStronglyMeasurable g volume) :
+    eLpNorm (tailP α β φ h j q r g) ⊤ volume ≤
+      ENNReal.ofReal (∫ y, ‖𝓕⁻ (fun ζ => (φ (tailT α β j ζ) : ℂ)) y‖) * eLpNorm g ⊤ volume := by
+  obtain ⟨hm, hmc⟩ := aux_tailM_smooth α β hβ φ hφs hφc h j q r hhr.ne'
+  have hk := aux_tail_fourierInv_integrable _ hm hmc
+  have e : tailP α β φ h j q r g =
+      (FCMeasure.ofDensity (𝓕⁻ (aux_tailM α β φ h j q r))).convFun g := by
+    funext x
+    simp only [aux_tailP_eq, FCMeasure.convFun, FCMeasure.integral, FCMeasure.ofDensity, hk,
+      if_true, id]
+    congr 1; funext y; ring
+  rw [e]
+  refine (ext_young_top _ g hg).trans (le_of_eq ?_)
+  congr 1
+  rw [← aux_tailM_kernel_l1 α β hβ φ hφs hφc h r hhr j q]
+  simp [FCMeasure.tv, FCMeasure.ofDensity, hk]
+  rfl
+
+/-- Auxiliary for `tail:partition` (part 2, the bound by the spectral mass). -/
+theorem aux_tail_bound_mass (α β : ℝ) (hβ : β ≠ 0) (φ : ℝ² → ℝ) (hφs : ContDiff ℝ (⊤ : ℕ∞) φ)
+    (hφc : HasCompactSupport φ) (c : ℝ²) (l : ℝ)
+    (hφQ : tsupport φ ⊆ {x : ℝ² | ∀ i, x i ∈ Icc (c i) (c i + l)}) (Φ : ℝ) (hΦ : ∀ z, ‖φ z‖ ≤ Φ)
+    (h r : ℝ) (hhr : 0 < h * r) (j : Fin 3) (q : Fin 2 → ℤ) (f : Fin 3 → ℝ² → ℂ)
+    (hf : ∀ i, MemLp (f i) 2 volume) :
+    eLpNorm (tailP α β φ h j q r (f j)) 2 volume ^ 2 ≤
+      ENNReal.ofReal (Φ ^ 2) *
+        tailMu α β f (tailSquare {x : ℝ² | ∀ i, x i ∈ Icc (c i) (c i + l)} h r q) := by
+  set Q := tailSquare {x : ℝ² | ∀ i, x i ∈ Icc (c i) (c i + l)} h r q
+  have hQ : MeasurableSet Q := aux_tail_square_meas c l h r q
+  have hTQ : MeasurableSet (tailT α β j ⁻¹' Q) := (tailT α β j).continuous.measurable hQ
+  obtain ⟨hm, hmc⟩ := aux_tailM_smooth α β hβ φ hφs hφc h j q r hhr.ne'
+  obtain ⟨hP2, hPF⟩ := aux_tail_conv_key _ hm hmc (hf j)
+  rw [aux_tailP_eq, ← aux_tail_l2F_norm hP2, eLpNorm_congr_ae hPF, aux_s2a_eLpNorm_two_sq]
+  have hpt : ∀ ξ, ‖aux_tailM α β φ h j q r ξ * aux_l2Fourier (f j) ξ‖ₑ ^ 2 ≤
+      (tailT α β j ⁻¹' Q).indicator
+        (fun ξ => ENNReal.ofReal (Φ ^ 2) * ‖aux_l2Fourier (f j) ξ‖ₑ ^ 2) ξ := by
+    intro ξ
+    by_cases hξ : aux_tailM α β φ h j q r ξ = 0
+    · simp [hξ]
+    · rw [Set.indicator_of_mem (show ξ ∈ tailT α β j ⁻¹' Q from
+        aux_tailM_supp α β φ _ hφQ h r hhr j q ξ hξ), enorm_mul,
+        mul_pow]
+      gcongr
+      rw [ENNReal.ofReal_pow (by linarith [norm_nonneg (φ 0), hΦ 0]), ← ofReal_norm]
+      gcongr
+      simp only [aux_tailM, Complex.norm_real]
+      exact hΦ _
+  refine (lintegral_mono hpt).trans ?_
+  rw [lintegral_indicator hTQ, lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+  gcongr
+  simp only [tailMu]
+  rw [Measure.coe_finset_sum, Finset.sum_apply]
+  refine le_trans (le_of_eq ?_) (Finset.single_le_sum (f := fun i : Fin 3 =>
+    (((volume : Measure ℝ²).withDensity
+      (fun ξ => ‖aux_l2Fourier (f i) ξ‖ₑ ^ 2)).map (tailT α β i)) Q)
+    (fun _ _ => zero_le) (Finset.mem_univ j))
+  rw [Measure.map_apply (tailT α β j).continuous.measurable hQ, withDensity_apply _ hTQ]
+
+/-- Auxiliary for `tail:partition`: `∑_q φ(z-q)² ≤ Φ` for the partition of unity `φ`. -/
+theorem aux_tail_sum_sq_le (φ : ℝ² → ℝ) (hφ0 : ∀ z, 0 ≤ φ z)
+    (hφ1 : ∀ z, ∑' q : Fin 2 → ℤ, φ (z - latticePt q) = 1) (Φ : ℝ) (hΦ : ∀ z, ‖φ z‖ ≤ Φ)
+    (z : ℝ²) : ∑' q : Fin 2 → ℤ, ‖(φ (z - latticePt q) : ℂ)‖ₑ ^ 2 ≤ ENNReal.ofReal Φ := by
+  have hsum : Summable fun q : Fin 2 → ℤ => φ (z - latticePt q) := by
+    by_contra hns
+    have := hφ1 z
+    rw [tsum_eq_zero_of_not_summable hns] at this
+    exact zero_ne_one this
+  calc ∑' q : Fin 2 → ℤ, ‖(φ (z - latticePt q) : ℂ)‖ₑ ^ 2
+      ≤ ∑' q : Fin 2 → ℤ, ENNReal.ofReal Φ * ENNReal.ofReal (φ (z - latticePt q)) := by
+        refine ENNReal.tsum_le_tsum fun q => ?_
+        rw [← ofReal_norm, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (hφ0 _), sq]
+        gcongr
+        exact (le_abs_self _).trans (by simpa [Real.norm_eq_abs] using hΦ _)
+    _ = ENNReal.ofReal Φ * ENNReal.ofReal (∑' q : Fin 2 → ℤ, φ (z - latticePt q)) := by
+        rw [ENNReal.tsum_mul_left, ENNReal.ofReal_tsum_of_nonneg (fun q => hφ0 _) hsum]
+    _ = ENNReal.ofReal Φ := by rw [hφ1, ENNReal.ofReal_one, mul_one]
+
+/-- Auxiliary for `tail:partition` (part 2, the sum-of-squares bound). -/
+theorem aux_tail_bound_sum (α β : ℝ) (hβ : β ≠ 0) (φ : ℝ² → ℝ) (hφs : ContDiff ℝ (⊤ : ℕ∞) φ)
+    (hφc : HasCompactSupport φ) (hφ0 : ∀ z, 0 ≤ φ z)
+    (hφ1 : ∀ z, ∑' q : Fin 2 → ℤ, φ (z - latticePt q) = 1) (Φ : ℝ) (hΦ : ∀ z, ‖φ z‖ ≤ Φ)
+    (h r : ℝ) (hhr : 0 < h * r) (j : Fin 3) (g : ℝ² → ℂ) (hg : MemLp g 2 volume) :
+    ∑' q' : Fin 2 → ℤ, eLpNorm (tailP α β φ h j q' r g) 2 volume ^ 2 ≤
+      ENNReal.ofReal Φ * eLpNorm g 2 volume ^ 2 := by
+  have e : ∀ q' : Fin 2 → ℤ, eLpNorm (tailP α β φ h j q' r g) 2 volume ^ 2 =
+      ∫⁻ ξ, ‖aux_tailM α β φ h j q' r ξ‖ₑ ^ 2 * ‖aux_l2Fourier g ξ‖ₑ ^ 2 := by
+    intro q'
+    obtain ⟨hm, hmc⟩ := aux_tailM_smooth α β hβ φ hφs hφc h j q' r hhr.ne'
+    obtain ⟨hP2, hPF⟩ := aux_tail_conv_key _ hm hmc hg
+    rw [aux_tailP_eq, ← aux_tail_l2F_norm hP2, eLpNorm_congr_ae hPF, aux_s2a_eLpNorm_two_sq]
+    simp only [enorm_mul, mul_pow]
+  simp_rw [e]
+  have hmeas : ∀ q' : Fin 2 → ℤ, AEMeasurable
+      (fun ξ => ‖aux_tailM α β φ h j q' r ξ‖ₑ ^ 2 * ‖aux_l2Fourier g ξ‖ₑ ^ 2) volume := by
+    intro q'
+    obtain ⟨hm, -⟩ := aux_tailM_smooth α β hβ φ hφs hφc h j q' r hhr.ne'
+    exact ((hm.continuous.measurable.enorm.pow_const 2).aemeasurable).mul
+      ((aux_tail_l2F_memLp g).1.enorm.pow_const 2)
+  rw [← lintegral_tsum hmeas, ← aux_tail_l2F_norm hg, aux_s2a_eLpNorm_two_sq,
+    ← lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+  refine lintegral_mono fun ξ => ?_
+  rw [ENNReal.tsum_mul_right]
+  gcongr
+  exact aux_tail_sum_sq_le φ hφ0 hφ1 Φ hΦ _
+
+/-- Auxiliary for `tail:partition`: `P_{j,q,r}` maps `L²` to `L²` with Fourier transform
+`m_{j,q,r} f̂`, which has compact support. -/
+theorem aux_tail_P_l2 (α β : ℝ) (hβ : β ≠ 0) (φ : ℝ² → ℝ) (hφs : ContDiff ℝ (⊤ : ℕ∞) φ)
+    (hφc : HasCompactSupport φ) (h r : ℝ) (hhr : 0 < h * r) (j : Fin 3) (q : Fin 2 → ℤ)
+    {f : ℝ² → ℂ} (hf : MemLp f 2 volume) :
+    ∃ hP : MemLp (tailP α β φ h j q r f) 2 volume,
+      aux_l2Fourier (tailP α β φ h j q r f) =ᵐ[volume]
+        (fun ξ => aux_tailM α β φ h j q r ξ * aux_l2Fourier f ξ) ∧
+      HasL2FourierSupportIn (tsupport (aux_tailM α β φ h j q r))
+        (hP.toLp (tailP α β φ h j q r f)) := by
+  obtain ⟨hm, hmc⟩ := aux_tailM_smooth α β hβ φ hφs hφc h j q r hhr.ne'
+  obtain ⟨hP2, hPF⟩ := aux_tail_conv_key _ hm hmc hf
+  rw [← aux_tailP_eq] at hP2 hPF
+  refine ⟨hP2, hPF, ?_⟩
+  have := hPF
+  rw [aux_tail_l2F_eq hP2] at this
+  filter_upwards [this] with ξ hξ hξK
+  rw [hξ, image_eq_zero_of_notMem_tsupport hξK, zero_mul]
+
+/-- Auxiliary for `tail:partition`: noncontributing triples do not contribute to the expansion
+(via `Auto.tail_fourier`). -/
+theorem aux_tail_noncontrib (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ)
+    (φ : ℝ² → ℝ) (hφs : ContDiff ℝ (⊤ : ℕ∞) φ) (hφc : HasCompactSupport φ) (Qstar : Set ℝ²)
+    (hφQ : tsupport φ ⊆ Qstar) (h r : ℝ) (hh : 0 < h) (hr : 0 < r)
+    (q : Fin 3 → Fin 2 → ℤ) (hq : ¬ tailContributing α β χ Qstar h r q)
+    (f : Fin 3 → ℝ² → ℂ) (hf : ∀ j, MemLp (f j) 2 volume) :
+    tailForm α β χ r (tailP α β φ h 0 (q 0) r (f 0)) (tailP α β φ h 1 (q 1) r (f 1))
+      (tailP α β φ h 2 (q 2) r (f 2)) = 0 := by
+  have hhr : 0 < h * r := mul_pos hh hr
+  have P := fun j => aux_tail_P_l2 α β hβ φ hφs hφc h r hhr j (q j) (hf j)
+  choose hP hPF hPK using P
+  set g : Fin 3 → ℝ² → ℂ := fun j => tailP α β φ h j (q j) r (f j)
+  have hK : ∀ j, ∃ K : Set ℝ², IsCompact K ∧ HasL2FourierSupportIn K ((hP j).toLp (g j)) :=
+    fun j => ⟨_, (aux_tailM_smooth α β hβ φ hφs hφc h j (q j) r hhr.ne').2, hPK j⟩
+  have := (tail_fourier α β hβ χ hχ r hr g hP hK).2
+  simp only [g] at this
+  rw [this]
+  have e := aux_tailI_congr_ae α β χ r (hPF 0) (hPF 1) (hPF 2)
+  simp only [aux_tailI] at e
+  rw [e]
+  refine integral_eq_zero_of_ae (Eventually.of_forall fun ξ => ?_)
+  by_contra hne
+  apply hq
+  have h0 := left_ne_zero_of_mul (left_ne_zero_of_mul (left_ne_zero_of_mul
+    (left_ne_zero_of_mul hne)))
+  have h1 := left_ne_zero_of_mul (right_ne_zero_of_mul (left_ne_zero_of_mul
+    (left_ne_zero_of_mul hne)))
+  have h2 := left_ne_zero_of_mul (right_ne_zero_of_mul (left_ne_zero_of_mul hne))
+  have hψ := right_ne_zero_of_mul (right_ne_zero_of_mul hne)
+  refine ⟨![-ξ.1 - ξ.2, ξ.1, ξ.2], ?_, fun j => ?_, ?_⟩
+  · rw [Fin.sum_univ_three]
+    simp only [Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
+      Matrix.head_cons, Matrix.tail_cons]
+    abel
+  · fin_cases j
+    · exact aux_tailM_supp α β φ Qstar hφQ h r hhr 0 (q 0) _ h0
+    · exact aux_tailM_supp α β φ Qstar hφQ h r hhr 1 (q 1) _ h1
+    · exact aux_tailM_supp α β φ Qstar hφQ h r hhr 2 (q 2) _ h2
+  · exact hψ
+
+/-- Auxiliary for `tail:partition`: the `L²` Fourier transform of a finite sum. -/
+theorem aux_tail_l2F_sum {ι : Type*} [Countable ι] (s : Finset ι) (g : ι → ℝ² → ℂ)
+    (hg : ∀ i, MemLp (g i) 2 volume) :
+    aux_l2Fourier (fun x => ∑ i ∈ s, g i x) =ᵐ[volume]
+      fun ξ => ∑ i ∈ s, aux_l2Fourier (g i) ξ := by
+  have hS : MemLp (fun x => ∑ i ∈ s, g i x) 2 volume := memLp_finset_sum s fun i _ => hg i
+  have hL : hS.toLp _ = ∑ i ∈ s, (hg i).toLp (g i) := by
+    apply Lp.ext
+    filter_upwards [hS.coeFn_toLp, aux_hs_coeFn_sum s (fun i => (hg i).toLp (g i)),
+      ae_all_iff.2 fun i => (hg i).coeFn_toLp] with x h1 h2 h3
+    rw [h1, h2]
+    exact Finset.sum_congr rfl fun i _ => (h3 i).symm
+  rw [aux_tail_l2F_eq hS, hL]
+  have e : (𝓕 (∑ i ∈ s, (hg i).toLp (g i)) : Lp ℂ 2 (volume : Measure ℝ²)) =
+      ∑ i ∈ s, 𝓕 ((hg i).toLp (g i)) := map_sum (Lp.fourierTransformₗᵢ ℝ² ℂ) _ _
+  rw [e]
+  filter_upwards [aux_hs_coeFn_sum s (fun i => 𝓕 ((hg i).toLp (g i)))] with x hx
+  rw [hx]
+  exact Finset.sum_congr rfl fun i _ => by rw [aux_tail_l2F_eq (hg i)]
+
+/-- Auxiliary for `tail:partition`: the box `{-N,…,N}²` of lattice points. -/
+def aux_tailBox (N : ℕ) : Finset (Fin 2 → ℤ) :=
+  Fintype.piFinset fun _ => Finset.Icc (-(N : ℤ)) N
+
+/-- Auxiliary for `tail:partition`: the boxes exhaust `ℤ²`. -/
+theorem aux_tailBox_tendsto : Tendsto aux_tailBox atTop atTop := by
+  refine tendsto_atTop_finset_of_monotone (fun N M hNM => ?_) (fun q => ?_)
+  · intro q hq
+    simp only [aux_tailBox, Fintype.mem_piFinset, Finset.mem_Icc] at hq ⊢
+    have : (N : ℤ) ≤ M := by exact_mod_cast hNM
+    intro i; have := hq i; constructor <;> omega
+  · refine ⟨(q 0).natAbs + (q 1).natAbs, ?_⟩
+    simp only [aux_tailBox, Fintype.mem_piFinset, Finset.mem_Icc]
+    intro i; fin_cases i <;> simp <;> constructor <;>
+      linarith [abs_nonneg (q 0), abs_nonneg (q 1), le_abs_self (q 0), neg_abs_le (q 0),
+        le_abs_self (q 1), neg_abs_le (q 1)]
+
+/-- Auxiliary for `tail:partition`: tendsto of finite partial sums of a summable family along
+the boxes. -/
+theorem aux_tail_hasSum_box {E : Type*} [AddCommMonoid E] [TopologicalSpace E]
+    {g : (Fin 2 → ℤ) → E} {a : E} (hg : HasSum g a) :
+    Tendsto (fun N => ∑ q ∈ aux_tailBox N, g q) atTop (𝓝 a) :=
+  (show Tendsto (fun s : Finset (Fin 2 → ℤ) => ∑ q ∈ s, g q) atTop (𝓝 a) from hg).comp
+    aux_tailBox_tendsto
+
+/-- Auxiliary for `tail:partition`: the finite partial partition sums `∑_{q ∈ box N} P_{j,q,r} f`
+converge to `f` in `L²`. -/
+theorem aux_tail_partial_tendsto (α β : ℝ) (hβ : β ≠ 0) (φ : ℝ² → ℝ)
+    (hφs : ContDiff ℝ (⊤ : ℕ∞) φ) (hφc : HasCompactSupport φ) (hφ0 : ∀ z, 0 ≤ φ z)
+    (hφ1 : ∀ z, ∑' q : Fin 2 → ℤ, φ (z - latticePt q) = 1) (h r : ℝ) (hhr : 0 < h * r)
+    (j : Fin 3) {f : ℝ² → ℂ} (hf : MemLp f 2 volume) :
+    Tendsto (fun N => eLpNorm ((fun x => ∑ q ∈ aux_tailBox N, tailP α β φ h j q r f x) - f) 2
+      volume) atTop (𝓝 0) := by
+  have hP := fun q => aux_tail_P_l2 α β hβ φ hφs hφc h r hhr j q hf
+  choose hP2 hPF hPK using hP
+  set S : ℕ → ℝ² → ℂ := fun N x => ∑ q ∈ aux_tailBox N, tailP α β φ h j q r f x
+  have hS2 : ∀ N, MemLp (S N) 2 volume := fun N => memLp_finset_sum _ fun q _ => hP2 q
+  set η : ℝ² → ℝ² := fun ξ => (h * r)⁻¹ • tailT α β j ξ
+  set c : ℕ → ℝ² → ℂ := fun N ξ =>
+    ((∑ q ∈ aux_tailBox N, φ (η ξ - latticePt q) : ℝ) : ℂ) - 1
+  set F := aux_l2Fourier f
+  have he : ∀ N, eLpNorm (S N - f) 2 volume = eLpNorm (fun ξ => c N ξ * F ξ) 2 volume := by
+    intro N
+    rw [← aux_tail_l2F_sub hf (hS2 N)]
+    refine eLpNorm_congr_ae ?_
+    filter_upwards [aux_tail_l2F_sum (aux_tailBox N) (fun q => tailP α β φ h j q r f) hP2,
+      ae_all_iff.2 hPF] with ξ h1 h2
+    simp only [Pi.sub_apply, S] at h1 ⊢
+    rw [h1]
+    simp only [h2, c, aux_tailM, η, F]
+    push_cast
+    rw [← Finset.sum_mul]; ring
+  simp_rw [show (fun N => eLpNorm ((fun x => ∑ q ∈ aux_tailBox N, tailP α β φ h j q r f x) - f)
+    2 volume) = fun N => eLpNorm (S N - f) 2 volume from rfl, he, aux_lw_eLpNorm_two]
+  have hsum : ∀ z, HasSum (fun q : Fin 2 → ℤ => φ (z - latticePt q)) 1 := by
+    intro z
+    have hs : Summable fun q : Fin 2 → ℤ => φ (z - latticePt q) := by
+      by_contra hns
+      have := hφ1 z
+      rw [tsum_eq_zero_of_not_summable hns] at this
+      exact zero_ne_one this
+    simpa [hφ1 z] using hs.hasSum
+  have hcb : ∀ N ξ, ‖c N ξ‖ ≤ 1 := by
+    intro N ξ
+    have h1 : 0 ≤ ∑ q ∈ aux_tailBox N, φ (η ξ - latticePt q) :=
+      Finset.sum_nonneg fun q _ => hφ0 _
+    have h2 : ∑ q ∈ aux_tailBox N, φ (η ξ - latticePt q) ≤ 1 :=
+      sum_le_hasSum _ (fun q _ => hφ0 _) (hsum _)
+    simp only [c]
+    rw [show ((∑ q ∈ aux_tailBox N, φ (η ξ - latticePt q) : ℝ) : ℂ) - 1 =
+      ((∑ q ∈ aux_tailBox N, φ (η ξ - latticePt q) - 1 : ℝ) : ℂ) by push_cast; ring,
+      Complex.norm_real, Real.norm_eq_abs, abs_le]
+    constructor <;> linarith
+  have hFm := (aux_tail_l2F_memLp f)
+  have hfin : ∫⁻ ξ, ‖F ξ‖ₑ ^ (2 : ℝ) ≠ ⊤ := by
+    have := hFm.eLpNorm_lt_top
+    rw [aux_lw_eLpNorm_two] at this
+    exact (ENNReal.rpow_lt_top_iff_of_pos (by norm_num)).1 this |>.ne
+  have hcm : ∀ N, Continuous (c N) := by
+    intro N
+    have := hφs.continuous
+    exact (Complex.continuous_ofReal.comp (continuous_finset_sum _ fun q _ =>
+      this.comp ((continuous_const_smul _).comp (tailT α β j).continuous |>.sub
+        continuous_const))).sub continuous_const
+  have hI : Tendsto (fun N => ∫⁻ ξ, ‖c N ξ * F ξ‖ₑ ^ (2 : ℝ)) atTop (𝓝 0) := by
+    have := tendsto_lintegral_of_dominated_convergence' (μ := volume)
+      (F := fun N ξ => ‖c N ξ * F ξ‖ₑ ^ (2 : ℝ)) (f := fun _ => 0)
+      (fun ξ => ‖F ξ‖ₑ ^ (2 : ℝ))
+      (fun N => (((hcm N).aestronglyMeasurable.mul hFm.1).enorm.pow_const _))
+      (fun N => Eventually.of_forall fun ξ => by
+        dsimp only
+        gcongr
+        rw [enorm_mul]
+        calc ‖c N ξ‖ₑ * ‖F ξ‖ₑ ≤ 1 * ‖F ξ‖ₑ := by
+              gcongr
+              rw [← ofReal_norm, ← ENNReal.ofReal_one]
+              exact ENNReal.ofReal_le_ofReal (hcb N ξ)
+          _ = ‖F ξ‖ₑ := one_mul _)
+      hfin (Eventually.of_forall fun ξ => ?_)
+    · simpa using this
+    · have h1 : Tendsto (fun N => c N ξ) atTop (𝓝 0) := by
+        have := (Complex.continuous_ofReal.tendsto _).comp (aux_tail_hasSum_box (hsum (η ξ)))
+        have := this.sub_const (1 : ℂ)
+        simpa [c, Function.comp] using this
+      have h2 : Tendsto (fun N => c N ξ * F ξ) atTop (𝓝 0) := by
+        simpa using h1.mul_const (F ξ)
+      have h3 : Tendsto (fun N => ‖c N ξ * F ξ‖ₑ) atTop (𝓝 0) := by
+        have := (continuous_enorm.tendsto (0 : ℂ)).comp h2
+        rw [enorm_zero] at this; exact this
+      have h4 := ((ENNReal.continuous_rpow_const (y := (2 : ℝ))).tendsto 0).comp h3
+      rw [ENNReal.zero_rpow_of_pos (by norm_num)] at h4
+      exact h4
+  have := (ENNReal.continuous_rpow_const (y := (1 / 2 : ℝ))).tendsto 0 |>.comp hI
+  rw [ENNReal.zero_rpow_of_pos (by norm_num)] at this
+  exact this
+
+/-- Auxiliary for `tail:partition`: the form of `σ*κ` is continuous on `L²` triples. -/
+theorem aux_tail_form_tendsto (α β : ℝ) (hβ : β ≠ 0) (κ : FCMeasure) (f : Fin 3 → ℝ² → ℂ)
+    (hf : ∀ j, MemLp (f j) 2 volume) (g : ℕ → Fin 3 → ℝ² → ℂ) (hg : ∀ n j, MemLp (g n j) 2 volume)
+    (hconv : ∀ j, Tendsto (fun n => eLpNorm (g n j - f j) 2 volume) atTop (𝓝 0)) :
+    Tendsto (fun n => form α β (FCMeasure.sigma.conv κ) (g n 0) (g n 1) (g n 2)) atTop
+      (𝓝 (form α β (FCMeasure.sigma.conv κ) (f 0) (f 1) (f 2))) := by
+  obtain ⟨C, -, hC⟩ := aux_tail_form_lip α β hβ
+  set d : ℕ → ℝ≥0∞ := fun n => eLpNorm (g n 0 - f 0) 2 volume + eLpNorm (g n 1 - f 1) 2 volume +
+    eLpNorm (g n 2 - f 2) 2 volume
+  have hd : Tendsto d atTop (𝓝 0) := by
+    simpa using ((hconv 0).add (hconv 1)).add (hconv 2)
+  set S : ℝ≥0∞ := eLpNorm (f 0) 2 volume + eLpNorm (f 1) 2 volume + eLpNorm (f 2) 2 volume + 1
+  have hSt : S ≠ ⊤ := by
+    simp only [S, ne_eq, ENNReal.add_eq_top, ENNReal.one_ne_top, or_false, not_or]
+    exact ⟨⟨(hf 0).2.ne, (hf 1).2.ne⟩, (hf 2).2.ne⟩
+  set K : ℝ≥0∞ := 3 * (ENNReal.ofReal C * κ.tv) * S ^ 2
+  have hKt : K ≠ ⊤ := ENNReal.mul_ne_top (ENNReal.mul_ne_top ENNReal.ofNat_ne_top
+    (ENNReal.mul_ne_top ENNReal.ofReal_ne_top κ.integrable_w.2.ne)) (ENNReal.pow_ne_top hSt)
+  have hev : ∀ᶠ n in atTop, d n ≤ 1 := hd.eventually_le_const zero_lt_one
+  have one_le_two : (1 : ℝ≥0∞) ≤ 2 := by norm_num
+  have p0 : ∀ n, eLpNorm (g n 0 - f 0) 2 volume ≤ d n := fun n => le_add_right (le_add_right le_rfl)
+  have p1 : ∀ n, eLpNorm (g n 1 - f 1) 2 volume ≤ d n := fun n => le_add_right le_add_self
+  have p2 : ∀ n, eLpNorm (g n 2 - f 2) 2 volume ≤ d n := fun n => le_add_self
+  have a0 : eLpNorm (f 0) 2 volume ≤ S := le_add_right (le_add_right (le_add_right le_rfl))
+  have a1 : eLpNorm (f 1) 2 volume ≤ S := le_add_right (le_add_right le_add_self)
+  have a2 : eLpNorm (f 2) 2 volume ≤ S := le_add_right le_add_self
+  have bnd : ∀ n, d n ≤ 1 → ∀ j, eLpNorm (g n j - f j) 2 volume ≤ d n →
+      eLpNorm (g n j) 2 volume ≤ S := by
+    intro n hn j hdj
+    calc eLpNorm (g n j) 2 volume ≤ eLpNorm (g n j - f j) 2 volume + eLpNorm (f j) 2 volume :=
+          aux_tail_eLpNorm_le_sub_add (hg n j).1 (hf j).1 one_le_two
+      _ ≤ 1 + (eLpNorm (f 0) 2 volume + eLpNorm (f 1) 2 volume + eLpNorm (f 2) 2 volume) := by
+          gcongr
+          · exact hdj.trans hn
+          · fin_cases j
+            · exact le_add_right (le_add_right le_rfl)
+            · exact le_add_right le_add_self
+            · exact le_add_self
+      _ = S := add_comm _ _
+  rw [tendsto_iff_edist_tendsto_0]
+  refine tendsto_of_tendsto_of_tendsto_of_le_of_le' tendsto_const_nhds
+    (by simpa using ENNReal.Tendsto.const_mul hd (Or.inr hKt)) (Eventually.of_forall fun n => zero_le)
+    ?_
+  filter_upwards [hev] with n hn
+  rw [edist_eq_enorm_sub]
+  refine (hC κ f (g n) hf (hg n)).trans ?_
+  have b1 := bnd n hn 1 (p1 n)
+  have b2 := bnd n hn 2 (p2 n)
+  calc ENNReal.ofReal C * κ.tv *
+        (eLpNorm (g n 0 - f 0) 2 volume * eLpNorm (g n 1) 2 volume * eLpNorm (g n 2) 2 volume +
+          eLpNorm (f 0) 2 volume * eLpNorm (g n 1 - f 1) 2 volume * eLpNorm (g n 2) 2 volume +
+          eLpNorm (f 0) 2 volume * eLpNorm (f 1) 2 volume * eLpNorm (g n 2 - f 2) 2 volume)
+      ≤ ENNReal.ofReal C * κ.tv * (d n * S * S + S * d n * S + S * S * d n) := by
+        gcongr
+        · exact p0 n
+        · exact p1 n
+        · exact p2 n
+    _ = K * d n := by simp only [K]; ring
+
+/-- Auxiliary for `tail:partition`: bounded fibres give a bounded `ℝ≥0∞`-sum. -/
+theorem aux_tail_tsum_fiber_le {β γ : Type*} (G : γ → ℝ≥0∞) (pr : β → γ) (K : ℕ)
+    (hK : ∀ y, (pr ⁻¹' {y}).encard ≤ K) : ∑' b, G (pr b) ≤ K * ∑' y, G y := by
+  rw [← ENNReal.tsum_fiberwise (fun b => G (pr b)) pr, ← ENNReal.tsum_mul_left]
+  refine ENNReal.tsum_le_tsum fun y => ?_
+  have : ∀ b : pr ⁻¹' {y}, G (pr b) = G y := fun b => by rw [show pr b = y from b.2]
+  simp_rw [this]
+  rw [ENNReal.tsum_set_const]
+  gcongr
+  exact_mod_cast hK y
+
+/-- Auxiliary for `tail:partition`: `ab ≤ a² + b²` in `ℝ≥0∞`. -/
+theorem aux_tail_mul_le_sq_add (a b : ℝ≥0∞) : a * b ≤ a ^ 2 + b ^ 2 := by
+  rcases le_total a b with hab | hab
+  · calc a * b ≤ b * b := by gcongr
+      _ = b ^ 2 := (sq b).symm
+      _ ≤ a ^ 2 + b ^ 2 := le_add_self
+  · calc a * b ≤ a * a := by gcongr
+      _ = a ^ 2 := (sq a).symm
+      _ ≤ a ^ 2 + b ^ 2 := le_add_right le_rfl
+
+/-- Auxiliary for `tail:partition`: the `L²` bound for `P_{j,q,r}` from Young's inequality. -/
+theorem aux_tail_bound_two (α β : ℝ) (hβ : β ≠ 0) (φ : ℝ² → ℝ) (hφs : ContDiff ℝ (⊤ : ℕ∞) φ)
+    (hφc : HasCompactSupport φ) (h r : ℝ) (hhr : 0 < h * r) (j : Fin 3) (q : Fin 2 → ℤ)
+    (g : ℝ² → ℂ) (hg : AEStronglyMeasurable g volume) :
+    eLpNorm (tailP α β φ h j q r g) 2 volume ≤
+      ENNReal.ofReal (∫ y, ‖𝓕⁻ (fun ζ => (φ (tailT α β j ζ) : ℂ)) y‖) * eLpNorm g 2 volume := by
+  obtain ⟨hm, hmc⟩ := aux_tailM_smooth α β hβ φ hφs hφc h j q r hhr.ne'
+  have hk := aux_tail_fourierInv_integrable _ hm hmc
+  have e : tailP α β φ h j q r g =
+      (FCMeasure.ofDensity (𝓕⁻ (aux_tailM α β φ h j q r))).convFun g := by
+    funext x
+    simp only [aux_tailP_eq, FCMeasure.convFun, FCMeasure.integral, FCMeasure.ofDensity, hk,
+      if_true, id]
+    congr 1; funext y; ring
+  rw [e]
+  refine (ext_young_two _ g hg).trans (le_of_eq ?_)
+  congr 1
+  rw [← aux_tailM_kernel_l1 α β hβ φ hφs hφc h r hhr j q]
+  simp [FCMeasure.tv, FCMeasure.ofDensity, hk]
+  rfl
+
+/-- Auxiliary for `tail:partition`: trilinear expansion of the form of `σ*κ` over finite sums of
+`L²` inputs. -/
+theorem aux_tail_form_finset_sum (α β : ℝ) (hβ : β ≠ 0) (κ : FCMeasure) {ι : Type*}
+    [DecidableEq ι] (B : Finset ι) (g : Fin 3 → ι → ℝ² → ℂ)
+    (hg : ∀ j i, MemLp (g j i) 2 volume) :
+    form α β (FCMeasure.sigma.conv κ) (fun x => ∑ i ∈ B, g 0 i x) (fun x => ∑ i ∈ B, g 1 i x)
+        (fun x => ∑ i ∈ B, g 2 i x) =
+      ∑ q ∈ Fintype.piFinset (fun _ : Fin 3 => B),
+        form α β (FCMeasure.sigma.conv κ) (g 0 (q 0)) (g 1 (q 1)) (g 2 (q 2)) := by
+  have hs : ∀ j, MemLp (fun x => ∑ i ∈ B, g j i x) 2 volume :=
+    fun j => memLp_finset_sum _ fun i _ => hg j i
+  rw [(aux_tail_form_eq_prod α β hβ κ _ _ _ (hs 0) (hs 1) (hs 2)).2]
+  have hI : ∀ q ∈ Fintype.piFinset (fun _ : Fin 3 => B), Integrable (fun p :
+      (FCMeasure.sigma.conv κ).Z × ℝ² => g 0 (q 0) p.2 *
+        g 1 (q 1) (p.2 + (FCMeasure.sigma.conv κ).φ p.1) *
+        g 2 (q 2) (p.2 + M α β ((FCMeasure.sigma.conv κ).φ p.1)) * (FCMeasure.sigma.conv κ).w p.1)
+      ((FCMeasure.sigma.conv κ).m.prod volume) :=
+    fun q _ => (aux_tail_form_eq_prod α β hβ κ _ _ _ (hg 0 _) (hg 1 _) (hg 2 _)).1
+  rw [Finset.sum_congr rfl fun q _ =>
+    (aux_tail_form_eq_prod α β hβ κ _ _ _ (hg 0 (q 0)) (hg 1 (q 1)) (hg 2 (q 2))).2,
+    ← integral_finset_sum _ hI]
+  congr 1; funext p
+  have key := Finset.prod_univ_sum (fun _ : Fin 3 => B)
+    (fun j i => g j i (![p.2, p.2 + (FCMeasure.sigma.conv κ).φ p.1,
+      p.2 + M α β ((FCMeasure.sigma.conv κ).φ p.1)] j))
+  simp only [Fin.prod_univ_three, Matrix.cons_val_zero, Matrix.cons_val_one,
+    Matrix.cons_val_two, Matrix.head_cons, Matrix.tail_cons] at key
+  rw [key, Finset.sum_mul]
+
+/-- Auxiliary for `tail:partition` (part 3): the absolutely convergent expansion over
+contributing triples. -/
+theorem aux_tail_expansion (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ)
+    (φ : ℝ² → ℝ) (Qstar : Set ℝ²) (hφ : aux_IsPartitionData φ Qstar) (h : ℝ) (hh : 0 < h)
+    (K : ℕ) (hK : ∀ r : ℝ, 0 < r → ∀ (j : Fin 3) (q₀ : Fin 2 → ℤ),
+      {q : Fin 3 → Fin 2 → ℤ | tailContributing α β χ Qstar h r q ∧ q j = q₀}.encard ≤ K) :
+    ∀ r : ℝ, 0 < r → ∀ f : Fin 3 → ℝ² → ℂ, (∀ j, MemLp (f j) 2 volume) →
+    Summable (fun q : {q : Fin 3 → Fin 2 → ℤ // tailContributing α β χ Qstar h r q} =>
+      ‖tailForm α β χ r (tailP α β φ h 0 (q.1 0) r (f 0)) (tailP α β φ h 1 (q.1 1) r (f 1))
+        (tailP α β φ h 2 (q.1 2) r (f 2))‖) ∧
+    HasSum (fun q : {q : Fin 3 → Fin 2 → ℤ // tailContributing α β χ Qstar h r q} =>
+      tailForm α β χ r (tailP α β φ h 0 (q.1 0) r (f 0)) (tailP α β φ h 1 (q.1 1) r (f 1))
+        (tailP α β φ h 2 (q.1 2) r (f 2))) (tailForm α β χ r (f 0) (f 1) (f 2)) := by
+  classical
+  intro r hr f hf
+  obtain ⟨hφ0, hφs, hφc, hφ1, -, hφQ⟩ := hφ
+  obtain ⟨Φ, hΦ0, hΦ⟩ := aux_tail_phi_bound φ hφs hφc
+  have hhr : 0 < h * r := mul_pos hh hr
+  set T := {q : Fin 3 → Fin 2 → ℤ // tailContributing α β χ Qstar h r q}
+  set κ := FCMeasure.ofDensity (tailK χ r)
+  set a : T → ℂ := fun q => tailForm α β χ r (tailP α β φ h 0 (q.1 0) r (f 0))
+    (tailP α β φ h 1 (q.1 1) r (f 1)) (tailP α β φ h 2 (q.1 2) r (f 2))
+  set u : Fin 3 → (Fin 2 → ℤ) → ℝ≥0∞ := fun j q => eLpNorm (tailP α β φ h j q r (f j)) 2 volume
+  have hP2 : ∀ j q, MemLp (tailP α β φ h j q r (f j)) 2 volume :=
+    fun j q => (aux_tail_P_l2 α β hβ φ hφs hφc h r hhr j q (hf j)).1
+  obtain ⟨C, -, hC⟩ := lem_triple_l2 α β hβ
+  have ha : ∀ q : T, ‖a q‖ₑ ≤ ENNReal.ofReal C * κ.tv * (u 0 (q.1 0) * u 1 (q.1 1) * u 2 (q.1 2)) := by
+    intro q
+    have := (hC κ (fun j => tailP α β φ h j (q.1 j) r (f j)) fun j => hP2 j _).2
+    simp only [Fin.prod_univ_three] at this
+    exact this
+  set C2 := ∫ y, ‖𝓕⁻ (fun ζ => (φ (tailT α β 2 ζ) : ℂ)) y‖
+  have hu2 : ∀ q, u 2 q ≤ ENNReal.ofReal C2 * eLpNorm (f 2) 2 volume :=
+    fun q => aux_tail_bound_two α β hβ φ hφs hφc h r hhr 2 q (f 2) (hf 2).1
+  have hsq : ∀ j, ∑' q, u j q ^ 2 ≤ ENNReal.ofReal Φ * eLpNorm (f j) 2 volume ^ 2 :=
+    fun j => aux_tail_bound_sum α β hβ φ hφs hφc hφ0 hφ1 Φ hΦ h r hhr j (f j) (hf j)
+  have hfib : ∀ l : Fin 3, ∀ y, ((fun q : T => q.1 l) ⁻¹' {y}).encard ≤ K := by
+    intro l y
+    rw [← Subtype.val_injective.encard_image]
+    refine le_trans (Set.encard_le_encard ?_) (hK r hr l y)
+    rintro _ ⟨q, hq, rfl⟩
+    exact ⟨q.2, hq⟩
+  -- absolute summability
+  have hsumle : ∑' q : T, ‖a q‖ₑ ≤ ENNReal.ofReal C * κ.tv *
+      (ENNReal.ofReal C2 * eLpNorm (f 2) 2 volume *
+        (K * (ENNReal.ofReal Φ * eLpNorm (f 0) 2 volume ^ 2) +
+          K * (ENNReal.ofReal Φ * eLpNorm (f 1) 2 volume ^ 2))) := by
+    calc ∑' q : T, ‖a q‖ₑ ≤ ∑' q : T, ENNReal.ofReal C * κ.tv *
+          (ENNReal.ofReal C2 * eLpNorm (f 2) 2 volume * (u 0 (q.1 0) ^ 2 + u 1 (q.1 1) ^ 2)) := by
+          refine ENNReal.tsum_le_tsum fun q => (ha q).trans (mul_le_mul' le_rfl ?_)
+          calc u 0 (q.1 0) * u 1 (q.1 1) * u 2 (q.1 2) = u 2 (q.1 2) * (u 0 (q.1 0) * u 1 (q.1 1)) :=
+                by ring
+            _ ≤ _ := mul_le_mul' (hu2 _) (aux_tail_mul_le_sq_add _ _)
+      _ = ENNReal.ofReal C * κ.tv * (ENNReal.ofReal C2 * eLpNorm (f 2) 2 volume *
+          (∑' q : T, u 0 (q.1 0) ^ 2 + ∑' q : T, u 1 (q.1 1) ^ 2)) := by
+          rw [ENNReal.tsum_mul_left, ENNReal.tsum_mul_left, ENNReal.tsum_add]
+      _ ≤ _ := by
+          gcongr
+          · exact (aux_tail_tsum_fiber_le (fun y => u 0 y ^ 2) (fun q : T => q.1 0) K
+              (hfib 0)).trans (by gcongr; exact hsq 0)
+          · exact (aux_tail_tsum_fiber_le (fun y => u 1 y ^ 2) (fun q : T => q.1 1) K
+              (hfib 1)).trans (by gcongr; exact hsq 1)
+  have hfin : ∑' q : T, ‖a q‖ₑ ≠ ⊤ := by
+    refine ne_top_of_le_ne_top ?_ hsumle
+    have h0 := (hf 0).2.ne; have h1 := (hf 1).2.ne; have h2 := (hf 2).2.ne
+    have htv : κ.tv ≠ ⊤ := κ.integrable_w.2.ne
+    simp only [ne_eq, ENNReal.mul_eq_top, ENNReal.add_eq_top, ENNReal.ofReal_ne_top,
+      ENNReal.natCast_ne_top, htv, h0, h1, h2, ENNReal.pow_eq_top_iff, false_and, and_false,
+      or_false, or_self, not_false_eq_true]
+  have hsn : Summable fun q : T => ‖a q‖ := by
+    have : Summable fun q : T => ‖a q‖₊ := by
+      rw [← ENNReal.tsum_coe_ne_top_iff_summable]
+      simpa [enorm_eq_nnnorm] using hfin
+    exact NNReal.summable_coe.2 this |>.congr fun q => by simp
+  refine ⟨hsn, ?_⟩
+  -- identification of the sum
+  have hs := (Summable.of_norm hsn).hasSum
+  set G : ℕ → Finset T := fun N =>
+    (Fintype.piFinset fun _ : Fin 3 => aux_tailBox N).subtype (tailContributing α β χ Qstar h r)
+  have hbox : ∀ q : Fin 2 → ℤ, ∀ᶠ N in atTop, q ∈ aux_tailBox N := fun q =>
+    (aux_tailBox_tendsto.eventually (Filter.eventually_ge_atTop {q})).mono fun N hN =>
+      Finset.singleton_subset_iff.1 hN
+  have hG : Tendsto G atTop atTop := by
+    refine tendsto_atTop_finset_of_monotone (fun N M hNM x hx => ?_) (fun x => ?_)
+    · have hx' := Fintype.mem_piFinset.1 (Finset.mem_subtype.1 hx)
+      refine Finset.mem_subtype.2 (Fintype.mem_piFinset.2 fun j => ?_)
+      have := hx' j
+      simp only [aux_tailBox, Fintype.mem_piFinset, Finset.mem_Icc] at this ⊢
+      have hNM' : (N : ℤ) ≤ M := by exact_mod_cast hNM
+      intro i; have := this i; constructor <;> omega
+    · obtain ⟨N, hN⟩ := (Filter.eventually_all.2 fun j : Fin 3 => hbox (x.1 j)).exists
+      exact ⟨N, Finset.mem_subtype.2 (Fintype.mem_piFinset.2 hN)⟩
+  have hlim : Tendsto (fun N => ∑ x ∈ G N, a x) atTop (𝓝 (∑' q, a q)) :=
+    (show Tendsto (fun F : Finset T => ∑ x ∈ F, a x) atTop (𝓝 (∑' q, a q)) from hs).comp hG
+  have e : ∀ N, ∑ x ∈ G N, a x = tailForm α β χ r
+      (fun x => ∑ q ∈ aux_tailBox N, tailP α β φ h 0 q r (f 0) x)
+      (fun x => ∑ q ∈ aux_tailBox N, tailP α β φ h 1 q r (f 1) x)
+      (fun x => ∑ q ∈ aux_tailBox N, tailP α β φ h 2 q r (f 2) x) := by
+    intro N
+    have := aux_tail_form_finset_sum α β hβ κ (aux_tailBox N)
+      (fun j q => tailP α β φ h j q r (f j)) hP2
+    simp only [tailForm]
+    rw [this]
+    simp only [G, a, tailForm]
+    rw [Finset.sum_subtype_eq_sum_filter (f := fun q : Fin 3 → Fin 2 → ℤ =>
+      form α β (FCMeasure.sigma.conv (FCMeasure.ofDensity (tailK χ r)))
+        (tailP α β φ h 0 (q 0) r (f 0)) (tailP α β φ h 1 (q 1) r (f 1))
+        (tailP α β φ h 2 (q 2) r (f 2)))]
+    refine Finset.sum_filter_of_ne fun q _ hb => ?_
+    by_contra hc
+    exact hb (aux_tail_noncontrib α β hβ χ hχ φ hφs hφc Qstar hφQ h r hh hr q hc f hf)
+  have hlim2 : Tendsto (fun N => ∑ x ∈ G N, a x) atTop (𝓝 (tailForm α β χ r (f 0) (f 1) (f 2))) := by
+    simp_rw [e]
+    exact aux_tail_form_tendsto α β hβ κ f hf
+      (fun N j x => ∑ q ∈ aux_tailBox N, tailP α β φ h j q r (f j) x)
+      (fun N j => memLp_finset_sum _ fun q _ => hP2 j q)
+      (fun j => aux_tail_partial_tendsto α β hβ φ hφs hφc hφ0 hφ1 h r hhr j (hf j))
+  rw [tendsto_nhds_unique hlim2 hlim]
+  exact hs
+
 /-- **Lemma `tail:partition`** (Properties of the smooth partition).
 The parameter $h$ can be chosen depending only on $M$ and $\varphi$ so that the following
 statements hold uniformly in $r>0$.
@@ -255,7 +2222,32 @@ statements hold uniformly in $r>0$.
 theorem tail_partition (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ)
     (φ : ℝ² → ℝ) (Qstar : Set ℝ²) (hφ : aux_IsPartitionData φ Qstar) :
     ∃ h : ℝ, aux_TailPartitionScale α β χ φ Qstar h := by
-  sorry
+  have hφ' := hφ
+  obtain ⟨hφ0, hφs, hφc, hφ1, ⟨c, l, hl, hQ⟩, hφQ⟩ := hφ
+  subst hQ
+  obtain ⟨h, hh, d, D, hd, hD, hsep⟩ := aux_tail_separation_field α β hβ χ hχ c l hl
+  obtain ⟨K, hK⟩ := aux_tail_partners α β χ c l hl h hh D hD
+    (fun r hr q hq i j x hx y hy => (hsep r hr q hq i j x hx y hy).2)
+  obtain ⟨N, hN⟩ := aux_tail_overlap c l hl h hh
+  obtain ⟨Φ, hΦ0, hΦ⟩ := aux_tail_phi_bound φ hφs hφc
+  set Cj : Fin 3 → ℝ := fun j => ∫ y, ‖𝓕⁻ (fun ζ => (φ (tailT α β j ζ) : ℂ)) y‖
+  have hCj : ∀ j, 0 ≤ Cj j := fun j => integral_nonneg fun y => norm_nonneg _
+  set C : ℝ := Φ ^ 2 + Φ + ∑ j, Cj j
+  have hCs : ∀ j, Cj j ≤ ∑ j, Cj j := fun j =>
+    Finset.single_le_sum (fun i _ => hCj i) (Finset.mem_univ j)
+  have hsum0 : 0 ≤ ∑ j, Cj j := Finset.sum_nonneg fun i _ => hCj i
+  refine ⟨h, ⟨hh, ⟨N, hN⟩, ⟨d, D, hd, hD, hsep⟩, ⟨K, hK⟩,
+    ⟨C, fun r hr j q => ⟨fun f hf => ?_, fun g hg => ?_, fun g hg => ?_⟩⟩,
+    aux_tail_expansion α β hβ χ hχ φ _ hφ' h hh K hK⟩⟩
+  · refine (aux_tail_bound_mass α β hβ φ hφs hφc c l hφQ Φ hΦ h r (mul_pos hh hr) j q f hf).trans ?_
+    gcongr
+    simp only [C]; nlinarith [sq_nonneg Φ]
+  · refine (aux_tail_bound_top α β hβ φ hφs hφc h r (mul_pos hh hr) j q g hg).trans ?_
+    gcongr
+    simp only [C]; nlinarith [hCs j, sq_nonneg Φ]
+  · refine (aux_tail_bound_sum α β hβ φ hφs hφc hφ0 hφ1 Φ hΦ h r (mul_pos hh hr) j g hg).trans ?_
+    gcongr
+    simp only [C]; nlinarith [sq_nonneg Φ]
 
 /-! ### One frequency triple (`tail:one-triple`) -/
 
@@ -278,6 +2270,161 @@ def aux_med3 (x : Fin 3 → ℝ≥0∞) : ℝ≥0∞ := max (min (x 0) (x 1)) (m
 `\label{tail:one-triple}` and `\label{tail:increment}`). -/
 def aux_max3 (x : Fin 3 → ℝ≥0∞) : ℝ≥0∞ := max (max (x 0) (x 1)) (x 2)
 
+/-- Auxiliary for `tail:one-triple`: an index of the largest of three numbers; the other two are
+at most the middle one. -/
+theorem aux_tail_med_max (x : Fin 3 → ℝ≥0∞) :
+    ∃ i : Fin 3, x i = aux_max3 x ∧ ∀ j, j ≠ i → x j ≤ aux_med3 x := by
+  simp only [aux_max3, aux_med3]
+  rcases le_total (x 0) (x 1) with h01 | h01 <;> rcases le_total (x 1) (x 2) with h12 | h12 <;>
+    rcases le_total (x 0) (x 2) with h02 | h02
+  all_goals first
+    | (refine ⟨2, ?_, fun j hj => ?_⟩; · simp [h01, h12, h02, max_eq_left, max_eq_right, min_eq_left, min_eq_right]
+       fin_cases j <;> simp_all [max_le_iff, le_max_iff, le_min_iff, min_le_iff])
+    | (refine ⟨1, ?_, fun j hj => ?_⟩; · simp [h01, h12, h02, max_eq_left, max_eq_right, min_eq_left, min_eq_right]
+       fin_cases j <;> simp_all [max_le_iff, le_max_iff, le_min_iff, min_le_iff])
+    | (refine ⟨0, ?_, fun j hj => ?_⟩; · simp [h01, h12, h02, max_eq_left, max_eq_right, min_eq_left, min_eq_right]
+       fin_cases j <;> simp_all [max_le_iff, le_max_iff, le_min_iff, min_le_iff])
+
+/-- Auxiliary for `tail:one-triple`: modulating a convolution by `𝓕⁻m` is convolution of the
+modulated input with `𝓕⁻` of the translated multiplier. -/
+theorem aux_tail_mod_conv (m : ℝ² → ℂ) (v : ℝ²) (g : ℝ² → ℂ) (x : ℝ²) :
+    e (-⟪v, x⟫_ℝ) * ∫ y, 𝓕⁻ m y * g (x - y) =
+      ∫ y, 𝓕⁻ (fun ξ => m (ξ + v)) y * (e (-⟪v, x - y⟫_ℝ) * g (x - y)) := by
+  have hk : ∀ y, 𝓕⁻ (fun ξ => m (ξ + v)) y = e (-⟪v, y⟫_ℝ) * 𝓕⁻ m y := by
+    intro y
+    rw [aux_s2a_fourierInv_e, aux_s2a_fourierInv_e, ← integral_const_mul,
+      ← integral_add_right_eq_self (fun ζ => e (-⟪v, y⟫_ℝ) * (e ⟪ζ, y⟫_ℝ * m ζ)) v]
+    congr 1; funext ξ
+    rw [← mul_assoc, aux_e_add, inner_add_left]; ring_nf
+  rw [← integral_const_mul]
+  congr 1; funext y
+  rw [hk]
+  have : e (-⟪v, x⟫_ℝ) = e (-⟪v, y⟫_ℝ) * e (-⟪v, x - y⟫_ℝ) := by
+    rw [aux_e_add, inner_sub_right]; ring_nf
+  rw [this]; ring
+
+/-- Auxiliary for `tail:one-triple`: the modulated projections `e(-v·x) P_{j,q,r} f` have
+`L²` Fourier transforms vanishing a.e. outside `{ξ : m_{j,q,r}(ξ + v) ≠ 0}`. -/
+theorem aux_tail_mod_P (α β : ℝ) (hβ : β ≠ 0) (φ : ℝ² → ℝ) (hφs : ContDiff ℝ (⊤ : ℕ∞) φ)
+    (hφc : HasCompactSupport φ) (h r : ℝ) (hhr : 0 < h * r) (j : Fin 3) (q : Fin 2 → ℤ)
+    (v : ℝ²) {f : ℝ² → ℂ} (hf : MemLp f 2 volume) :
+    ∃ hP : MemLp (fun x => e (-⟪v, x⟫_ℝ) * tailP α β φ h j q r f x) 2 volume,
+      ∀ᵐ ξ ∂(volume : Measure ℝ²), aux_tailM α β φ h j q r (ξ + v) = 0 →
+        (𝓕 (hP.toLp _) : Lp ℂ 2 (volume : Measure ℝ²)) ξ = 0 := by
+  obtain ⟨hm, hmc⟩ := aux_tailM_smooth α β hβ φ hφs hφc h j q r hhr.ne'
+  set m := aux_tailM α β φ h j q r
+  have hm' : ContDiff ℝ (⊤ : ℕ∞) (fun ξ => m (ξ + v)) := hm.comp (contDiff_id.add contDiff_const)
+  have hmc' : HasCompactSupport (fun ξ => m (ξ + v)) := hmc.comp_homeomorph (Homeomorph.addRight v)
+  have hf' : MemLp (fun x => e (-⟪v, x⟫_ℝ) * f x) 2 volume := by
+    have e0 : (fun x => e (-⟪v, x⟫_ℝ) * f x) = aux_modOp (-v) f := by
+      funext x; simp [aux_modOp, aux_ea, inner_neg_left]
+    rw [e0]; exact (aux_memLp_modOp_iff (-v) f 2).2 hf
+  obtain ⟨hP2, hPF⟩ := aux_tail_conv_key _ hm' hmc' hf'
+  have e1 : (fun x => e (-⟪v, x⟫_ℝ) * tailP α β φ h j q r f x) =
+      fun x => ∫ y, 𝓕⁻ (fun ξ => m (ξ + v)) y * (fun x => e (-⟪v, x⟫_ℝ) * f x) (x - y) := by
+    funext x; rw [aux_tailP_eq]; exact aux_tail_mod_conv m v f x
+  rw [e1]
+  refine ⟨hP2, ?_⟩
+  have := hPF
+  rw [aux_tail_l2F_eq hP2] at this
+  filter_upwards [this] with ξ hξ h0
+  rw [hξ, h0, zero_mul]
+
+/-- Auxiliary for `tail:one-triple`: combining the two bounds by their geometric mean. -/
+theorem aux_tail_combine (L x0 x1 x2 K1 K2 med mx : ℝ≥0∞) (h1 : L ^ 2 ≤ K1 * (x0 * x1 * x2))
+    (h2 : L ^ 2 ≤ K2 * (x1 * x2)) (hx0 : x0 ≤ mx) (hx1 : x1 ≤ med) (hx2 : x2 ≤ med) :
+    L ^ 4 ≤ K1 * K2 * med ^ 4 * mx :=
+  calc L ^ 4 = L ^ 2 * L ^ 2 := by ring
+    _ ≤ K1 * (x0 * x1 * x2) * (K2 * (x1 * x2)) := mul_le_mul' h1 h2
+    _ = K1 * K2 * (x1 * x2) ^ 2 * x0 := by ring
+    _ ≤ K1 * K2 * (med * med) ^ 2 * mx := by gcongr
+    _ = K1 * K2 * med ^ 4 * mx := by ring
+
+/-- Auxiliary for `tail:one-triple`: the total variation of `k_r` is `‖ψ̌‖₁`. -/
+theorem aux_tail_tv_K (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ) (r : ℝ) (hr : 0 < r) :
+    (FCMeasure.ofDensity (tailK χ r)).tv = ENNReal.ofReal (∫ u, ‖𝓕⁻ (tailPsi χ) u‖) := by
+  obtain ⟨h1, h2⟩ := aux_tail_psi_smooth χ hχ
+  have hk : Integrable (tailK χ r) :=
+    ((aux_tail_fourierInv_integrable _ h1 h2).comp_smul hr.ne').const_mul _
+  rw [← (aux_tail_annular_definition χ hχ).2.2.2 r hr, ofReal_integral_norm_eq_lintegral_enorm hk]
+  simp [FCMeasure.tv, FCMeasure.ofDensity, hk]
+  rfl
+
+/-- Auxiliary for `tail:one-triple`: the annular estimate of `ann:global` applied to a
+contributing triple of projected inputs, after the modulation of `tail:separation`. -/
+theorem aux_tail_one_triple_annular (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (φ : ℝ² → ℝ)
+    (Qstar : Set ℝ²) (hφ : aux_IsPartitionData φ Qstar) (h : ℝ) (hh : 0 < h) (D : ℝ)
+    (hsep : ∀ r : ℝ, 0 < r → ∀ q : Fin 3 → Fin 2 → ℤ,
+      tailContributing α β χ Qstar h r q → ∀ i j : Fin 3,
+        ∀ x ∈ tailSquare Qstar h r (q i), ∀ y ∈ tailSquare Qstar h r (q j), ‖x - y‖ ≤ D * r)
+    (C₀ : ℝ) (hC₀ : (∑ j, ‖aux_tailVmap α β j‖) * D ≤ C₀) (a : ℝ → ℝ)
+    (ha : aux_IsAnnularModulus α β (tailPsi χ) C₀ a) (r : ℝ) (hr : 0 < r)
+    (f : Fin 3 → ℝ² → ℂ) (hf : ∀ j, MemLp (f j) 2 volume) (q : Fin 3 → Fin 2 → ℤ)
+    (hq : tailContributing α β χ Qstar h r q) (i : Fin 3)
+    (hi : MemLp (tailP α β φ h i (q i) r (f i)) ⊤ volume) :
+    ‖tailForm α β χ r (tailP α β φ h 0 (q 0) r (f 0)) (tailP α β φ h 1 (q 1) r (f 1))
+        (tailP α β φ h 2 (q 2) r (f 2))‖ₑ ≤
+      ENNReal.ofReal (a r) *
+        ∏ j : Fin 3, eLpNorm (tailP α β φ h j (q j) r (f j)) (aux_slotExp i j) volume := by
+  obtain ⟨hφ0, hφs, hφc, hφ1, -, hφQ⟩ := hφ
+  have hhr : 0 < h * r := mul_pos hh hr
+  obtain ⟨ξ, hξ, hT, hψ⟩ := hq
+  set w := tailT α β 0 (ξ 0)
+  set g : Fin 3 → ℝ² → ℂ := fun j => tailP α β φ h j (q j) r (f j)
+  set gt : Fin 3 → ℝ² → ℂ := fun j x => e (-⟪tailV α β w j, x⟫_ℝ) * g j x
+  have hmodform := tail_separation_modulation α β
+    (FCMeasure.sigma.conv (FCMeasure.ofDensity (tailK χ r))) w g
+  have hnorm : ∀ j p, eLpNorm (gt j) p volume = eLpNorm (g j) p volume := by
+    intro j p
+    have e0 : gt j = aux_modOp (-tailV α β w j) (g j) := by
+      funext x; simp [gt, aux_modOp, aux_ea, inner_neg_left]
+    rw [e0, aux_eLpNorm_modOp]
+  -- Fourier supports
+  have hsupp : ∀ j, ∃ hP : MemLp (gt j) 2 volume,
+      HasL2FourierSupportIn (Metric.closedBall 0 (C₀ * r)) (hP.toLp (gt j)) := by
+    intro j
+    obtain ⟨hP, hPs⟩ := aux_tail_mod_P α β hβ φ hφs hφc h r hhr j (q j) (tailV α β w j) (hf j)
+    refine ⟨hP, ?_⟩
+    filter_upwards [hPs] with ζ hζ hζK
+    refine hζ ?_
+    by_contra hne
+    apply hζK
+    have hmem := aux_tailM_supp α β φ Qstar hφQ h r hhr j (q j) _ hne
+    rw [map_add, tail_separation_translate α β hβ w j] at hmem
+    have hd := hsep r hr q ⟨ξ, hξ, hT, hψ⟩ j 0 _ hmem w (hT 0)
+    rw [add_sub_cancel_right] at hd
+    rw [Metric.mem_closedBall, dist_zero_right]
+    calc ‖ζ‖ = ‖aux_tailVmap α β j (tailT α β j ζ)‖ := by rw [aux_tail_VT α β hβ]
+      _ ≤ ‖aux_tailVmap α β j‖ * ‖tailT α β j ζ‖ := ContinuousLinearMap.le_opNorm _ _
+      _ ≤ (∑ j, ‖aux_tailVmap α β j‖) * (D * r) := by
+          gcongr
+          exact Finset.single_le_sum (f := fun j => ‖aux_tailVmap α β j‖)
+            (fun _ _ => norm_nonneg _) (Finset.mem_univ j)
+      _ = ((∑ j, ‖aux_tailVmap α β j‖) * D) * r := by ring
+      _ ≤ C₀ * r := by gcongr
+  have hitop : MemLp (gt i) ⊤ volume := by
+    have e0 : gt i = aux_modOp (-tailV α β w i) (g i) := by
+      funext x; simp [gt, aux_modOp, aux_ea, inner_neg_left]
+    rw [e0]; exact (aux_memLp_modOp_iff _ _ _).2 hi
+  obtain ⟨hP2, hPs⟩ := hsupp i
+  have hbd := (ext_reproduction_agree (isCompact_closedBall 0 (C₀ * r)) hP2 hitop).2 hPs
+  have := ha.2.2 r hr i gt hitop hbd (fun j _ => hsupp j)
+  have hform : tailForm α β χ r (g 0) (g 1) (g 2) =
+      form α β (FCMeasure.sigma.conv (FCMeasure.ofDensity (scaleR r (𝓕⁻ (tailPsi χ)))))
+        (gt 0) (gt 1) (gt 2) := hmodform.symm
+  simp only [g] at hform
+  rw [hform]
+  refine this.trans (le_of_eq ?_)
+  congr 1
+  exact Finset.prod_congr rfl fun j _ => hnorm j _
+
+/-- Auxiliary for `tail:one-triple`: the endpoint products for the three placements. -/
+theorem aux_tail_slot_prod (G : ℝ≥0∞ → Fin 3 → ℝ≥0∞) :
+    ∏ j : Fin 3, G (aux_slotExp 0 j) j = G ⊤ 0 * (G 2 1 * G 2 2) ∧
+    ∏ j : Fin 3, G (aux_slotExp 1 j) j = G ⊤ 1 * (G 2 0 * G 2 2) ∧
+    ∏ j : Fin 3, G (aux_slotExp 2 j) j = G ⊤ 2 * (G 2 0 * G 2 1) := by
+  refine ⟨?_, ?_, ?_⟩ <;> simp [Fin.prod_univ_three, aux_slotExp] <;> ring
+
 /-- **Lemma `tail:one-triple`** (One frequency triple).
 Suppose that $\|f_j\|_2,\|f_j\|_\infty\le B$.  For a contributing triple let $m\le n\le p$ be
 the three numbers $\mu(Q_{q_j,r})$, in increasing order.  For a sufficiently large fixed
@@ -294,7 +2441,121 @@ theorem tail_one_triple (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (hχ
             (tailP α β φ h 2 (q 2) r (f 2))‖ₑ ≤
           ENNReal.ofReal (CB * Real.sqrt (a r)) * aux_med3 (tailMasses α β f Qstar h r q) *
             aux_max3 (tailMasses α β f Qstar h r q) ^ (1 / 4 : ℝ) := by
-  sorry
+  have hφ' := hφ
+  obtain ⟨hφ0, hφs, hφc, hφ1, -, hφQ⟩ := hφ
+  obtain ⟨d, D, hd, hD, hsep⟩ := hh.separation
+  obtain ⟨Cb, hCb⟩ := hh.bounds
+  set Vn := ∑ j, ‖aux_tailVmap α β j‖
+  have hVn : 0 ≤ Vn := Finset.sum_nonneg fun _ _ => norm_nonneg _
+  refine ⟨(Vn + 1) * D, by positivity, fun C₀ hC₀ B => ?_⟩
+  obtain ⟨CT, hCT0, hCT⟩ := lem_triple_l2 α β hβ
+  set Tψ := ∫ u, ‖𝓕⁻ (tailPsi χ) u‖
+  have hTψ : 0 ≤ Tψ := integral_nonneg fun _ => norm_nonneg _
+  set Cb' := max Cb 0
+  set B' := max B 0
+  set K1 : ℝ := (CT * Tψ) ^ 2 * Cb' ^ 3
+  set K2 : ℝ := (Cb' * B') ^ 2 * Cb' ^ 2
+  have hK1 : 0 ≤ K1 := by positivity
+  have hK2 : 0 ≤ K2 := by positivity
+  refine ⟨(K1 * K2) ^ (1 / 4 : ℝ), fun a ha r hr f hfB q hq => ?_⟩
+  have hhr : 0 < h * r := mul_pos hh.pos hr
+  have har := (ha.2.1 r).1
+  have hf2 : ∀ j, MemLp (f j) 2 volume := fun j =>
+    ⟨(hfB j).1, lt_of_le_of_lt (hfB j).2.1 ENNReal.ofReal_lt_top⟩
+  set g : Fin 3 → ℝ² → ℂ := fun j => tailP α β φ h j (q j) r (f j)
+  set x := tailMasses α β f Qstar h r q
+  have hg2 : ∀ j, MemLp (g j) 2 volume :=
+    fun j => (aux_tail_P_l2 α β hβ φ hφs hφc h r hhr j (q j) (hf2 j)).1
+  have hgx : ∀ j, eLpNorm (g j) 2 volume ^ 2 ≤ ENNReal.ofReal Cb' * x j := by
+    intro j
+    refine ((hCb r hr j (q j)).1 f hf2).trans ?_
+    gcongr
+    · exact le_max_left _ _
+    · exact le_rfl
+  have hginf : ∀ j, eLpNorm (g j) ⊤ volume ≤ ENNReal.ofReal (Cb' * B') := by
+    intro j
+    refine ((hCb r hr j (q j)).2.1 (f j) (hfB j).1).trans ?_
+    rw [ENNReal.ofReal_mul (le_max_right _ _)]
+    gcongr
+    · exact le_max_left _ _
+    · exact (hfB j).2.2.trans (ENNReal.ofReal_le_ofReal (le_max_left _ _))
+  have hgtop : ∀ j, MemLp (g j) ⊤ volume := fun j =>
+    ⟨(hg2 j).1, lt_of_le_of_lt (hginf j) ENNReal.ofReal_lt_top⟩
+  set L := ‖tailForm α β χ r (g 0) (g 1) (g 2)‖ₑ
+  -- first bound
+  have A1 : L ^ 2 ≤ ENNReal.ofReal K1 * (x 0 * x 1 * x 2) := by
+    have h1 := (hCT (FCMeasure.ofDensity (tailK χ r)) g hg2).2
+    rw [aux_tail_tv_K χ hχ r hr, Fin.prod_univ_three] at h1
+    calc L ^ 2 ≤ (ENNReal.ofReal CT * ENNReal.ofReal Tψ *
+          (eLpNorm (g 0) 2 volume * eLpNorm (g 1) 2 volume * eLpNorm (g 2) 2 volume)) ^ 2 := by
+          gcongr; exact h1
+      _ = ENNReal.ofReal ((CT * Tψ) ^ 2) * (eLpNorm (g 0) 2 volume ^ 2 *
+          eLpNorm (g 1) 2 volume ^ 2 * eLpNorm (g 2) 2 volume ^ 2) := by
+          rw [ENNReal.ofReal_pow (by positivity), ENNReal.ofReal_mul hCT0]; ring
+      _ ≤ ENNReal.ofReal ((CT * Tψ) ^ 2) * ((ENNReal.ofReal Cb' * x 0) *
+          (ENNReal.ofReal Cb' * x 1) * (ENNReal.ofReal Cb' * x 2)) := by
+          gcongr <;> exact hgx _
+      _ = ENNReal.ofReal K1 * (x 0 * x 1 * x 2) := by
+          simp only [K1]
+          rw [ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_pow (le_max_right _ _)]; ring
+  -- second bound, for each placement
+  have A2 : ∀ i, L ≤ ENNReal.ofReal (a r) * ∏ j : Fin 3, eLpNorm (g j) (aux_slotExp i j) volume :=
+    fun i => aux_tail_one_triple_annular α β hβ χ φ Qstar hφ' h hh.pos D
+      (fun r hr q hq i j x hx y hy => (hsep r hr q hq i j x hx y hy).2) C₀
+      (le_trans (by nlinarith) hC₀) a ha r hr f hf2 q hq i (hgtop i)
+  have hsp := aux_tail_slot_prod (fun p l => eLpNorm (g l) p volume)
+  have A2' : ∀ i j k : Fin 3, ∏ l : Fin 3, eLpNorm (g l) (aux_slotExp i l) volume =
+        eLpNorm (g i) ⊤ volume * (eLpNorm (g j) 2 volume * eLpNorm (g k) 2 volume) →
+      L ^ 2 ≤ ENNReal.ofReal (a r ^ 2 * K2) * (x j * x k) := by
+    intro i j k hprod
+    have h2 := A2 i
+    rw [hprod] at h2
+    calc L ^ 2 ≤ (ENNReal.ofReal (a r) *
+          (eLpNorm (g i) ⊤ volume * (eLpNorm (g j) 2 volume * eLpNorm (g k) 2 volume))) ^ 2 := by
+          gcongr
+      _ = ENNReal.ofReal (a r) ^ 2 * eLpNorm (g i) ⊤ volume ^ 2 *
+          (eLpNorm (g j) 2 volume ^ 2 * eLpNorm (g k) 2 volume ^ 2) := by ring
+      _ ≤ ENNReal.ofReal (a r) ^ 2 * ENNReal.ofReal (Cb' * B') ^ 2 *
+          ((ENNReal.ofReal Cb' * x j) * (ENNReal.ofReal Cb' * x k)) := by
+          gcongr
+          · exact hginf i
+          · exact hgx j
+          · exact hgx k
+      _ = ENNReal.ofReal (a r ^ 2 * K2) * (x j * x k) := by
+          have hCB : 0 ≤ Cb' * B' := by positivity
+          have e1 : ENNReal.ofReal (a r ^ 2 * K2) = ENNReal.ofReal (a r) ^ 2 *
+              ENNReal.ofReal (Cb' * B') ^ 2 * ENNReal.ofReal Cb' ^ 2 := by
+            rw [ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_pow har]
+            simp only [K2]
+            rw [ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_pow hCB,
+              ENNReal.ofReal_pow (le_max_right _ _)]
+            ring
+          rw [e1]; ring
+  -- combine
+  obtain ⟨i, hi, hoth⟩ := aux_tail_med_max x
+  have L4 : L ^ 4 ≤ ENNReal.ofReal K1 * ENNReal.ofReal (a r ^ 2 * K2) * aux_med3 x ^ 4 *
+      aux_max3 x := by
+    fin_cases i
+    · exact aux_tail_combine L (x 0) (x 1) (x 2) _ _ _ _ A1 (A2' 0 1 2 hsp.1) hi.le (hoth 1 (by decide)) (hoth 2 (by decide))
+    · exact aux_tail_combine L (x 1) (x 0) (x 2) _ _ _ _ (by rwa [mul_comm (x 1) (x 0)])
+        (A2' 1 0 2 hsp.2.1) hi.le (hoth 0 (by decide))
+        (hoth 2 (by decide))
+    · exact aux_tail_combine L (x 2) (x 0) (x 1) _ _ _ _
+        (by rwa [show x 2 * x 0 * x 1 = x 0 * x 1 * x 2 by ring])
+        (A2' 2 0 1 hsp.2.2) hi.le (hoth 0 (by decide))
+        (hoth 1 (by decide))
+  rw [← ENNReal.pow_le_pow_left_iff (n := 4) (by norm_num)]
+  refine L4.trans (le_of_eq ?_)
+  have hsq : Real.sqrt (a r) ^ 4 = a r ^ 2 := by
+    rw [show (4 : ℕ) = 2 * 2 by norm_num, pow_mul, Real.sq_sqrt har]
+  have hr4 : ((K1 * K2) ^ (1 / 4 : ℝ)) ^ 4 = K1 * K2 := by
+    rw [← Real.rpow_natCast, ← Real.rpow_mul (by positivity)]; norm_num
+  have hm4 : (aux_max3 x ^ (1 / 4 : ℝ)) ^ 4 = aux_max3 x := by
+    rw [← ENNReal.rpow_natCast, ← ENNReal.rpow_mul]; norm_num
+  rw [mul_pow, mul_pow, hm4, ← ENNReal.ofReal_pow (by positivity), mul_pow, hsq, hr4,
+    ← ENNReal.ofReal_mul hK1]
+  congr 2
+  ring
 
 /-! ### An increasing mass functional (`tail:mass-definition`) -/
 
@@ -323,6 +2584,183 @@ theorem aux_tailH_le (μ : Measure ℝ²) (t : ℝ) : tailH μ t ≤ μ univ ^ (
 
 /-! ### Geometric mass increment (`tail:increment`) -/
 
+/-- Auxiliary for `tail:increment`: the middle value is at most the sum of any two of the three
+numbers. -/
+theorem aux_tail_med3_le_add (x : Fin 3 → ℝ≥0∞) (i j : Fin 3) (hij : i ≠ j) :
+    aux_med3 x ≤ x i + x j := by
+  simp only [aux_med3]
+  have h01 : max (min (x 0) (x 1)) (min (max (x 0) (x 1)) (x 2)) ≤ x 0 + x 1 :=
+    max_le ((min_le_left _ _).trans le_self_add)
+      ((min_le_left _ _).trans (max_le le_self_add le_add_self))
+  have h02 : max (min (x 0) (x 1)) (min (max (x 0) (x 1)) (x 2)) ≤ x 0 + x 2 :=
+    max_le ((min_le_left _ _).trans le_self_add) ((min_le_right _ _).trans le_add_self)
+  have h12 : max (min (x 0) (x 1)) (min (max (x 0) (x 1)) (x 2)) ≤ x 1 + x 2 :=
+    max_le ((min_le_right _ _).trans le_self_add) ((min_le_right _ _).trans le_add_self)
+  fin_cases i <;> fin_cases j <;> simp only [ne_eq, not_true_eq_false] at hij <;>
+    simp only [Fin.zero_eta, Fin.mk_one, Fin.reduceFinMk] <;>
+    first
+    | exact h01 | exact h02 | exact h12
+    | (rw [add_comm]; exact h01) | (rw [add_comm]; exact h02) | (rw [add_comm]; exact h12)
+
+/-- Auxiliary for `tail:increment`: among three finite masses, at least two are at most half of
+their sum. -/
+theorem aux_tail_two_good (y : Fin 3 → ℝ≥0∞) (hs : y 0 + y 1 + y 2 ≠ ⊤) :
+    ∃ a b : Fin 3, a ≠ b ∧ 2 * y a ≤ y 0 + y 1 + y 2 ∧ 2 * y b ≤ y 0 + y 1 + y 2 := by
+  set s := y 0 + y 1 + y 2
+  have key : ∀ a b : Fin 3, y a + y b ≤ s → ¬ 2 * y a ≤ s → ¬ 2 * y b ≤ s → False := by
+    intro a b hab ha hb
+    push Not at ha hb
+    have h := ENNReal.add_lt_add ha hb
+    have : 2 * y a + 2 * y b ≤ s + s := by rw [← mul_add, ← two_mul]; gcongr
+    exact absurd (h.trans_le this) (lt_irrefl _)
+  have s01 : y 0 + y 1 ≤ s := le_add_right le_rfl
+  have s02 : y 0 + y 2 ≤ s := by
+    calc y 0 + y 2 ≤ y 0 + y 1 + y 2 := by gcongr; exact le_add_right le_rfl
+      _ = s := rfl
+  have s12 : y 1 + y 2 ≤ s := by
+    calc y 1 + y 2 ≤ y 0 + y 1 + y 2 := by rw [add_assoc]; exact le_add_self
+      _ = s := rfl
+  by_cases h0 : 2 * y 0 ≤ s <;> by_cases h1 : 2 * y 1 ≤ s
+  · exact ⟨0, 1, by decide, h0, h1⟩
+  · by_cases h2 : 2 * y 2 ≤ s
+    · exact ⟨0, 2, by decide, h0, h2⟩
+    · exact (key 1 2 s12 h1 h2).elim
+  · by_cases h2 : 2 * y 2 ≤ s
+    · exact ⟨1, 2, by decide, h1, h2⟩
+    · exact (key 0 2 s02 h0 h2).elim
+  · exact (key 0 1 s01 h0 h1).elim
+
+/-- Auxiliary for `tail:increment`: `z ↦ μ(B(z,t))` is measurable. -/
+theorem aux_tail_measurable_ball (μ : Measure ℝ²) [SFinite μ] (t : ℝ) :
+    Measurable fun z : ℝ² => μ (Metric.ball z t) := by
+  have hs : MeasurableSet {p : ℝ² × ℝ² | dist p.2 p.1 < t} :=
+    (isOpen_lt (continuous_snd.dist continuous_fst) continuous_const).measurableSet
+  exact measurable_measure_prodMk_left hs
+
+/-- Auxiliary for `tail:increment`: the spectral mass `μ` of `L²` inputs is finite. -/
+theorem aux_tail_mu_finite (α β : ℝ) (f : Fin 3 → ℝ² → ℂ) (hf : ∀ j, MemLp (f j) 2 volume) :
+    tailMu α β f univ ≠ ⊤ := by
+  simp only [tailMu]
+  rw [Measure.coe_finset_sum, Finset.sum_apply]
+  refine (ENNReal.sum_lt_top.2 fun j _ => ?_).ne
+  rw [Measure.map_apply (tailT α β j).continuous.measurable MeasurableSet.univ,
+    preimage_univ, withDensity_apply _ MeasurableSet.univ, Measure.restrict_univ,
+    ← aux_s2a_eLpNorm_two_sq, aux_tail_l2F_norm (hf j)]
+  exact ENNReal.pow_lt_top (hf j).2
+
+/-- Auxiliary for `tail:increment`: the constant `1 - 2^{-1/4} > 0`. -/
+theorem aux_tail_rho_pos : 0 < 1 - (1 / 2 : ℝ) ^ (1 / 4 : ℝ) := by
+  have : (1 / 2 : ℝ) ^ (1 / 4 : ℝ) < 1 := Real.rpow_lt_one (by norm_num) (by norm_num) (by norm_num)
+  linarith
+
+/-- Auxiliary for `tail:increment`: the estimate for one contributing triple of squares,
+$np^{1/4}\lesssim\sum_l\int_{Q_l}\big(\mu(B(z,Cr))^{1/4}-\mu(B(z,cr))^{1/4}\big)\,d\mu(z)$. -/
+theorem aux_tail_increment_one (μ : Measure ℝ²) [IsFiniteMeasure μ] (Q : Fin 3 → Set ℝ²)
+    (hQm : ∀ l, MeasurableSet (Q l)) (d D r : ℝ) (hd : 0 < d) (hr : 0 < r)
+    (hsep : ∀ l l' : Fin 3, ∀ x ∈ Q l, ∀ y ∈ Q l', (l ≠ l' → d * r ≤ ‖x - y‖) ∧ ‖x - y‖ ≤ D * r) :
+    aux_med3 (fun l => μ (Q l)) * aux_max3 (fun l => μ (Q l)) ^ (1 / 4 : ℝ) ≤
+      ENNReal.ofReal (1 / (1 - (1 / 2 : ℝ) ^ (1 / 4 : ℝ))) *
+        ∑ l, ∫⁻ z in Q l, (μ (Metric.ball z ((D + d) * r)) ^ (1 / 4 : ℝ) -
+          μ (Metric.ball z (d / 4 * r)) ^ (1 / 4 : ℝ)) ∂μ := by
+  set ρ := 1 - (1 / 2 : ℝ) ^ (1 / 4 : ℝ)
+  have hρ : 0 < ρ := aux_tail_rho_pos
+  set c := d / 4 * r
+  set G : ℝ² → ℝ≥0∞ := fun z => μ (Metric.ball z ((D + d) * r)) ^ (1 / 4 : ℝ) -
+    μ (Metric.ball z c) ^ (1 / 4 : ℝ)
+  set Nb : Fin 3 → Set ℝ² := fun l => Metric.thickening c (Q l)
+  set y : Fin 3 → ℝ≥0∞ := fun l => μ (Nb l)
+  set x : Fin 3 → ℝ≥0∞ := fun l => μ (Q l)
+  set s := y 0 + y 1 + y 2
+  have hc : 0 < c := by positivity
+  have hNm : ∀ l, MeasurableSet (Nb l) := fun l => Metric.isOpen_thickening.measurableSet
+  have hdisj : ∀ l l', l ≠ l' → Disjoint (Nb l) (Nb l') := by
+    intro l l' hll'
+    refine Set.disjoint_left.2 fun z hz hz' => ?_
+    obtain ⟨a, ha, hza⟩ := Metric.mem_thickening_iff.1 hz
+    obtain ⟨b, hb, hzb⟩ := Metric.mem_thickening_iff.1 hz'
+    have h1 := ((hsep l l' a ha b hb).1 hll')
+    rw [← dist_eq_norm] at h1
+    have h2 := dist_triangle_left a b z
+    simp only [c] at hza hzb
+    nlinarith
+  have hs_eq : s = μ (Nb 0 ∪ Nb 1 ∪ Nb 2) := by
+    rw [measure_union (Set.disjoint_union_left.2 ⟨hdisj 0 2 (by decide), hdisj 1 2 (by decide)⟩)
+      (hNm 2), measure_union (hdisj 0 1 (by decide)) (hNm 1)]
+  have hfin : s ≠ ⊤ := by rw [hs_eq]; exact measure_ne_top _ _
+  have hball : ∀ l, ∀ z ∈ Q l, s ≤ μ (Metric.ball z ((D + d) * r)) := by
+    intro l z hz
+    rw [hs_eq]
+    refine measure_mono fun w hw => ?_
+    have hw' : ∃ l', w ∈ Nb l' := by
+      rcases hw with (hw | hw) | hw
+      exacts [⟨0, hw⟩, ⟨1, hw⟩, ⟨2, hw⟩]
+    obtain ⟨l', hwl⟩ := hw'
+    obtain ⟨b, hb, hwb⟩ := Metric.mem_thickening_iff.1 hwl
+    have h1 := (hsep l l' z hz b hb).2
+    rw [← dist_eq_norm] at h1
+    rw [Metric.mem_ball]
+    have := dist_triangle w b z
+    rw [dist_comm b z] at this
+    simp only [c] at hwb
+    nlinarith
+  have hsmall : ∀ l, ∀ z ∈ Q l, μ (Metric.ball z c) ≤ y l :=
+    fun l z hz => measure_mono (Metric.ball_subset_thickening hz c)
+  have hxy : ∀ l, x l ≤ y l := fun l => measure_mono (Metric.self_subset_thickening hc _)
+  have hys : ∀ l, y l ≤ s := by
+    intro l; fin_cases l
+    · exact le_add_right (le_add_right le_rfl)
+    · exact le_add_right le_add_self
+    · exact le_add_self
+  have hmax : aux_max3 x ≤ s :=
+    max_le (max_le ((hxy 0).trans (hys 0)) ((hxy 1).trans (hys 1))) ((hxy 2).trans (hys 2))
+  have hhalf : ((2 : ℝ≥0∞)⁻¹) ^ (1 / 4 : ℝ) = ENNReal.ofReal ((1 / 2 : ℝ) ^ (1 / 4 : ℝ)) := by
+    rw [← ENNReal.ofReal_rpow_of_nonneg (by norm_num) (by norm_num)]
+    congr 1; rw [one_div, ENNReal.ofReal_inv_of_pos (by norm_num)]; simp
+  have hG : ∀ l, 2 * y l ≤ s → ∀ z ∈ Q l, ENNReal.ofReal ρ * s ^ (1 / 4 : ℝ) ≤ G z := by
+    intro l hl z hz
+    have hyl : y l ≤ s * 2⁻¹ := by
+      calc y l = 2⁻¹ * (2 * y l) := by
+            rw [← mul_assoc, ENNReal.inv_mul_cancel (by norm_num) (by norm_num), one_mul]
+        _ ≤ 2⁻¹ * s := by gcongr
+        _ = s * 2⁻¹ := mul_comm _ _
+    calc ENNReal.ofReal ρ * s ^ (1 / 4 : ℝ)
+        = s ^ (1 / 4 : ℝ) - s ^ (1 / 4 : ℝ) * ENNReal.ofReal ((1 / 2 : ℝ) ^ (1 / 4 : ℝ)) := by
+          have hs4 : s ^ (1 / 4 : ℝ) ≠ ⊤ := ENNReal.rpow_ne_top_of_nonneg (by norm_num) hfin
+          have hρ' : ENNReal.ofReal ρ = 1 - ENNReal.ofReal ((1 / 2 : ℝ) ^ (1 / 4 : ℝ)) := by
+            rw [ENNReal.ofReal_sub _ (by positivity), ENNReal.ofReal_one]
+          rw [mul_comm, hρ', ENNReal.mul_sub (fun _ _ => hs4), mul_one]
+      _ = s ^ (1 / 4 : ℝ) - (s * 2⁻¹) ^ (1 / 4 : ℝ) := by
+          rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num), hhalf]
+      _ ≤ G z := tsub_le_tsub (ENNReal.rpow_le_rpow (hball l z hz) (by norm_num))
+          (ENNReal.rpow_le_rpow ((hsmall l z hz).trans hyl) (by norm_num))
+  have hI : ∀ l, 2 * y l ≤ s →
+      ENNReal.ofReal ρ * s ^ (1 / 4 : ℝ) * x l ≤ ∫⁻ z in Q l, G z ∂μ := by
+    intro l hl
+    calc ENNReal.ofReal ρ * s ^ (1 / 4 : ℝ) * x l =
+        ∫⁻ _z in Q l, ENNReal.ofReal ρ * s ^ (1 / 4 : ℝ) ∂μ := by
+          rw [setLIntegral_const]
+      _ ≤ ∫⁻ z in Q l, G z ∂μ := setLIntegral_mono' (hQm l) fun z hz => hG l hl z hz
+  obtain ⟨a, b, hab, ha, hb⟩ := aux_tail_two_good y hfin
+  have hsum2 : ∀ (F : Fin 3 → ℝ≥0∞) (a b : Fin 3), a ≠ b → F a + F b ≤ ∑ l, F l := by
+    intro F a b hab
+    rw [← Finset.sum_pair hab]
+    exact Finset.sum_le_sum_of_subset (Finset.subset_univ _)
+  have hmain : ENNReal.ofReal ρ * (aux_med3 x * aux_max3 x ^ (1 / 4 : ℝ)) ≤
+      ∑ l, ∫⁻ z in Q l, G z ∂μ := by
+    calc ENNReal.ofReal ρ * (aux_med3 x * aux_max3 x ^ (1 / 4 : ℝ))
+        ≤ ENNReal.ofReal ρ * ((x a + x b) * s ^ (1 / 4 : ℝ)) := by
+          gcongr
+          exact aux_tail_med3_le_add x a b hab
+      _ = ENNReal.ofReal ρ * s ^ (1 / 4 : ℝ) * x a + ENNReal.ofReal ρ * s ^ (1 / 4 : ℝ) * x b := by
+          ring
+      _ ≤ (∫⁻ z in Q a, G z ∂μ) + ∫⁻ z in Q b, G z ∂μ := add_le_add (hI a ha) (hI b hb)
+      _ ≤ _ := hsum2 (fun l => ∫⁻ z in Q l, G z ∂μ) a b hab
+  calc aux_med3 x * aux_max3 x ^ (1 / 4 : ℝ) =
+      ENNReal.ofReal (1 / ρ) * (ENNReal.ofReal ρ * (aux_med3 x * aux_max3 x ^ (1 / 4 : ℝ))) := by
+        rw [← mul_assoc, ← ENNReal.ofReal_mul (by positivity), one_div_mul_cancel hρ.ne',
+          ENNReal.ofReal_one, one_mul]
+    _ ≤ _ := by gcongr
+
 /-- **Lemma `tail:increment`** (Geometric mass increment).
 For the square families and contributing triples of Lemma `tail:partition`, there are fixed
 constants $0<c<C$ such that
@@ -337,9 +2775,100 @@ theorem tail_increment (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (hχ 
           aux_med3 (tailMasses α β f Qstar h r q.1) *
             aux_max3 (tailMasses α β f Qstar h r q.1) ^ (1 / 4 : ℝ) ≤
         ENNReal.ofReal CM * (tailH (tailMu α β f) (C * r) - tailH (tailMu α β f) (c * r)) := by
-  sorry
+  obtain ⟨-, -, -, -, ⟨c₀, l, hl, hQ⟩, -⟩ := hφ
+  subst hQ
+  obtain ⟨d, D, hd, hD, hsep⟩ := hh.separation
+  obtain ⟨K, hK⟩ := hh.partners
+  obtain ⟨N, hN⟩ := hh.overlap
+  set ρ := 1 - (1 / 2 : ℝ) ^ (1 / 4 : ℝ)
+  have hρ : 0 < ρ := aux_tail_rho_pos
+  refine ⟨d / 4, D + d, 3 * K * N * (1 / ρ), by positivity, by linarith, fun r hr f hf => ?_⟩
+  set Qs := {x : ℝ² | ∀ i, x i ∈ Icc (c₀ i) (c₀ i + l)}
+  set μ := tailMu α β f
+  have : IsFiniteMeasure μ := ⟨lt_top_iff_ne_top.2 (aux_tail_mu_finite α β f hf)⟩
+  set T := {q : Fin 3 → Fin 2 → ℤ // tailContributing α β χ Qs h r q}
+  set G : ℝ² → ℝ≥0∞ := fun z => μ (Metric.ball z ((D + d) * r)) ^ (1 / 4 : ℝ) -
+    μ (Metric.ball z (d / 4 * r)) ^ (1 / 4 : ℝ)
+  have hm1 : Measurable fun z => μ (Metric.ball z (d / 4 * r)) ^ (1 / 4 : ℝ) :=
+    (aux_tail_measurable_ball μ _).pow_const _
+  have hGm : Measurable G := ((aux_tail_measurable_ball μ _).pow_const _).sub hm1
+  have hQm : ∀ q', MeasurableSet (tailSquare Qs h r q') := fun q' =>
+    aux_tail_square_meas c₀ l h r q'
+  set I : (Fin 2 → ℤ) → ℝ≥0∞ := fun q' => ∫⁻ z in tailSquare Qs h r q', G z ∂μ
+  have hper : ∀ q : T, aux_med3 (tailMasses α β f Qs h r q.1) *
+      aux_max3 (tailMasses α β f Qs h r q.1) ^ (1 / 4 : ℝ) ≤
+        ENNReal.ofReal (1 / ρ) * (I (q.1 0) + I (q.1 1) + I (q.1 2)) := by
+    intro q
+    have := aux_tail_increment_one μ (fun l => tailSquare Qs h r (q.1 l)) (fun l => hQm _) d D r
+      hd hr (fun l l' x hx y hy => hsep r hr q.1 q.2 l l' x hx y hy)
+    rw [Fin.sum_univ_three] at this
+    exact this
+  have hfib : ∀ l : Fin 3, ∀ y, ((fun q : T => q.1 l) ⁻¹' {y}).encard ≤ K := by
+    intro l y
+    rw [← Subtype.val_injective.encard_image]
+    refine le_trans (Set.encard_le_encard ?_) (hK r hr l y)
+    rintro _ ⟨q, hq, rfl⟩
+    exact ⟨q.2, hq⟩
+  have hIsum : ∑' q', I q' ≤ N * ∫⁻ z, G z ∂μ := by
+    rw [← lintegral_const_mul _ hGm]
+    calc ∑' q', I q' = ∑' q', ∫⁻ z, (tailSquare Qs h r q').indicator G z ∂μ := by
+          congr 1; funext q'; rw [lintegral_indicator (hQm q')]
+      _ = ∫⁻ z, ∑' q', (tailSquare Qs h r q').indicator G z ∂μ :=
+          (lintegral_tsum fun q' => (hGm.indicator (hQm q')).aemeasurable).symm
+      _ ≤ ∫⁻ z, N * G z ∂μ := lintegral_mono fun z => ?_
+    have e : ∑' q', (tailSquare Qs h r q').indicator G z =
+        ∑' q' : {q' : Fin 2 → ℤ | z ∈ tailSquare Qs h r q'}, G z := by
+      rw [tsum_subtype {q' : Fin 2 → ℤ | z ∈ tailSquare Qs h r q'} (fun _ => G z)]
+      congr 1
+    rw [e, ENNReal.tsum_set_const]
+    gcongr
+    have := hN r hr z
+    have h2 : (({q' : Fin 2 → ℤ | z ∈ tailSquare Qs h r q'}.encard : ℕ∞) : ℝ≥0∞) ≤ ((N : ℕ∞) : ℝ≥0∞) :=
+      ENat.toENNReal_le.2 this
+    simpa using h2
+  have hH : ∫⁻ z, G z ∂μ = tailH μ ((D + d) * r) - tailH μ (d / 4 * r) := by
+    simp only [G, tailH]
+    refine lintegral_sub hm1 ?_ (Eventually.of_forall fun z => ?_)
+    · exact (lt_of_le_of_lt (aux_tailH_le μ _) (ENNReal.rpow_lt_top_of_nonneg (by norm_num)
+        (measure_ne_top μ univ))).ne
+    · exact ENNReal.rpow_le_rpow (measure_mono (Metric.ball_subset_ball (by nlinarith)))
+        (by norm_num)
+  calc ∑' q : T, aux_med3 (tailMasses α β f Qs h r q.1) *
+        aux_max3 (tailMasses α β f Qs h r q.1) ^ (1 / 4 : ℝ)
+      ≤ ∑' q : T, ENNReal.ofReal (1 / ρ) * (I (q.1 0) + I (q.1 1) + I (q.1 2)) :=
+        ENNReal.tsum_le_tsum hper
+    _ = ENNReal.ofReal (1 / ρ) * (∑' q : T, I (q.1 0) + ∑' q : T, I (q.1 1) +
+        ∑' q : T, I (q.1 2)) := by
+        rw [ENNReal.tsum_mul_left, ENNReal.tsum_add, ENNReal.tsum_add]
+    _ ≤ ENNReal.ofReal (1 / ρ) * (K * ∑' q', I q' + K * ∑' q', I q' + K * ∑' q', I q') := by
+        gcongr
+        · exact aux_tail_tsum_fiber_le I (fun q : T => q.1 0) K (hfib 0)
+        · exact aux_tail_tsum_fiber_le I (fun q : T => q.1 1) K (hfib 1)
+        · exact aux_tail_tsum_fiber_le I (fun q : T => q.1 2) K (hfib 2)
+    _ ≤ ENNReal.ofReal (1 / ρ) * (K * (N * ∫⁻ z, G z ∂μ) + K * (N * ∫⁻ z, G z ∂μ) +
+        K * (N * ∫⁻ z, G z ∂μ)) := by gcongr
+    _ = ENNReal.ofReal (3 * K * N * (1 / ρ)) * (tailH μ ((D + d) * r) - tailH μ (d / 4 * r)) := by
+        rw [hH, ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_mul (by positivity),
+          ENNReal.ofReal_mul (by positivity)]
+        simp only [ENNReal.ofReal_natCast, ENNReal.ofReal_ofNat]
+        ring
 
 /-! ### Dyadic telescoping (`tail:telescoping`) -/
+
+/-- Auxiliary for `tail:telescoping`: telescoping of a finite monotone sequence in `ℝ≥0∞`. -/
+theorem aux_tail_telescope (a : ℕ → ℝ≥0∞) (ha : Monotone a) (m n : ℕ) :
+    ∑ k ∈ Finset.range n, (a (m + k + 1) - a (m + k)) ≤ a (m + n) - a m := by
+  induction n with
+  | zero => simp
+  | succ n ih =>
+    rw [Finset.sum_range_succ]
+    calc _ ≤ a (m + n) - a m + (a (m + n + 1) - a (m + n)) := by gcongr
+      _ ≤ a (m + (n + 1)) - a m := by
+          rw [← add_assoc]
+          by_cases ht : a (m + n) = ⊤
+          · have : a (m + n + 1) = ⊤ := top_le_iff.1 (ht ▸ ha (by omega))
+            simp [ht, this]
+          · rw [add_comm, tsub_add_tsub_cancel (ha (by omega)) (ha (by omega))]
 
 /-- **Lemma `tail:telescoping`** (Dyadic telescoping of the mass increments; stated for
 $[0,\infty]$-valued $H$, which makes the boundedness hypothesis unnecessary).
@@ -350,9 +2879,154 @@ theorem tail_telescoping (c C : ℝ) (hc : 0 < c) (hcC : c < C) (H : ℝ → ℝ
     (hH : MonotoneOn H (Ioi 0)) (D : ℕ) (hD : 0 < D) (hDc : C ≤ 2 ^ D * c) (R : ℝ)
     (hR : 0 < R) :
     ∑' k : ℕ, (H (C * 2 ^ k * R) - H (c * 2 ^ k * R)) ≤ D * ⨆ (t : ℝ) (_ : 0 < t), H t := by
-  sorry
+  set S := ⨆ (t : ℝ) (_ : 0 < t), H t
+  set a : ℕ → ℝ≥0∞ := fun k => H (c * 2 ^ k * R)
+  have hpos : ∀ k : ℕ, 0 < c * 2 ^ k * R := fun k => by positivity
+  have ha : Monotone a := by
+    intro k l hkl
+    refine hH (hpos k) (hpos l) ?_
+    gcongr
+    · norm_num
+  have haS : ∀ k, a k ≤ S := fun k => le_iSup₂ (f := fun t (_ : 0 < t) => H t) _ (hpos k)
+  have hterm : ∀ k, H (C * 2 ^ k * R) - H (c * 2 ^ k * R) ≤ a (k + D) - a k := by
+    intro k
+    gcongr
+    refine hH (show (0 : ℝ) < C * 2 ^ k * R by have := hc.trans hcC; positivity) (hpos _) ?_
+    rw [pow_add]
+    calc C * 2 ^ k * R ≤ 2 ^ D * c * 2 ^ k * R := by gcongr
+      _ = c * (2 ^ k * 2 ^ D) * R := by ring
+  have hsplit : ∀ k m, a (k + m) - a k ≤ ∑ i ∈ Finset.range m, (a (k + i + 1) - a (k + i)) := by
+    intro k m
+    induction m with
+    | zero => simp
+    | succ n ih =>
+      rw [Finset.sum_range_succ]
+      calc a (k + (n + 1)) - a k ≤ (a (k + (n + 1)) - a (k + n)) + (a (k + n) - a k) :=
+            tsub_le_tsub_add_tsub
+        _ ≤ (a (k + n + 1) - a (k + n)) +
+            ∑ i ∈ Finset.range n, (a (k + i + 1) - a (k + i)) := by
+            rw [← add_assoc]; gcongr
+        _ = _ := add_comm _ _
+  refine ENNReal.tsum_le_of_sum_range_le fun n => ?_
+  calc ∑ k ∈ Finset.range n, (H (C * 2 ^ k * R) - H (c * 2 ^ k * R))
+      ≤ ∑ k ∈ Finset.range n, ∑ i ∈ Finset.range D, (a (k + i + 1) - a (k + i)) :=
+        Finset.sum_le_sum fun k _ => (hterm k).trans (hsplit k D)
+    _ = ∑ i ∈ Finset.range D, ∑ k ∈ Finset.range n, (a (i + k + 1) - a (i + k)) := by
+        rw [Finset.sum_comm]
+        refine Finset.sum_congr rfl fun i _ => Finset.sum_congr rfl fun k _ => ?_
+        rw [add_comm k i]
+    _ ≤ ∑ i ∈ Finset.range D, S :=
+        Finset.sum_le_sum fun i _ => (aux_tail_telescope a ha i n).trans (tsub_le_self.trans (haS _))
+    _ = D * S := by simp
 
 /-! ### Uniform annular tails (`tail:bound`) -/
+
+/-- Auxiliary for `tail:bound`: the one-dimensional bump `φ₁(t) = s(t) - s(t-1)` built from the
+smooth transition `s`; its integer translates sum to one. -/
+def aux_tailPhi1 (t : ℝ) : ℝ := Real.smoothTransition t - Real.smoothTransition (t - 1)
+
+/-- Auxiliary for `tail:bound`: `φ₁ ≥ 0`. -/
+theorem aux_tailPhi1_nonneg (t : ℝ) : 0 ≤ aux_tailPhi1 t :=
+  sub_nonneg.2 (Real.smoothTransition.monotone (by linarith))
+
+/-- Auxiliary for `tail:bound`: `φ₁` vanishes outside `(0, 2)`. -/
+theorem aux_tailPhi1_supp (t : ℝ) (ht : aux_tailPhi1 t ≠ 0) : 0 < t ∧ t < 2 := by
+  constructor
+  · by_contra h
+    exact ht (by simp [aux_tailPhi1, Real.smoothTransition.zero_of_nonpos (by linarith : t ≤ 0),
+      Real.smoothTransition.zero_of_nonpos (by linarith : t - 1 ≤ 0)])
+  · by_contra h
+    exact ht (by simp [aux_tailPhi1, Real.smoothTransition.one_of_one_le (by linarith : 1 ≤ t),
+      Real.smoothTransition.one_of_one_le (by linarith : 1 ≤ t - 1)])
+
+/-- Auxiliary for `tail:bound`: `∑_{n ∈ ℤ} φ₁(t - n) = 1`. -/
+theorem aux_tailPhi1_hasSum (t : ℝ) : HasSum (fun n : ℤ => aux_tailPhi1 (t - n)) 1 := by
+  obtain ⟨a, ha⟩ : ∃ a : ℤ, a = ⌊t⌋ - 1 := ⟨_, rfl⟩
+  have hf := Int.floor_le t
+  have hf' := Int.lt_floor_add_one t
+  have h0 : ∀ n ∉ ({a, a + 1, a + 2} : Finset ℤ), aux_tailPhi1 (t - n) = 0 := by
+    intro n hn
+    simp only [Finset.mem_insert, Finset.mem_singleton, not_or] at hn
+    obtain ⟨hn1, hn2, hn3⟩ := hn
+    by_contra hne
+    have hs := aux_tailPhi1_supp _ hne
+    have h3 : n ≤ ⌊t⌋ := Int.le_floor.2 (by linarith [hs.1])
+    have h4 : ⌊t⌋ - 1 ≤ n := by
+      have h5 : ((⌊t⌋ - 2 : ℤ) : ℝ) < ((n : ℤ) : ℝ) := by push_cast; linarith [hs.2]
+      have h6 := Int.cast_lt.1 h5
+      omega
+    omega
+  have hs : HasSum (fun n : ℤ => aux_tailPhi1 (t - n)) _ := hasSum_sum_of_ne_finset_zero h0
+  have hsum : ∑ n ∈ ({a, a + 1, a + 2} : Finset ℤ), aux_tailPhi1 (t - n) = 1 := by
+    rw [Finset.sum_insert (by simp), Finset.sum_insert (by simp), Finset.sum_singleton]
+    simp only [aux_tailPhi1]
+    subst ha
+    push_cast
+    rw [Real.smoothTransition.one_of_one_le (x := t - (⌊t⌋ - 1)) (by linarith),
+      Real.smoothTransition.zero_of_nonpos (x := t - (⌊t⌋ - 1 + 2) - 1) (by linarith)]
+    ring
+  rwa [hsum] at hs
+
+/-- Auxiliary for `tail:bound`: a smooth partition of unity as required in
+`\label{tail:partition-definition}` exists (`φ(z) = φ₁(z₀)φ₁(z₁)`, `Q_* = [0,2]²`). -/
+theorem aux_tail_partition_data_exists : ∃ (φ : ℝ² → ℝ) (Qstar : Set ℝ²),
+    aux_IsPartitionData φ Qstar := by
+  set φ : ℝ² → ℝ := fun z => aux_tailPhi1 (z 0) * aux_tailPhi1 (z 1)
+  set Qs : Set ℝ² := {x : ℝ² | ∀ i, x i ∈ Icc ((0 : ℝ²) i) ((0 : ℝ²) i + 2)}
+  have hs1 : ContDiff ℝ (⊤ : ℕ∞) aux_tailPhi1 :=
+    Real.smoothTransition.contDiff.sub (Real.smoothTransition.contDiff.comp
+      (contDiff_id.sub contDiff_const))
+  have hsupp : Function.support φ ⊆ Qs := by
+    intro z hz
+    have h0 : aux_tailPhi1 (z 0) ≠ 0 := left_ne_zero_of_mul hz
+    have h1 : aux_tailPhi1 (z 1) ≠ 0 := right_ne_zero_of_mul hz
+    have a0 := aux_tailPhi1_supp _ h0
+    have a1 := aux_tailPhi1_supp _ h1
+    intro i; fin_cases i
+    · simp only [Set.mem_Icc]; simp; constructor <;> linarith [a0.1, a0.2]
+    · simp only [Set.mem_Icc]; simp; constructor <;> linarith [a1.1, a1.2]
+  have hQc := aux_tail_box_compact (0 : ℝ²) 2
+  refine ⟨φ, Qs, fun z => mul_nonneg (aux_tailPhi1_nonneg _) (aux_tailPhi1_nonneg _), ?_,
+    HasCompactSupport.intro hQc fun z hz => ?_, fun z => ?_, ⟨0, 2, two_pos, rfl⟩,
+    closure_minimal hsupp hQc.isClosed⟩
+  · exact (hs1.comp (EuclideanSpace.proj (0 : Fin 2)).contDiff).mul
+      (hs1.comp (EuclideanSpace.proj (1 : Fin 2)).contDiff)
+  · by_contra h; exact hz (hsupp h)
+  · have h0 := aux_tailPhi1_hasSum (z 0)
+    have h1 := aux_tailPhi1_hasSum (z 1)
+    have hsm : Summable (fun x : ℤ × ℤ => aux_tailPhi1 (z 0 - x.1) * aux_tailPhi1 (z 1 - x.2)) :=
+      Summable.mul_of_nonneg (f := fun n : ℤ => aux_tailPhi1 (z 0 - n))
+        (g := fun n : ℤ => aux_tailPhi1 (z 1 - n)) h0.summable h1.summable
+        (fun _ => aux_tailPhi1_nonneg _) (fun _ => aux_tailPhi1_nonneg _)
+    have hprod : HasSum (fun x : ℤ × ℤ => aux_tailPhi1 (z 0 - x.1) * aux_tailPhi1 (z 1 - x.2))
+        (1 * 1) := HasSum.mul (f := fun n : ℤ => aux_tailPhi1 (z 0 - n))
+          (g := fun n : ℤ => aux_tailPhi1 (z 1 - n)) h0 h1 hsm
+    rw [one_mul] at hprod
+    have := (Equiv.hasSum_iff (finTwoArrowEquiv ℤ)).2 hprod
+    refine HasSum.tsum_eq ?_
+    convert this using 1
+    funext q
+    simp [φ, Function.comp]
+
+/-- Auxiliary for `tail:bound`: Plancherel gives `μ(ℝ²) = ∑_j ‖f_j‖₂²` for the spectral mass. -/
+theorem aux_tail_mu_univ (α β : ℝ) (f : Fin 3 → ℝ² → ℂ) (hf : ∀ j, MemLp (f j) 2 volume) :
+    tailMu α β f univ = ∑ j, eLpNorm (f j) 2 volume ^ 2 := by
+  simp only [tailMu]
+  rw [Measure.coe_finset_sum, Finset.sum_apply]
+  refine Finset.sum_congr rfl fun j _ => ?_
+  rw [Measure.map_apply (tailT α β j).continuous.measurable MeasurableSet.univ,
+    preimage_univ, withDensity_apply _ MeasurableSet.univ, Measure.restrict_univ,
+    ← aux_s2a_eLpNorm_two_sq, aux_tail_l2F_norm (hf j)]
+
+/-- Auxiliary for `tail:bound`: `‖∑ a‖ ≤ ∑ ‖a‖` in `ℝ≥0∞` for a sum with summable norms. -/
+theorem aux_tail_enorm_hasSum_le {ι : Type*} {a : ι → ℂ} {s : ℂ} (hs : HasSum a s)
+    (hn : Summable fun i => ‖a i‖) : ‖s‖ₑ ≤ ∑' i, ‖a i‖ₑ := by
+  rw [← hs.tsum_eq, ← ofReal_norm]
+  calc ENNReal.ofReal ‖∑' i, a i‖ ≤ ENNReal.ofReal (∑' i, ‖a i‖) :=
+        ENNReal.ofReal_le_ofReal (norm_tsum_le_tsum_norm hn)
+    _ = ∑' i, ‖a i‖ₑ := by
+        rw [ENNReal.ofReal_tsum_of_nonneg (fun _ => norm_nonneg _) hn]
+        simp [ofReal_norm]
 
 /-- **Proposition `tail:bound`** (Uniform annular tails; the modulus `a` is that of
 Corollary `ann:global` with a sufficiently large fixed frequency-ball constant `C₀`).
@@ -366,7 +3040,100 @@ theorem tail_bound (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (hχ : au
         ∑' k : ℕ, ‖tailForm α β χ (2 ^ (K + k)) (f 0) (f 1) (f 2)‖ₑ ≤
           ENNReal.ofReal CMB *
             (⨆ (r : ℝ) (_ : (2 : ℝ) ^ K ≤ r), ENNReal.ofReal (a r)) ^ (1 / 2 : ℝ) := by
-  sorry
+  obtain ⟨φ, Qs, hφ⟩ := aux_tail_partition_data_exists
+  obtain ⟨h, hh⟩ := tail_partition α β hβ χ hχ φ Qs hφ
+  obtain ⟨C₀₀, hC₀₀, hOT⟩ := tail_one_triple α β hβ χ hχ φ Qs hφ h hh
+  obtain ⟨c, C, CM, hc, hcC, hinc⟩ := tail_increment α β hβ χ hχ φ Qs hφ h hh
+  obtain ⟨n, hn⟩ := pow_unbounded_of_one_lt (C / c) (by norm_num : (1 : ℝ) < 2)
+  set D := n + 1
+  have hDc : C ≤ 2 ^ D * c := by
+    have : C < 2 ^ n * c := by rwa [div_lt_iff₀ hc] at hn
+    calc C ≤ 2 ^ n * c := this.le
+      _ ≤ 2 ^ D * c := by gcongr; · norm_num
+                          · omega
+  refine ⟨C₀₀, hC₀₀, fun C₀ hC₀ B => ?_⟩
+  obtain ⟨CB, hCB⟩ := hOT C₀ hC₀ B
+  set B' := max B 0
+  set CB' := max CB 0
+  set CM' := max CM 0
+  refine ⟨CB' * CM' * D * (3 * B' ^ 2) ^ (5 / 4 : ℝ), fun a ha K f hfB => ?_⟩
+  have hf2 : ∀ j, MemLp (f j) 2 volume := fun j =>
+    ⟨(hfB j).1, lt_of_le_of_lt (hfB j).2.1 ENNReal.ofReal_lt_top⟩
+  set S := ⨆ (r : ℝ) (_ : (2 : ℝ) ^ K ≤ r), ENNReal.ofReal (a r)
+  set μ := tailMu α β f
+  set X := ENNReal.ofReal CB' * S ^ (1 / 2 : ℝ) * ENNReal.ofReal CM'
+  have hstep : ∀ k : ℕ, ‖tailForm α β χ (2 ^ (K + k)) (f 0) (f 1) (f 2)‖ₑ ≤
+      X * (tailH μ (C * 2 ^ k * 2 ^ K) - tailH μ (c * 2 ^ k * 2 ^ K)) := by
+    intro k
+    obtain ⟨r, hr_eq⟩ : ∃ r : ℝ, r = 2 ^ (K + k) := ⟨_, rfl⟩
+    rw [← hr_eq]
+    have hr : 0 < r := by rw [hr_eq]; positivity
+    obtain ⟨hsn, hs⟩ := hh.expansion r hr f hf2
+    refine (aux_tail_enorm_hasSum_le hs hsn).trans ?_
+    have hr2 : (2 : ℝ) ^ K ≤ r := hr_eq ▸ pow_le_pow_right₀ (by norm_num) (by omega)
+    have hsq : ENNReal.ofReal (CB * Real.sqrt (a r)) ≤ ENNReal.ofReal CB' * S ^ (1 / 2 : ℝ) := by
+      have har := (ha.2.1 r).1
+      calc ENNReal.ofReal (CB * Real.sqrt (a r)) ≤ ENNReal.ofReal (CB' * Real.sqrt (a r)) :=
+            ENNReal.ofReal_le_ofReal (mul_le_mul_of_nonneg_right (le_max_left _ _)
+              (Real.sqrt_nonneg _))
+        _ = ENNReal.ofReal CB' * ENNReal.ofReal (a r) ^ (1 / 2 : ℝ) := by
+            rw [ENNReal.ofReal_mul (le_max_right _ _), Real.sqrt_eq_rpow,
+              ENNReal.ofReal_rpow_of_nonneg har (by norm_num)]
+        _ ≤ _ := by
+            gcongr
+            exact le_iSup₂ (f := fun (r : ℝ) (_ : (2 : ℝ) ^ K ≤ r) => ENNReal.ofReal (a r)) r hr2
+    calc ∑' q : {q : Fin 3 → Fin 2 → ℤ // tailContributing α β χ Qs h r q},
+          ‖tailForm α β χ r (tailP α β φ h 0 (q.1 0) r (f 0))
+          (tailP α β φ h 1 (q.1 1) r (f 1)) (tailP α β φ h 2 (q.1 2) r (f 2))‖ₑ
+        ≤ ∑' q : {q : Fin 3 → Fin 2 → ℤ // tailContributing α β χ Qs h r q},
+          ENNReal.ofReal (CB * Real.sqrt (a r)) * aux_med3 (tailMasses α β f Qs h r q.1) *
+            aux_max3 (tailMasses α β f Qs h r q.1) ^ (1 / 4 : ℝ) :=
+          ENNReal.tsum_le_tsum fun q => by
+            have := hCB a ha r hr f hfB q.1 q.2
+            exact this
+      _ = ENNReal.ofReal (CB * Real.sqrt (a r)) * ∑' q : {q : Fin 3 → Fin 2 → ℤ //
+          tailContributing α β χ Qs h r q}, aux_med3 (tailMasses α β f Qs h r q.1) *
+            aux_max3 (tailMasses α β f Qs h r q.1) ^ (1 / 4 : ℝ) := by
+          rw [← ENNReal.tsum_mul_left]; congr 1; funext q; ring
+      _ ≤ ENNReal.ofReal CB' * S ^ (1 / 2 : ℝ) *
+          (ENNReal.ofReal CM * (tailH μ (C * r) - tailH μ (c * r))) := by
+          gcongr
+          exact hinc r hr f hf2
+      _ ≤ X * (tailH μ (C * 2 ^ k * 2 ^ K) - tailH μ (c * 2 ^ k * 2 ^ K)) := by
+          have e1 : C * r = C * 2 ^ k * 2 ^ K := by rw [hr_eq, pow_add]; ring
+          have e2 : c * r = c * 2 ^ k * 2 ^ K := by rw [hr_eq, pow_add]; ring
+          rw [e1, e2, ← mul_assoc]
+          gcongr
+          simp only [X]
+          gcongr
+          exact le_max_left _ _
+  have hHsup : (⨆ (t : ℝ) (_ : 0 < t), tailH μ t) ≤ ENNReal.ofReal ((3 * B' ^ 2) ^ (5 / 4 : ℝ)) := by
+    refine iSup₂_le fun t _ => (aux_tailH_le μ t).trans ?_
+    rw [aux_tail_mu_univ α β f hf2, ← ENNReal.ofReal_rpow_of_nonneg (by positivity) (by norm_num)]
+    gcongr
+    calc ∑ j, eLpNorm (f j) 2 volume ^ 2 ≤ ∑ _j : Fin 3, ENNReal.ofReal B' ^ 2 :=
+          Finset.sum_le_sum fun j _ => by
+            gcongr; exact (hfB j).2.1.trans (ENNReal.ofReal_le_ofReal (le_max_left _ _))
+      _ = ENNReal.ofReal (3 * B' ^ 2) := by
+          rw [ENNReal.ofReal_mul (by norm_num), ENNReal.ofReal_pow (le_max_right _ _),
+            ENNReal.ofReal_ofNat]
+          simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul,
+            Nat.cast_ofNat]
+          rfl
+  have htel := tail_telescoping c C hc hcC (tailH μ) (fun s _ t _ hst => aux_tailH_mono μ hst)
+    D (by omega) hDc (2 ^ K) (by positivity)
+  calc ∑' k : ℕ, ‖tailForm α β χ (2 ^ (K + k)) (f 0) (f 1) (f 2)‖ₑ
+      ≤ ∑' k : ℕ, X * (tailH μ (C * 2 ^ k * 2 ^ K) - tailH μ (c * 2 ^ k * 2 ^ K)) :=
+        ENNReal.tsum_le_tsum hstep
+    _ = X * ∑' k : ℕ, (tailH μ (C * 2 ^ k * 2 ^ K) - tailH μ (c * 2 ^ k * 2 ^ K)) :=
+        ENNReal.tsum_mul_left
+    _ ≤ X * (D * ENNReal.ofReal ((3 * B' ^ 2) ^ (5 / 4 : ℝ))) := by
+        gcongr; exact htel.trans (by gcongr)
+    _ = ENNReal.ofReal (CB' * CM' * D * (3 * B' ^ 2) ^ (5 / 4 : ℝ)) * S ^ (1 / 2 : ℝ) := by
+        simp only [X]
+        rw [ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_mul (by positivity),
+          ENNReal.ofReal_mul (le_max_right _ _), ENNReal.ofReal_natCast]
+        ring
 
 /-- **Proposition `tail:bound`** (uniform convergence of the tails).
 Let $R\ge1$ be dyadic.  If $\|f_j\|_2,\|f_j\|_\infty\le B$, then
@@ -376,6 +3143,33 @@ theorem tail_bound_tendsto (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (
     (B : ℝ) :
     Tendsto (fun K : ℕ => ⨆ (f : Fin 3 → ℝ² → ℂ) (_ : aux_IsBothBounded B f),
       ∑' k : ℕ, ‖tailForm α β χ (2 ^ (K + k)) (f 0) (f 1) (f 2)‖ₑ) atTop (𝓝 0) := by
-  sorry
+  obtain ⟨C₀₀, hC₀₀, hb⟩ := tail_bound α β hβ χ hχ
+  obtain ⟨CMB, hCMB⟩ := hb C₀₀ le_rfl B
+  obtain ⟨hψs, -⟩ := aux_tail_psi_smooth χ hχ
+  obtain ⟨a, ha⟩ := ann_global α β hβ (tailPsi χ) hψs
+    ⟨1, 4, one_pos, (aux_tail_annular_definition χ hχ).1⟩ C₀₀ hC₀₀
+  set S : ℕ → ℝ≥0∞ := fun K => ⨆ (r : ℝ) (_ : (2 : ℝ) ^ K ≤ r), ENNReal.ofReal (a r)
+  have hS : Tendsto S atTop (𝓝 0) := by
+    rw [ENNReal.tendsto_atTop_zero]
+    intro ε hε
+    by_cases hεt : ε = ⊤
+    · exact ⟨0, fun n _ => hεt ▸ le_top⟩
+    have hεr : 0 < ε.toReal := ENNReal.toReal_pos hε.ne' hεt
+    obtain ⟨R₀, hR₀⟩ := (Metric.tendsto_atTop.1 ha.1) ε.toReal hεr
+    obtain ⟨N, hN⟩ := pow_unbounded_of_one_lt R₀ (by norm_num : (1 : ℝ) < 2)
+    refine ⟨N, fun K hK => iSup₂_le fun r hr => ?_⟩
+    have hrR : R₀ ≤ r := by
+      have : (2 : ℝ) ^ N ≤ 2 ^ K := pow_le_pow_right₀ (by norm_num) hK
+      linarith
+    have := hR₀ r hrR
+    rw [Real.dist_eq, sub_zero] at this
+    rw [← ENNReal.ofReal_toReal hεt]
+    exact ENNReal.ofReal_le_ofReal ((le_abs_self _).trans this.le)
+  have hlim : Tendsto (fun K => ENNReal.ofReal CMB * S K ^ (1 / 2 : ℝ)) atTop (𝓝 0) := by
+    have h1 := ((ENNReal.continuous_rpow_const (y := (1 / 2 : ℝ))).tendsto 0).comp hS
+    rw [ENNReal.zero_rpow_of_pos (by norm_num)] at h1
+    simpa using ENNReal.Tendsto.const_mul h1 (Or.inr ENNReal.ofReal_ne_top)
+  refine tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds hlim (fun K => zero_le)
+    (fun K => iSup₂_le fun f hf => hCMB a ha K f hf)
 
 end Auto

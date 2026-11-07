@@ -36,7 +36,7 @@ Formalization of the section "Translation correlations and local cancellation" o
 -/
 
 open MeasureTheory Real Set Filter Topology
-open scoped ENNReal NNReal InnerProductSpace ComplexConjugate
+open scoped ENNReal NNReal InnerProductSpace ComplexConjugate ComplexOrder
 
 noncomputable section
 
@@ -98,6 +98,563 @@ structure aux_IsCorrelationLimits (α β L : ℝ) (R : ℕ → ℝ) (f : Fin 3 �
     annWeakStar μinc (fun n p => ∏ j, annT R f j n (S j p) (proj α β j p))
       (fun p => h3 p (fun j => S j p))
 
+/-- Auxiliary (`ann:extract`, see `Auto.ann_extract`): an `ε/3` argument. -/
+theorem aux_ann_tendsto_of_approx {a : ℕ → ℂ} {b : ℂ} {am : ℕ → ℕ → ℂ} {bm : ℕ → ℂ}
+    {δ : ℕ → ℝ} (hδ : Tendsto δ atTop (𝓝 0)) (ha : ∀ m n, ‖a n - am m n‖ ≤ δ m)
+    (hb : ∀ m, ‖b - bm m‖ ≤ δ m) (hm : ∀ m, Tendsto (am m) atTop (𝓝 (bm m))) :
+    Tendsto a atTop (𝓝 b) := by
+  rw [Metric.tendsto_atTop]
+  intro ε hε
+  obtain ⟨m, hm'⟩ := (Metric.tendsto_atTop.1 hδ) (ε / 3) (by positivity)
+  have hδm : δ m < ε / 3 := by
+    have := hm' m le_rfl
+    rw [Real.dist_eq, sub_zero] at this
+    exact (le_abs_self _).trans_lt this
+  obtain ⟨N, hN⟩ := Metric.tendsto_atTop.1 (hm m) (ε / 3) (by positivity)
+  refine ⟨N, fun n hn => ?_⟩
+  have h1 := ha m n
+  have h2 := hb m
+  have h3 := hN n hn
+  rw [dist_eq_norm] at h3 ⊢
+  calc ‖a n - b‖ = ‖(a n - am m n) + (am m n - bm m) + -(b - bm m)‖ := by ring_nf
+    _ ≤ ‖a n - am m n‖ + ‖am m n - bm m‖ + ‖-(b - bm m)‖ := norm_add₃_le
+    _ < ε := by rw [norm_neg]; linarith
+
+section Generic
+
+variable {X : Type*} [MeasurableSpace X] {μ : Measure X}
+
+/-- Auxiliary: an essentially bounded function is integrable on sets of finite measure. -/
+theorem aux_ann_memLp_top_integrableOn {G : X → ℂ} (hG : MemLp G ⊤ μ) {s : Set X}
+    (hμ : μ s < ∞) : IntegrableOn G s μ := by
+  have : IsFiniteMeasure (μ.restrict s) := ⟨by rw [Measure.restrict_apply_univ]; exact hμ⟩
+  exact (hG.restrict s).integrable le_top
+
+/-- Auxiliary: the indicator of a set of finite measure is integrable. -/
+theorem aux_ann_integrable_indicator_one {s : Set X} (hs : MeasurableSet s) (hμ : μ s < ∞) :
+    Integrable (s.indicator fun _ => (1 : ℂ)) μ :=
+  (integrable_indicator_iff hs).2 (integrableOn_const hμ.ne)
+
+/-- Auxiliary: testing against an indicator gives the set integral. -/
+theorem aux_ann_integral_mul_indicator (F : X → ℂ) (s : Set X) (hs : MeasurableSet s) :
+    ∫ x, F x * s.indicator (fun _ => (1 : ℂ)) x ∂μ = ∫ x in s, F x ∂μ := by
+  rw [← integral_indicator hs]
+  congr 1
+  funext x
+  by_cases hx : x ∈ s <;> simp [hx]
+
+/-- Auxiliary: integrals of a.e. nonnegative complex functions are nonnegative. -/
+theorem aux_ann_integral_nonneg_complex {f : X → ℂ} (hf : ∀ᵐ x ∂μ, 0 ≤ f x) :
+    0 ≤ ∫ x, f x ∂μ := by
+  have h : f =ᵐ[μ] fun x => ((f x).re : ℂ) := by
+    filter_upwards [hf] with x hx
+    obtain ⟨-, him⟩ := Complex.nonneg_iff.1 hx
+    apply Complex.ext <;> simp [← him]
+  rw [integral_congr_ae h, integral_complex_ofReal]
+  refine Complex.zero_le_real.2 (integral_nonneg_of_ae ?_)
+  filter_upwards [hf] with x hx using (Complex.nonneg_iff.1 hx).1
+
+variable [SigmaFinite μ]
+
+/-- Auxiliary (`ann:spectral`, see `Auto.ann_spectral`): weak-* limits of a.e. nonnegative
+functions are a.e. nonnegative (as complex numbers, in particular real). -/
+theorem aux_ann_weakStar_nonneg {F : ℕ → X → ℂ} {G : X → ℂ} (hG : MemLp G ⊤ μ)
+    (hF : ∀ n, ∀ᵐ x ∂μ, 0 ≤ F n x) (hlim : annWeakStar μ F G) : ∀ᵐ x ∂μ, 0 ≤ G x := by
+  have hset : ∀ s, MeasurableSet s → μ s < ∞ → 0 ≤ ∫ x in s, G x ∂μ := by
+    intro s hs hμ
+    have := hlim _ (aux_ann_integrable_indicator_one hs hμ)
+    simp only [aux_ann_integral_mul_indicator _ s hs] at this
+    refine ge_of_tendsto' this fun n => aux_ann_integral_nonneg_complex ?_
+    exact ae_restrict_of_ae (hF n)
+  have hre : 0 ≤ᵐ[μ] fun x => (G x).re := by
+    refine ae_nonneg_of_forall_setIntegral_nonneg_of_sigmaFinite
+      (fun s _ hμ => (aux_ann_memLp_top_integrableOn hG hμ).re) fun s hs hμ => ?_
+    have h := integral_re (𝕜 := ℂ) (aux_ann_memLp_top_integrableOn hG hμ)
+    simp only [RCLike.re_to_complex] at h
+    rw [h]
+    exact (Complex.nonneg_iff.1 (hset s hs hμ)).1
+  have him : (fun x => (G x).im) =ᵐ[μ] 0 := by
+    refine ae_eq_zero_of_forall_setIntegral_eq_of_sigmaFinite
+      (fun s _ hμ => (aux_ann_memLp_top_integrableOn hG hμ).im) fun s hs hμ => ?_
+    have h := integral_im (𝕜 := ℂ) (aux_ann_memLp_top_integrableOn hG hμ)
+    simp only [RCLike.im_to_complex] at h
+    rw [h]
+    exact (Complex.nonneg_iff.1 (hset s hs hμ)).2.symm
+  filter_upwards [hre, him] with x h1 h2
+  exact Complex.nonneg_iff.2 ⟨h1, h2.symm⟩
+
+/-- Auxiliary (`ann:extract`, `ann:spectral`): if two sequences have weak-* limits and their
+pairings with every `L¹` function become asymptotically equal, the limits agree a.e. -/
+theorem aux_ann_weakStar_unique {F F' : ℕ → X → ℂ} {G G' : X → ℂ} (hG : MemLp G ⊤ μ)
+    (hG' : MemLp G' ⊤ μ) (hlim : annWeakStar μ F G) (hlim' : annWeakStar μ F' G')
+    (hdiff : ∀ ψ : X → ℂ, Integrable ψ μ →
+      Tendsto (fun n => ∫ x, F n x * ψ x ∂μ - ∫ x, F' n x * ψ x ∂μ) atTop (𝓝 0)) :
+    G =ᵐ[μ] G' := by
+  have h0 : (fun x => G x - G' x) =ᵐ[μ] 0 := by
+    refine ae_eq_zero_of_forall_setIntegral_eq_of_sigmaFinite
+      (fun s _ hμ => (aux_ann_memLp_top_integrableOn hG hμ).sub
+        (aux_ann_memLp_top_integrableOn hG' hμ)) fun s hs hμ => ?_
+    have hψ := aux_ann_integrable_indicator_one hs hμ
+    have h1 := (hlim _ hψ).sub (hlim' _ hψ)
+    have h2 := tendsto_nhds_unique h1 (hdiff _ hψ)
+    rw [aux_ann_integral_mul_indicator _ s hs, aux_ann_integral_mul_indicator _ s hs] at h2
+    rw [integral_sub (aux_ann_memLp_top_integrableOn hG hμ)
+      (aux_ann_memLp_top_integrableOn hG' hμ), h2]
+  filter_upwards [h0] with x hx
+  exact sub_eq_zero.1 hx
+
+/-- Auxiliary (`ann:extract`, see `Auto.ann_extract`): weak-* limits of functions bounded by `c`
+are a.e. bounded by `c`. -/
+theorem aux_ann_weakStar_norm_le {F : ℕ → X → ℂ} {G : X → ℂ} {c : ℝ} (hG : MemLp G ⊤ μ)
+    (hF : ∀ n, ∀ᵐ x ∂μ, ‖F n x‖ ≤ c)
+    (hlim : annWeakStar μ F G) : ∀ᵐ x ∂μ, ‖G x‖ ≤ c := by
+  set G' := hG.1.mk G with hG'def
+  have hGG' : G =ᵐ[μ] G' := hG.1.ae_eq_mk
+  have hG'm : StronglyMeasurable G' := hG.1.stronglyMeasurable_mk
+  have hG'L : MemLp G' ⊤ μ := hG.ae_eq hGG'
+  set B := {x | c < ‖G' x‖} with hBdef
+  have hB : MeasurableSet B := measurableSet_lt measurable_const hG'm.measurable.norm
+  have key : ∀ t, MeasurableSet t → μ t < ∞ → t ⊆ B →
+      ∫ x in t, ‖G' x‖ ∂μ ≤ c * μ.real t := by
+    intro t ht hμ _
+    set ψ : X → ℂ := t.indicator fun x => conj (G' x) / (‖G' x‖ : ℂ) with hψdef
+    have hψb : ∀ x, ‖ψ x‖ ≤ t.indicator (fun _ => (1 : ℝ)) x := by
+      intro x
+      by_cases hx : x ∈ t
+      · simp only [hψdef, indicator_of_mem hx, norm_div, Complex.norm_conj, Complex.norm_real,
+          norm_norm]
+        exact div_self_le_one _
+      · simp [hψdef, hx]
+    have hψm : StronglyMeasurable ψ :=
+      (hG'm.star.div (Complex.continuous_ofReal.comp_stronglyMeasurable hG'm.norm)).indicator ht
+    have hψi : Integrable ψ μ := by
+      refine Integrable.mono' (aux_ann_integrable_indicator_one (μ := μ) ht hμ).norm
+        hψm.aestronglyMeasurable (ae_of_all _ fun x => (hψb x).trans ?_)
+      by_cases hx : x ∈ t <;> simp [hx]
+    have hlimit : ∫ x, G x * ψ x ∂μ = ((∫ x in t, ‖G' x‖ ∂μ : ℝ) : ℂ) := by
+      have hae : (fun x => G x * ψ x) =ᵐ[μ] fun x => G' x * ψ x := by
+        filter_upwards [hGG'] with x hx
+        rw [hx]
+      rw [integral_congr_ae hae, ← integral_complex_ofReal,
+        ← integral_indicator ht]
+      congr 1
+      funext x
+      by_cases hx : x ∈ t
+      · simp only [hψdef, indicator_of_mem hx]
+        by_cases h0 : G' x = 0
+        · simp [h0]
+        · have hn : (‖G' x‖ : ℂ) ≠ 0 := by exact_mod_cast norm_ne_zero_iff.2 h0
+          rw [mul_div_assoc', Complex.mul_conj, Complex.normSq_eq_norm_sq]
+          push_cast
+          field_simp
+      · simp [hψdef, hx]
+    have hbound : ∀ n, ‖∫ x, F n x * ψ x ∂μ‖ ≤ c * μ.real t := by
+      intro n
+      have hc : ∀ᵐ x ∂μ, ‖F n x * ψ x‖ ≤ t.indicator (fun _ => c) x := by
+        filter_upwards [hF n] with x hx
+        by_cases hxt : x ∈ t
+        · rw [norm_mul, indicator_of_mem hxt]
+          have h1 : ‖ψ x‖ ≤ 1 := (hψb x).trans (by simp [hxt])
+          calc ‖F n x‖ * ‖ψ x‖ ≤ ‖F n x‖ * 1 :=
+                mul_le_mul_of_nonneg_left h1 (norm_nonneg _)
+            _ ≤ c := by rw [mul_one]; exact hx
+        · simp [hψdef, hxt]
+      calc ‖∫ x, F n x * ψ x ∂μ‖ ≤ ∫ x, t.indicator (fun _ => c) x ∂μ :=
+            norm_integral_le_of_norm_le ((integrable_indicator_iff ht).2
+              (integrableOn_const hμ.ne)) hc
+        _ = c * μ.real t := by rw [integral_indicator_const _ ht, smul_eq_mul, mul_comm]
+    have hlim' := (hlim ψ hψi).norm
+    rw [hlimit, Complex.norm_real, Real.norm_eq_abs] at hlim'
+    exact (le_abs_self _).trans (le_of_tendsto' hlim' hbound)
+  have hf : 0 ≤ᵐ[μ] B.indicator fun x => c - ‖G' x‖ := by
+    refine ae_nonneg_of_forall_setIntegral_nonneg_of_sigmaFinite (fun s _ hμ => ?_)
+      fun s hs hμ => ?_
+    · exact ((integrableOn_const (C := c) hμ.ne).sub
+        (aux_ann_memLp_top_integrableOn hG'L hμ).norm).indicator hB
+    · rw [setIntegral_indicator hB, integral_sub (integrableOn_const (C := c)
+          ((measure_mono inter_subset_left).trans_lt hμ).ne)
+          (aux_ann_memLp_top_integrableOn hG'L
+            ((measure_mono inter_subset_left).trans_lt hμ)).norm, setIntegral_const,
+        smul_eq_mul, sub_nonneg, mul_comm]
+      exact key _ (hs.inter hB) ((measure_mono inter_subset_left).trans_lt hμ)
+        inter_subset_right
+  filter_upwards [hf, hGG'] with x hx hxG
+  rw [hxG]
+  by_contra hcon
+  have hxB : x ∈ B := lt_of_not_ge hcon
+  rw [Pi.zero_apply, indicator_of_mem hxB] at hx
+  linarith [show c < ‖G' x‖ from hxB]
+
+end Generic
+
+section Extend
+
+variable {Sh : Type*} [MetricSpace Sh] [SecondCountableTopology Sh] [MeasurableSpace Sh]
+  [BorelSpace Sh]
+
+/-- Auxiliary (`ann:extract`): points of a dense sequence near a given shift. -/
+theorem aux_ann_exists_near (D : ℕ → Sh) (hD : DenseRange D) (m : ℕ) (s : Sh) :
+    ∃ i, dist (D i) s < 1 / ((m : ℝ) + 1) := by
+  obtain ⟨i, hi⟩ := hD.exists_dist_lt s (by positivity : (0 : ℝ) < 1 / ((m : ℝ) + 1))
+  exact ⟨i, by rw [dist_comm]; exact hi⟩
+
+open Classical in
+/-- Auxiliary (`ann:extract`, see `Auto.ann_extract`): the first index of the dense sequence
+`D` within distance `1/(m+1)` of `s`; a measurable rounding of shifts to the dense set. -/
+def aux_ann_idx (D : ℕ → Sh) (hD : DenseRange D) (m : ℕ) (s : Sh) : ℕ :=
+  Nat.find (aux_ann_exists_near D hD m s)
+
+theorem aux_ann_idx_spec (D : ℕ → Sh) (hD : DenseRange D) (m : ℕ) (s : Sh) :
+    dist (D (aux_ann_idx D hD m s)) s < 1 / ((m : ℝ) + 1) := by
+  classical
+  exact Nat.find_spec (aux_ann_exists_near D hD m s)
+
+theorem aux_ann_idx_tendsto (D : ℕ → Sh) (hD : DenseRange D) (s : Sh) :
+    Tendsto (fun m => D (aux_ann_idx D hD m s)) atTop (𝓝 s) := by
+  rw [tendsto_iff_dist_tendsto_zero]
+  exact squeeze_zero (fun _ => dist_nonneg) (fun m => (aux_ann_idx_spec D hD m s).le)
+    tendsto_one_div_add_atTop_nhds_zero_nat
+
+theorem aux_ann_idx_measurable (D : ℕ → Sh) (hD : DenseRange D) (m : ℕ) :
+    Measurable (aux_ann_idx D hD m) := by
+  classical
+  refine measurable_to_countable' fun i => ?_
+  have hop : ∀ j, MeasurableSet {s : Sh | dist (D j) s < 1 / ((m : ℝ) + 1)} := fun j =>
+    (isOpen_lt (continuous_const.dist continuous_id) continuous_const).measurableSet
+  have : aux_ann_idx D hD m ⁻¹' {i} = {s | dist (D i) s < 1 / ((m : ℝ) + 1)} ∩
+      ⋂ (j : ℕ) (_ : j < i), {s | dist (D j) s < 1 / ((m : ℝ) + 1)}ᶜ := by
+    ext s
+    simp only [mem_preimage, mem_singleton_iff, aux_ann_idx, mem_inter_iff, mem_ofPred_eq,
+      mem_iInter, mem_compl_iff]
+    convert Nat.find_eq_iff (aux_ann_exists_near D hD m s)
+  rw [this]
+  exact (hop i).inter (MeasurableSet.iInter fun j => MeasurableSet.iInter fun _ => (hop j).compl)
+
+/-- Auxiliary: continuity of the modulus `w` along converging sequences. -/
+theorem aux_ann_tendsto_w {w : Sh → Sh → ℝ} (hw : Continuous (Function.uncurry w))
+    {ι : Type*} {l : Filter ι} {a b : ι → Sh} {s t : Sh} (ha : Tendsto a l (𝓝 s))
+    (hb : Tendsto b l (𝓝 t)) : Tendsto (fun i => w (a i) (b i)) l (𝓝 (w s t)) :=
+  (hw.tendsto (s, t)).comp (ha.prodMk_nhds hb)
+
+variable {X : Type*} [MeasurableSpace X] {μ : Measure X} [SigmaFinite μ]
+
+/-- Auxiliary: bounded measurable functions times integrable functions are integrable. -/
+theorem aux_ann_integrable_mul {f ψ : X → ℂ} (hf : AEStronglyMeasurable f μ)
+    (hb : ∀ x, ‖f x‖ ≤ 1) (hψ : Integrable ψ μ) : Integrable (fun x => f x * ψ x) μ :=
+  hψ.bdd_mul hf (ae_of_all _ hb)
+
+/-- Auxiliary (`ann:extract`, see `Auto.ann_extract`): from weak-* limits at a dense set of
+shifts to a jointly measurable limit, continuous in the shift, with the same modulus `w` as the
+sequence, which is also the weak-* limit along every measurable shift function. -/
+theorem aux_ann_extend (F : ℕ → Sh → X → ℂ) (hFc : ∀ n x, Continuous fun s => F n s x)
+    (hFm : ∀ n s, Measurable (F n s)) (hb : ∀ n s x, ‖F n s x‖ ≤ 1)
+    (w : Sh → Sh → ℝ) (hw : Continuous (Function.uncurry w)) (hw0 : ∀ s, w s s = 0)
+    (hL : ∀ n s s' x, ‖F n s x - F n s' x‖ ≤ w s s')
+    (D : ℕ → Sh) (hD : DenseRange D) (g : ℕ → X → ℂ) (hg : ∀ i, MemLp (g i) ⊤ μ)
+    (hconv : ∀ i, annWeakStar μ (fun n => F n (D i)) (g i)) :
+    ∃ H : X → Sh → ℂ, Measurable (Function.uncurry H) ∧ (∀ x, Continuous (H x)) ∧
+      (∀ x s, ‖H x s‖ ≤ 1) ∧ (∀ x s s', ‖H x s - H x s'‖ ≤ w s s') ∧
+      ∀ S : X → Sh, Measurable S →
+        annWeakStar μ (fun n x => F n (S x) x) (fun x => H x (S x)) := by
+  classical
+  have hwc := fun {ι : Type _} {l : Filter ι} {a b : ι → Sh} {s t : Sh} =>
+    aux_ann_tendsto_w hw (l := l) (a := a) (b := b) (s := s) (t := t)
+  set g' : ℕ → X → ℂ := fun i => (hg i).1.mk (g i) with hg'def
+  have hgg' : ∀ i, g i =ᵐ[μ] g' i := fun i => (hg i).1.ae_eq_mk
+  have hg'm : ∀ i, StronglyMeasurable (g' i) := fun i => (hg i).1.stronglyMeasurable_mk
+  -- a.e. bounds for the limits at the dense shifts
+  have hb1 : ∀ i, ∀ᵐ x ∂μ, ‖g' i x‖ ≤ 1 := fun i => by
+    filter_upwards [aux_ann_weakStar_norm_le (hg i) (fun n => ae_of_all _ (hb n (D i)))
+      (hconv i), hgg' i] with x hx hx'
+    rwa [← hx']
+  have hb2 : ∀ i j, ∀ᵐ x ∂μ, ‖g' i x - g' j x‖ ≤ w (D i) (D j) := fun i j => by
+    have hlim : annWeakStar μ (fun n x => F n (D i) x - F n (D j) x)
+        (fun x => g i x - g j x) := by
+      intro ψ hψ
+      have e1 : ∀ n, ∫ x, (F n (D i) x - F n (D j) x) * ψ x ∂μ =
+          ∫ x, F n (D i) x * ψ x ∂μ - ∫ x, F n (D j) x * ψ x ∂μ := fun n => by
+        simp_rw [sub_mul]
+        exact integral_sub (aux_ann_integrable_mul (hFm n _).aestronglyMeasurable (hb n _) hψ)
+          (aux_ann_integrable_mul (hFm n _).aestronglyMeasurable (hb n _) hψ)
+      have e2 : ∫ x, (g i x - g j x) * ψ x ∂μ =
+          ∫ x, g i x * ψ x ∂μ - ∫ x, g j x * ψ x ∂μ := by
+        simp_rw [sub_mul]
+        exact integral_sub ((hg i).integrable_mul (memLp_one_iff_integrable.2 hψ))
+          ((hg j).integrable_mul (memLp_one_iff_integrable.2 hψ))
+      simp_rw [e1, e2]
+      exact (hconv i ψ hψ).sub (hconv j ψ hψ)
+    filter_upwards [aux_ann_weakStar_norm_le ((hg i).sub (hg j))
+      (fun n => ae_of_all _ (hL n (D i) (D j))) hlim, hgg' i, hgg' j] with x hx h1 h2
+    rwa [← h1, ← h2]
+  -- the good set
+  set Good : Set X := {x | (∀ i, ‖g' i x‖ ≤ 1) ∧ ∀ i j, ‖g' i x - g' j x‖ ≤ w (D i) (D j)}
+    with hGooddef
+  have hGoodm : MeasurableSet Good := by
+    have e : Good = (⋂ i, {x | ‖g' i x‖ ≤ 1}) ∩
+        ⋂ i, ⋂ j, {x | ‖g' i x - g' j x‖ ≤ w (D i) (D j)} := by
+      ext x; simp [hGooddef]
+    rw [e]
+    refine MeasurableSet.inter (MeasurableSet.iInter fun i => ?_)
+      (MeasurableSet.iInter fun i => MeasurableSet.iInter fun j => ?_)
+    · exact measurableSet_le (hg'm i).measurable.norm measurable_const
+    · exact measurableSet_le ((hg'm i).measurable.sub (hg'm j).measurable).norm measurable_const
+  have hGood : ∀ᵐ x ∂μ, x ∈ Good := by
+    have h1 := ae_all_iff.2 hb1
+    have h2 : ∀ᵐ x ∂μ, ∀ i j, ‖g' i x - g' j x‖ ≤ w (D i) (D j) :=
+      ae_all_iff.2 fun i => ae_all_iff.2 fun j => hb2 i j
+    filter_upwards [h1, h2] with x hx1 hx2 using ⟨hx1, hx2⟩
+  -- the extension
+  set idx := aux_ann_idx D hD with hidx
+  have hcauchy : ∀ x ∈ Good, ∀ s, ∃ c, Tendsto (fun m => g' (idx m s) x) atTop (𝓝 c) := by
+    intro x hx s
+    refine cauchySeq_tendsto_of_complete ?_
+    rw [cauchySeq_iff_tendsto_dist_atTop_0]
+    have ht : Tendsto (fun p : ℕ × ℕ => w (D (idx p.1 s)) (D (idx p.2 s))) atTop
+        (𝓝 (w s s)) := by
+      have h := aux_ann_idx_tendsto D hD s
+      rw [← prod_atTop_atTop_eq] at *
+      exact hwc (h.comp tendsto_fst) (h.comp tendsto_snd)
+    rw [hw0] at ht
+    exact squeeze_zero (fun _ => dist_nonneg) (fun p => by
+      rw [dist_eq_norm]; exact hx.2 _ _) ht
+  set H : X → Sh → ℂ := fun x s =>
+    if x ∈ Good then limUnder atTop (fun m => g' (idx m s) x) else 0 with hHdef
+  have hHlim : ∀ x ∈ Good, ∀ s, Tendsto (fun m => g' (idx m s) x) atTop (𝓝 (H x s)) := by
+    intro x hx s
+    simp only [hHdef, if_pos hx]
+    exact tendsto_nhds_limUnder (hcauchy x hx s)
+  have hHD : ∀ x ∈ Good, ∀ i, H x (D i) = g' i x := by
+    intro x hx i
+    refine tendsto_nhds_unique (hHlim x hx (D i)) ?_
+    rw [tendsto_iff_norm_sub_tendsto_zero]
+    have ht := hwc (aux_ann_idx_tendsto D hD (D i)) (tendsto_const_nhds (x := D i))
+    rw [hw0] at ht
+    exact squeeze_zero (fun _ => norm_nonneg _) (fun m => hx.2 _ _) ht
+  have hHL : ∀ x s s', ‖H x s - H x s'‖ ≤ w s s' := by
+    intro x s s'
+    by_cases hx : x ∈ Good
+    · refine le_of_tendsto_of_tendsto' ((hHlim x hx s).sub (hHlim x hx s')).norm
+        (hwc (aux_ann_idx_tendsto D hD s) (aux_ann_idx_tendsto D hD s')) fun m => hx.2 _ _
+    · simp only [hHdef, if_neg hx, sub_zero, norm_zero]
+      exact (norm_nonneg _).trans (hL 0 s s' x)
+  have hHb : ∀ x s, ‖H x s‖ ≤ 1 := by
+    intro x s
+    by_cases hx : x ∈ Good
+    · exact le_of_tendsto' (hHlim x hx s).norm fun m => hx.1 _
+    · simp [hHdef, hx]
+  have hHc : ∀ x, Continuous (H x) := by
+    intro x
+    refine continuous_iff_continuousAt.2 fun s => ?_
+    rw [ContinuousAt, tendsto_iff_norm_sub_tendsto_zero]
+    have ht := aux_ann_tendsto_w hw (continuous_id.tendsto s) (tendsto_const_nhds (x := s))
+    simp only [id, hw0] at ht
+    exact squeeze_zero (fun _ => norm_nonneg _) (fun s' => hHL x s' s) ht
+  have hHm : Measurable (Function.uncurry H) := by
+    refine measurable_of_tendsto_metrizable (f := fun m (p : X × Sh) =>
+      if p.1 ∈ Good then g' (idx m p.2) p.1 else 0) (fun m => ?_) ?_
+    · refine Measurable.ite (hGoodm.preimage measurable_fst) ?_ measurable_const
+      have h1 : Measurable fun q : X × ℕ => g' q.2 q.1 :=
+        measurable_from_prod_countable_left fun i => (hg'm i).measurable
+      exact h1.comp (measurable_fst.prodMk ((aux_ann_idx_measurable D hD m).comp measurable_snd))
+    · rw [tendsto_pi_nhds]
+      rintro ⟨x, s⟩
+      by_cases hx : x ∈ Good
+      · simp only [if_pos hx, Function.uncurry_apply_pair]
+        exact hHlim x hx s
+      · simp only [if_neg hx, Function.uncurry_apply_pair, hHdef]
+        exact tendsto_const_nhds
+  have hHms : ∀ s, Measurable fun x => H x s := fun s =>
+    hHm.comp (measurable_id.prodMk measurable_const)
+  have hFj : ∀ n, Measurable (Function.uncurry (F n)) := fun n =>
+    measurable_uncurry_of_continuous_of_measurable (u := F n) (fun x => hFc n x) (hFm n)
+  -- convergence at fixed shifts
+  have hfix : ∀ s, annWeakStar μ (fun n => F n s) (fun x => H x s) := by
+    intro s ψ hψ
+    set i : ℕ → ℕ := fun m => idx m s
+    have hint : ∀ n t, Integrable (fun x => F n t x * ψ x) μ := fun n t =>
+      aux_ann_integrable_mul (hFm n t).aestronglyMeasurable (hb n t) hψ
+    have hintH : ∀ t, Integrable (fun x => H x t * ψ x) μ := fun t =>
+      aux_ann_integrable_mul (hHms t).aestronglyMeasurable (hHb · t) hψ
+    refine aux_ann_tendsto_of_approx (am := fun m n => ∫ x, F n (D (i m)) x * ψ x ∂μ)
+      (bm := fun m => ∫ x, g (i m) x * ψ x ∂μ)
+      (δ := fun m => w s (D (i m)) * ∫ x, ‖ψ x‖ ∂μ) ?_ ?_ ?_ fun m => hconv (i m) ψ hψ
+    · have ht := (hwc (tendsto_const_nhds (x := s)) (aux_ann_idx_tendsto D hD s)).mul_const
+        (∫ x, ‖ψ x‖ ∂μ)
+      rwa [hw0, zero_mul] at ht
+    · intro m n
+      rw [← integral_sub (hint n s) (hint n _), ← integral_const_mul]
+      refine norm_integral_le_of_norm_le (hψ.norm.const_mul _) (ae_of_all _ fun x => ?_)
+      rw [← sub_mul, norm_mul]
+      exact mul_le_mul_of_nonneg_right (hL n _ _ x) (norm_nonneg _)
+    · intro m
+      have he : ∫ x, g (i m) x * ψ x ∂μ = ∫ x, H x (D (i m)) * ψ x ∂μ := by
+        refine integral_congr_ae ?_
+        filter_upwards [hgg' (i m), hGood] with x h1 h2
+        rw [h1, hHD x h2]
+      rw [he, ← integral_sub (hintH s) (hintH _), ← integral_const_mul]
+      refine norm_integral_le_of_norm_le (hψ.norm.const_mul _) (ae_of_all _ fun x => ?_)
+      rw [← sub_mul, norm_mul]
+      exact mul_le_mul_of_nonneg_right (hHL x _ _) (norm_nonneg _)
+  refine ⟨H, hHm, hHc, hHb, hHL, fun S hS ψ hψ => ?_⟩
+  -- variable shifts: approximation by simple functions
+  set Sm : ℕ → SimpleFunc X Sh := hS.stronglyMeasurable.approx with hSmdef
+  have hSm : ∀ x, Tendsto (fun m => Sm m x) atTop (𝓝 (S x)) :=
+    hS.stronglyMeasurable.tendsto_approx
+  have hFS : ∀ n (T : X → Sh), Measurable T → Measurable fun x => F n (T x) x := fun n T hT =>
+    (hFj n).comp (hT.prodMk measurable_id)
+  have hHS : ∀ (T : X → Sh), Measurable T → Measurable fun x => H x (T x) := fun T hT =>
+    hHm.comp (measurable_id.prodMk hT)
+  have hintS : ∀ n (T : X → Sh), Measurable T → Integrable (fun x => F n (T x) x * ψ x) μ :=
+    fun n T hT => aux_ann_integrable_mul (hFS n T hT).aestronglyMeasurable (fun x => hb _ _ _) hψ
+  have hintHS : ∀ (T : X → Sh), Measurable T → Integrable (fun x => H x (T x) * ψ x) μ :=
+    fun T hT => aux_ann_integrable_mul (hHS T hT).aestronglyMeasurable (fun x => hHb _ _) hψ
+  -- the finite decomposition along a simple function
+  have hsimple : ∀ m, Tendsto (fun n => ∫ x, F n (Sm m x) x * ψ x ∂μ) atTop
+      (𝓝 (∫ x, H x (Sm m x) * ψ x ∂μ)) := by
+    intro m
+    set φ := Sm m
+    have hdec : ∀ (K : Sh → X → ℂ), (∀ y, Integrable (fun x => K y x *
+        (φ ⁻¹' {y}).indicator ψ x) μ) → ∫ x, K (φ x) x * ψ x ∂μ =
+        ∑ y ∈ φ.range, ∫ x, K y x * (φ ⁻¹' {y}).indicator ψ x ∂μ := by
+      intro K hK
+      rw [← integral_finsetSum _ fun y _ => hK y]
+      refine integral_congr_ae (ae_of_all _ fun x => ?_)
+      simp only
+      rw [Finset.sum_eq_single_of_mem (φ x) (φ.mem_range_self x)]
+      · rw [indicator_of_mem (by simp)]
+      · intro y _ hy
+        rw [indicator_of_notMem (by simpa [eq_comm] using hy), mul_zero]
+    have hψy : ∀ y, Integrable ((φ ⁻¹' {y}).indicator ψ) μ := fun y =>
+      hψ.indicator (φ.measurableSet_fiber y)
+    rw [hdec (fun y x => H x y) fun y => aux_ann_integrable_mul
+      (hHms y).aestronglyMeasurable (fun x => hHb _ _) (hψy y)]
+    have : ∀ n, ∫ x, F n (φ x) x * ψ x ∂μ =
+        ∑ y ∈ φ.range, ∫ x, F n y x * (φ ⁻¹' {y}).indicator ψ x ∂μ := fun n =>
+      hdec (F n) fun y => aux_ann_integrable_mul (hFm n y).aestronglyMeasurable (hb n y) (hψy y)
+    simp_rw [this]
+    exact tendsto_finsetSum _ fun y _ => hfix y _ (hψy y)
+  have hw_nn : ∀ x s s', 0 ≤ w s s' := fun x s s' => (norm_nonneg _).trans (hL 0 s s' x)
+  have hmδ : ∀ m, AEStronglyMeasurable (fun x => min 2 (w (S x) (Sm m x)) * ‖ψ x‖) μ :=
+    fun m => (((measurable_const (a := (2 : ℝ))).min
+      (hw.measurable.comp (hS.prodMk (Sm m).measurable))).aestronglyMeasurable).mul
+      hψ.norm.aestronglyMeasurable
+  refine aux_ann_tendsto_of_approx (am := fun m n => ∫ x, F n (Sm m x) x * ψ x ∂μ)
+    (bm := fun m => ∫ x, H x (Sm m x) * ψ x ∂μ)
+    (δ := fun m => ∫ x, min 2 (w (S x) (Sm m x)) * ‖ψ x‖ ∂μ) ?_ ?_ ?_ hsimple
+  · have h0 : (0 : ℝ) = ∫ x, (0 : ℝ) ∂μ := by simp
+    rw [h0]
+    refine tendsto_integral_of_dominated_convergence (fun x => 2 * ‖ψ x‖) (fun m => ?_)
+      (hψ.norm.const_mul 2) (fun m => ae_of_all _ fun x => ?_) (ae_of_all _ fun x => ?_)
+    · exact hmδ m
+    · rw [norm_mul, norm_norm, Real.norm_eq_abs, abs_of_nonneg (le_min (by norm_num)
+        (hw_nn x _ _))]
+      exact mul_le_mul_of_nonneg_right (min_le_left _ _) (norm_nonneg _)
+    · have ht := ((hwc (tendsto_const_nhds (x := S x)) (hSm x)).min
+        (tendsto_const_nhds (x := (2 : ℝ)))).mul_const ‖ψ x‖
+      rw [hw0, min_eq_left (by norm_num : (0 : ℝ) ≤ 2), zero_mul] at ht
+      simpa [min_comm] using ht
+  · intro m n
+    rw [← integral_sub (hintS n S hS) (hintS n _ (Sm m).measurable)]
+    refine norm_integral_le_of_norm_le ?_ (ae_of_all _ fun x => ?_)
+    · exact (hψ.norm.const_mul 2).mono'
+        (hmδ m)
+        (ae_of_all _ fun x => by
+          rw [norm_mul, norm_norm, Real.norm_eq_abs, abs_of_nonneg (le_min (by norm_num)
+            (hw_nn x _ _))]
+          exact mul_le_mul_of_nonneg_right (min_le_left _ _) (norm_nonneg _))
+    · rw [← sub_mul, norm_mul]
+      refine mul_le_mul_of_nonneg_right (le_min ?_ (hL n _ _ x)) (norm_nonneg _)
+      calc ‖F n (S x) x - F n (Sm m x) x‖ ≤ ‖F n (S x) x‖ + ‖F n (Sm m x) x‖ := norm_sub_le _ _
+        _ ≤ 2 := by linarith [hb n (S x) x, hb n (Sm m x) x]
+  · intro m
+    rw [← integral_sub (hintHS S hS) (hintHS _ (Sm m).measurable)]
+    refine norm_integral_le_of_norm_le ?_ (ae_of_all _ fun x => ?_)
+    · exact (hψ.norm.const_mul 2).mono'
+        (hmδ m)
+        (ae_of_all _ fun x => by
+          rw [norm_mul, norm_norm, Real.norm_eq_abs, abs_of_nonneg (le_min (by norm_num)
+            (hw_nn x _ _))]
+          exact mul_le_mul_of_nonneg_right (min_le_left _ _) (norm_nonneg _))
+    · rw [← sub_mul, norm_mul]
+      refine mul_le_mul_of_nonneg_right (le_min ?_ (hHL x _ _)) (norm_nonneg _)
+      calc ‖H x (S x) - H x (Sm m x)‖ ≤ ‖H x (S x)‖ + ‖H x (Sm m x)‖ := norm_sub_le _ _
+        _ ≤ 2 := by linarith [hHb x (S x), hHb x (Sm m x)]
+
+end Extend
+
+/-- Auxiliary: functions bounded by one are essentially bounded with `L^∞` norm at most one. -/
+theorem aux_ann_memLp_top_le_one {X : Type*} [MeasurableSpace X] {μ : Measure X} {f : X → ℂ}
+    (hf : Measurable f) (hb : ∀ x, ‖f x‖ ≤ 1) : MemLp f ⊤ μ ∧ eLpNorm f ⊤ μ ≤ 1 := by
+  refine ⟨memLp_top_of_bound hf.aestronglyMeasurable 1 (ae_of_all _ hb), ?_⟩
+  rw [eLpNorm_exponent_top]
+  exact (eLpNormEssSup_le_of_ae_bound (ae_of_all _ hb)).trans (by simp)
+
+/-- Auxiliary (`ann:sequence`): the functions of an admissible sequence are continuous. -/
+theorem aux_ann_continuous {Q : Set ℝ²} {C : ℝ} {R : ℕ → ℝ} {f : Fin 3 → ℕ → ℝ² → ℂ}
+    (hadm : IsAdmissibleSeq Q C R f) (j : Fin 3) (n : ℕ) : Continuous (f j n) :=
+  (LipschitzWith.of_dist_le' (K := C * R n) fun x y => by
+    rw [dist_eq_norm, dist_eq_norm]; exact hadm.lip j n x y).continuous
+
+/-- Auxiliary (`ann:sequence`): the translates are bounded by one. -/
+theorem aux_ann_annT_le_one {Q : Set ℝ²} {C : ℝ} {R : ℕ → ℝ} {f : Fin 3 → ℕ → ℝ² → ℂ}
+    (hadm : IsAdmissibleSeq Q C R f) (j : Fin 3) (n : ℕ) (s z : ℝ²) :
+    ‖annT R f j n s z‖ ≤ 1 :=
+  (hadm.bound j n _).trans (by unfold indicator; split_ifs <;> norm_num)
+
+/-- Auxiliary (`ann:extract`): the translates are `|C|`-Lipschitz in the shift. -/
+theorem aux_ann_annT_lip {Q : Set ℝ²} {C : ℝ} {R : ℕ → ℝ} {f : Fin 3 → ℕ → ℝ² → ℂ}
+    (hadm : IsAdmissibleSeq Q C R f) (j : Fin 3) (n : ℕ) (s s' z : ℝ²) :
+    ‖annT R f j n s z - annT R f j n s' z‖ ≤ |C| * ‖s - s'‖ := by
+  unfold annT
+  refine (hadm.lip j n _ _).trans ?_
+  rw [add_sub_add_left_eq_sub, ← smul_sub, norm_smul, Real.norm_eq_abs, abs_inv, ← mul_assoc,
+    mul_assoc C]
+  refine mul_le_mul_of_nonneg_right ?_ (norm_nonneg _)
+  rcases lt_trichotomy (R n) 0 with h | h | h
+  · rw [abs_of_neg h, inv_neg, mul_neg, mul_inv_cancel₀ h.ne, mul_neg_one]
+    exact neg_le_abs C
+  · simp [h]
+  · rw [abs_of_pos h, mul_inv_cancel₀ h.ne', mul_one]; exact le_abs_self C
+
+/-- Auxiliary (`ann:extract`): the elementary product estimate for two factors. -/
+theorem aux_ann_mul_conj_sub (a b a' b' : ℂ) (ha' : ‖a'‖ ≤ 1) (hb : ‖b‖ ≤ 1) :
+    ‖a * conj b - a' * conj b'‖ ≤ ‖a - a'‖ + ‖b - b'‖ := by
+  have e : a * conj b - a' * conj b' = (a - a') * conj b + a' * conj (b - b') := by
+    simp only [map_sub]; ring
+  rw [e]
+  refine (norm_add_le _ _).trans (add_le_add ?_ ?_)
+  · rw [norm_mul, Complex.norm_conj]; exact mul_le_of_le_one_right (norm_nonneg _) hb
+  · rw [norm_mul, Complex.norm_conj]; exact mul_le_of_le_one_left (norm_nonneg _) ha'
+
+/-- Auxiliary (`ann:extract`): the elementary product estimate for three factors. -/
+theorem aux_ann_prod3_sub (a b : Fin 3 → ℂ) (ha : ∀ j, ‖a j‖ ≤ 1) (hb : ∀ j, ‖b j‖ ≤ 1) :
+    ‖∏ j, a j - ∏ j, b j‖ ≤ ∑ j, ‖a j - b j‖ := by
+  rw [Fin.prod_univ_three, Fin.prod_univ_three, Fin.sum_univ_three]
+  have e : a 0 * a 1 * a 2 - b 0 * b 1 * b 2 =
+      (a 0 - b 0) * a 1 * a 2 + b 0 * (a 1 - b 1) * a 2 + b 0 * b 1 * (a 2 - b 2) := by ring
+  rw [e]
+  refine (norm_add₃_le).trans (add_le_add_three ?_ ?_ ?_) <;> simp only [norm_mul]
+  · exact (mul_le_of_le_one_right (by positivity) (ha 2)).trans
+      (mul_le_of_le_one_right (norm_nonneg _) (ha 1))
+  · exact (mul_le_of_le_one_right (by positivity) (ha 2)).trans
+      (mul_le_of_le_one_left (norm_nonneg _) (hb 0))
+  · exact mul_le_of_le_one_left (norm_nonneg _)
+      (mul_le_one₀ (hb 0) (norm_nonneg _) (hb 1))
+
+/-- Auxiliary (`ann:extract`): decoding a vertex index from a natural number. -/
+def aux_ann_fin3 (k : ℕ) : Fin 3 := ⟨k % 3, Nat.mod_lt _ (by norm_num)⟩
+
+theorem aux_ann_fin3_val (j : Fin 3) : aux_ann_fin3 j = j :=
+  Fin.ext (Nat.mod_eq_of_lt j.isLt)
+
+/-- Auxiliary: `μinc` is sigma-finite. -/
+instance aux_ann_sigmaFinite_μinc : SigmaFinite μinc := by
+  unfold μinc; infer_instance
+
+/-- Auxiliary: the vertex projections are continuous. -/
+theorem aux_ann_proj_continuous (α β : ℝ) (j : Fin 3) : Continuous (proj α β j) :=
+  continuous_fst.add ((Lv α β j).continuous.comp (aux_lw_u_continuous.comp continuous_snd))
+
 /-- **Lemma `ann:extract`** (Simultaneous correlation limits).
 Every admissible sequence has a subsequence with the following properties.  For all real shifts
 $s,t,s_0,s_1,s_2\in\mathbb R^2$, the limits
@@ -115,7 +672,106 @@ theorem ann_extract (C : ℝ) :
       ∃ φ : ℕ → ℕ, StrictMono φ ∧ ∃ (k : Fin 3 → ℝ² → ℝ² → ℝ² → ℂ)
         (h3 : ℝ² × Ang → (Fin 3 → ℝ²) → ℂ),
         aux_IsCorrelationLimits α β L (R ∘ φ) (fun j n => f j (φ n)) k h3 := by
-  sorry
+  refine ⟨|C|, fun α β Q _ R f hadm => ?_⟩
+  have hT1 := aux_ann_annT_le_one hadm
+  have hTL := aux_ann_annT_lip hadm
+  have hTc : ∀ j n, Continuous fun q : ℝ² × ℝ² => annT R f j n q.1 q.2 := fun j n => by
+    have hc := aux_ann_continuous hadm j n
+    unfold annT
+    fun_prop
+  set F2 : Fin 3 → ℕ → ℝ² × ℝ² → ℝ² → ℂ := fun j n st z =>
+    annT R f j n st.1 z * conj (annT R f j n st.2 z) with hF2
+  set F3 : ℕ → (Fin 3 → ℝ²) → ℝ² × Ang → ℂ := fun n s p =>
+    ∏ j, annT R f j n (s j) (proj α β j p) with hF3
+  have hF2c : ∀ j n z, Continuous fun st => F2 j n st z := fun j n z =>
+    ((hTc j n).comp (continuous_fst.prodMk continuous_const)).mul
+      (Complex.continuous_conj.comp ((hTc j n).comp (continuous_snd.prodMk continuous_const)))
+  have hF2m : ∀ j n st, Measurable (F2 j n st) := fun j n st =>
+    (((hTc j n).comp (continuous_const.prodMk continuous_id)).mul
+      (Complex.continuous_conj.comp ((hTc j n).comp
+        (continuous_const.prodMk continuous_id)))).measurable
+  have hF2b : ∀ j n st z, ‖F2 j n st z‖ ≤ 1 := fun j n st z => by
+    simp only [hF2, norm_mul, Complex.norm_conj]
+    exact mul_le_one₀ (hT1 _ _ _ _) (norm_nonneg _) (hT1 _ _ _ _)
+  have hF2L : ∀ j n (st st' : ℝ² × ℝ²) z, ‖F2 j n st z - F2 j n st' z‖ ≤
+      |C| * (‖st.1 - st'.1‖ + ‖st.2 - st'.2‖) := fun j n st st' z => by
+    refine (aux_ann_mul_conj_sub _ _ _ _ (hT1 _ _ _ _) (hT1 _ _ _ _)).trans ?_
+    rw [mul_add]
+    exact add_le_add (hTL _ _ _ _ _) (hTL _ _ _ _ _)
+  have hF3c : ∀ n p, Continuous fun s => F3 n s p := fun n p =>
+    continuous_finsetProd _ fun j _ => by
+      have hc := aux_ann_continuous hadm j n
+      simp only [annT]
+      fun_prop
+  have hF3m : ∀ n s, Measurable (F3 n s) := fun n s =>
+    (continuous_finsetProd _ fun j _ => by
+      have hc := aux_ann_continuous hadm j n
+      have hp := aux_ann_proj_continuous α β j
+      simp only [annT]
+      fun_prop).measurable
+  have hF3b : ∀ n s p, ‖F3 n s p‖ ≤ 1 := fun n s p => by
+    simp only [hF3]
+    rw [norm_prod]
+    exact (Finset.prod_le_one (fun _ _ => norm_nonneg _)
+      fun j _ => hT1 _ _ _ _)
+  have hF3L : ∀ n (s s' : Fin 3 → ℝ²) p, ‖F3 n s p - F3 n s' p‖ ≤
+      |C| * ∑ j, ‖s j - s' j‖ := fun n s s' p => by
+    refine (aux_ann_prod3_sub _ _ (fun j => hT1 _ _ _ _) (fun j => hT1 _ _ _ _)).trans ?_
+    rw [Finset.mul_sum]
+    exact Finset.sum_le_sum fun j _ => hTL _ _ _ _ _
+  set D2 := TopologicalSpace.denseSeq (ℝ² × ℝ²) with hD2def
+  set D3 := TopologicalSpace.denseSeq (Fin 3 → ℝ²) with hD3def
+  have hD2 : DenseRange D2 := TopologicalSpace.denseRange_denseSeq _
+  have hD3 : DenseRange D3 := TopologicalSpace.denseRange_denseSeq _
+  obtain ⟨φ1, hφ1, g2, hg2⟩ := ext_weakstar_plane_countable
+    (fun i n => F2 (aux_ann_fin3 (Nat.unpair i).1) n (D2 (Nat.unpair i).2))
+    (fun i n => (aux_ann_memLp_top_le_one (hF2m _ _ _) (hF2b _ _ _)).1)
+    (fun i => ⟨1, ENNReal.one_ne_top, fun n =>
+      (aux_ann_memLp_top_le_one (hF2m _ _ _) (hF2b _ _ _)).2⟩)
+  obtain ⟨φ2, hφ2, g3, hg3⟩ := ext_weakstar_config_countable
+    (fun i n => F3 (φ1 n) (D3 i))
+    (fun i n => (aux_ann_memLp_top_le_one (hF3m _ _) (hF3b _ _)).1)
+    (fun i => ⟨1, ENNReal.one_ne_top, fun n =>
+      (aux_ann_memLp_top_le_one (hF3m _ _) (hF3b _ _)).2⟩)
+  set φ := φ1 ∘ φ2 with hφdef
+  have hconv2 : ∀ (j : Fin 3) k, annWeakStar volume (fun n => F2 j (φ n) (D2 k))
+      (g2 (Nat.pair j k)) := by
+    intro j k ψ hψ
+    have := ((hg2 (Nat.pair j k)).2 ψ hψ).comp hφ2.tendsto_atTop
+    simp only [Nat.unpair_pair, aux_ann_fin3_val] at this
+    exact this
+  have hconv3 : ∀ i, annWeakStar μinc (fun n => F3 (φ n) (D3 i)) (g3 i) :=
+    fun i ψ hψ => (hg3 i).2 ψ hψ
+  have hw2 : Continuous (Function.uncurry fun (st st' : ℝ² × ℝ²) =>
+      |C| * (‖st.1 - st'.1‖ + ‖st.2 - st'.2‖)) := by
+    simp only [Function.uncurry_def]; fun_prop
+  have hw3 : Continuous (Function.uncurry fun (s s' : Fin 3 → ℝ²) =>
+      |C| * ∑ j, ‖s j - s' j‖) := by
+    simp only [Function.uncurry_def]; fun_prop
+  have hex2 := fun j : Fin 3 => aux_ann_extend (μ := (volume : Measure ℝ²))
+    (fun n => F2 j (φ n)) (fun n => hF2c j (φ n)) (fun n => hF2m j (φ n))
+    (fun n => hF2b j (φ n)) _ hw2 (fun _ => by simp) (fun n => hF2L j (φ n)) D2 hD2
+    (fun k => g2 (Nat.pair j k)) (fun k => (hg2 _).1) (hconv2 j)
+  choose H2 hH2m hH2c hH2b hH2L hH2S using hex2
+  obtain ⟨H3, hH3m, hH3c, hH3b, hH3L, hH3S⟩ := aux_ann_extend (μ := μinc)
+    (fun n => F3 (φ n)) (fun n => hF3c (φ n)) (fun n => hF3m (φ n))
+    (fun n => hF3b (φ n)) _ hw3 (fun _ => by simp) (fun n => hF3L (φ n)) D3 hD3
+    g3 (fun i => (hg3 i).1) hconv3
+  refine ⟨φ, hφ1.comp hφ2, fun j z s t => H2 j z (s, t), fun p s => H3 p s, ?_⟩
+  exact
+    { two_point := fun j s t => hH2S j (fun _ => (s, t)) measurable_const
+      three_point := fun s => hH3S (fun _ => s) measurable_const
+      meas_two := fun j s t =>
+        ((hH2m j).comp (measurable_id.prodMk measurable_const)).aestronglyMeasurable
+      meas_three := fun s =>
+        (hH3m.comp (measurable_id.prodMk measurable_const)).aestronglyMeasurable
+      cont_two := ae_of_all _ fun z j => (hH2c j z).comp (continuous_fst.prodMk continuous_snd)
+      cont_three := ae_of_all _ fun p => hH3c p
+      bound_two := fun j z s t => hH2b j z (s, t)
+      bound_three := fun p s => hH3b p s
+      lip_two := ae_of_all _ fun z j s t s' t' => hH2L j z (s, t) (s', t')
+      lip_three := ae_of_all _ fun p s s' => hH3L p s s'
+      variable_shifts := fun S hS _ => hH3S (fun p j => S j p) (measurable_pi_lambda _ hS) }
 
 /-! ### Measurable spectral measures (`ann:spectral`) -/
 
@@ -127,6 +783,274 @@ def aux_IsSpectralKernels (k : Fin 3 → ℝ² → ℝ² → ℝ² → ℂ) (ν 
   (∀ j, IsMeasurableKernel (ν j)) ∧ (∀ j z, ν j z univ ≤ 1) ∧
     ∀ᵐ z ∂(volume : Measure ℝ²), ∀ j s t, k j z s t = ∫ ξ, e ⟪s - t, ξ⟫_ℝ ∂(ν j z)
 
+/-- Auxiliary (`ann:spectral`, `ann:factor`): weak-* convergence is preserved by finite linear
+combinations of uniformly bounded sequences. -/
+theorem aux_ann_weakStar_sum {X : Type*} [MeasurableSpace X] {μ : Measure X} {ι : Type*}
+    (s : Finset ι) (c : ι → ℂ) {F : ι → ℕ → X → ℂ} {G : ι → X → ℂ}
+    (hFm : ∀ i n, AEStronglyMeasurable (F i n) μ) (hFb : ∀ i n x, ‖F i n x‖ ≤ 1)
+    (hG : ∀ i, MemLp (G i) ⊤ μ) (h : ∀ i, annWeakStar μ (F i) (G i)) :
+    annWeakStar μ (fun n x => ∑ i ∈ s, c i * F i n x) (fun x => ∑ i ∈ s, c i * G i x) := by
+  intro ψ hψ
+  have e1 : ∀ n, ∫ x, (∑ i ∈ s, c i * F i n x) * ψ x ∂μ =
+      ∑ i ∈ s, c i * ∫ x, F i n x * ψ x ∂μ := by
+    intro n
+    simp_rw [Finset.sum_mul]
+    rw [integral_finsetSum _ fun i _ => ?_]
+    · refine Finset.sum_congr rfl fun i _ => ?_
+      rw [← integral_const_mul]
+      congr 1; funext x; ring
+    · exact ((hψ.bdd_mul (hFm i n) (ae_of_all _ (hFb i n))).const_mul (c i)).congr
+        (ae_of_all _ fun x => by simp only; ring)
+  have e2 : ∫ x, (∑ i ∈ s, c i * G i x) * ψ x ∂μ = ∑ i ∈ s, c i * ∫ x, G i x * ψ x ∂μ := by
+    simp_rw [Finset.sum_mul]
+    rw [integral_finsetSum _ fun i _ => ?_]
+    · refine Finset.sum_congr rfl fun i _ => ?_
+      rw [← integral_const_mul]
+      congr 1; funext x; ring
+    · exact (((hG i).integrable_mul (memLp_one_iff_integrable.2 hψ)).const_mul (c i)).congr
+        (ae_of_all _ fun x => by simp only [Pi.mul_apply]; ring)
+  simp_rw [e1, e2]
+  exact tendsto_finsetSum _ fun i _ => (h i ψ hψ).const_mul (c i)
+
+section Spectral
+
+variable {α β : ℝ} {Q : Set ℝ²} {C L : ℝ} {R : ℕ → ℝ} {f : Fin 3 → ℕ → ℝ² → ℂ}
+  {k : Fin 3 → ℝ² → ℝ² → ℝ² → ℂ} {h3 : ℝ² × Ang → (Fin 3 → ℝ²) → ℂ}
+
+/-- Auxiliary: the two-point limits are essentially bounded. -/
+theorem aux_ann_k_memLp (hlim : aux_IsCorrelationLimits α β L R f k h3) (j : Fin 3)
+    (s t : ℝ²) : MemLp (fun z => k j z s t) ⊤ volume :=
+  memLp_top_of_bound (hlim.meas_two j s t) 1 (ae_of_all _ fun z => hlim.bound_two j z s t)
+
+/-- Auxiliary (`ann:spectral`, see `Auto.ann_spectral`): translation invariance of the
+two-point limits, $k_j(z;s,t)=k_j(z;s-t,0)$ for a.e. `z`. -/
+theorem aux_ann_translation (hadm : IsAdmissibleSeq Q C R f)
+    (hlim : aux_IsCorrelationLimits α β L R f k h3) (j : Fin 3) (s t : ℝ²) :
+    (fun z => k j z s t) =ᵐ[volume] fun z => k j z (s - t) 0 := by
+  refine aux_ann_weakStar_unique (aux_ann_k_memLp hlim j s t) (aux_ann_k_memLp hlim j (s - t) 0)
+    (hlim.two_point j s t) (hlim.two_point j (s - t) 0) fun ψ hψ => ?_
+  set h : ℕ → ℝ² := fun n => (R n)⁻¹ • t with hh
+  set F' : ℕ → ℝ² → ℂ := fun n z => annT R f j n (s - t) z * conj (annT R f j n 0 z) with hF'
+  have hshift : ∀ n z, annT R f j n s z * conj (annT R f j n t z) = F' n (z + h n) := by
+    intro n z
+    simp only [hF', hh, annT, smul_sub, smul_zero, add_zero]
+    rw [show z + (R n)⁻¹ • t + ((R n)⁻¹ • s - (R n)⁻¹ • t) = z + (R n)⁻¹ • s by abel]
+  have hF'm : ∀ n, Measurable (F' n) := fun n => by
+    have hc := aux_ann_continuous hadm j n
+    simp only [hF', annT]
+    exact (by fun_prop : Continuous _).measurable
+  have hF'b : ∀ n z, ‖F' n z‖ ≤ 1 := fun n z => by
+    simp only [hF', norm_mul, Complex.norm_conj]
+    exact mul_le_one₀ (aux_ann_annT_le_one hadm _ _ _ _) (norm_nonneg _)
+      (aux_ann_annT_le_one hadm _ _ _ _)
+  have e : ∀ n, ∫ z, annT R f j n s z * conj (annT R f j n t z) * ψ z =
+      ∫ z, F' n z * ψ (z - h n) := by
+    intro n
+    simp_rw [hshift]
+    have := integral_add_right_eq_self (μ := (volume : Measure ℝ²))
+      (fun z => F' n z * ψ (z - h n)) (h n)
+    simp only [add_sub_cancel_right] at this
+    exact this
+  have hbd : ∀ n, ‖(∫ z, F' n z * ψ (z - h n)) - ∫ z, F' n z * ψ z‖ ≤
+      (eLpNorm (fun z => ψ (z - h n) - ψ z) 1 volume).toReal := by
+    intro n
+    have hi1 : Integrable (fun z => F' n z * ψ (z - h n)) :=
+      aux_ann_integrable_mul (hF'm n).aestronglyMeasurable (hF'b n) (hψ.comp_sub_right (h n))
+    have hi2 : Integrable (fun z => F' n z * ψ z) :=
+      aux_ann_integrable_mul (hF'm n).aestronglyMeasurable (hF'b n) hψ
+    have hm : AEStronglyMeasurable (fun z => ψ (z - h n) - ψ z) volume :=
+      ((hψ.comp_sub_right (h n)).sub hψ).aestronglyMeasurable
+    rw [← integral_sub hi1 hi2, eLpNorm_one_eq_lintegral_enorm,
+      ← integral_norm_eq_lintegral_enorm hm]
+    refine norm_integral_le_of_norm_le ((hψ.comp_sub_right (h n)).sub hψ).norm
+      (ae_of_all _ fun z => ?_)
+    rw [← mul_sub, norm_mul]
+    exact mul_le_of_le_one_left (norm_nonneg _) (hF'b n z)
+  have hh0 : Tendsto h atTop (𝓝 0) := by
+    have := (tendsto_inv_atTop_zero.comp hadm.tendsto_R).smul_const t
+    simpa using this
+  have htr := (ext_approximation_translation (Or.inl rfl)
+    (memLp_one_iff_integrable.2 hψ)).comp hh0
+  have htr' : Tendsto (fun n => (eLpNorm (fun z => ψ (z - h n) - ψ z) 1 volume).toReal) atTop
+      (𝓝 0) := by
+    have := (ENNReal.tendsto_toReal ENNReal.zero_ne_top).comp htr
+    simpa [Function.comp_def] using this
+  have hF'eq : ∀ n, ∫ z, annT R f j n (s - t) z * conj (annT R f j n 0 z) * ψ z =
+      ∫ z, F' n z * ψ z := fun n => rfl
+  simp_rw [e, hF'eq]
+  exact squeeze_zero_norm hbd htr'
+
+/-- Auxiliary (`ann:spectral`): expanded squares are nonnegative. -/
+theorem aux_ann_sum_mul_conj_nonneg {N : ℕ} (c T : Fin N → ℂ) :
+    0 ≤ ∑ a, ∑ b, c a * conj (c b) * (T a * conj (T b)) := by
+  have : ∑ a, ∑ b, c a * conj (c b) * (T a * conj (T b)) =
+      (∑ a, c a * T a) * conj (∑ a, c a * T a) := by
+    rw [map_sum, Finset.sum_mul_sum]
+    refine Finset.sum_congr rfl fun a _ => Finset.sum_congr rfl fun b _ => ?_
+    rw [map_mul]; ring
+  rw [this, Complex.mul_conj]
+  exact Complex.zero_le_real.2 (Complex.normSq_nonneg _)
+
+/-- Auxiliary (`ann:spectral`, see `Auto.ann_spectral`): the spectral measures for one vertex. -/
+theorem aux_ann_spectral_one (hadm : IsAdmissibleSeq Q C R f)
+    (hlim : aux_IsCorrelationLimits α β L R f k h3) (j : Fin 3) :
+    ∃ ν : ℝ² → Measure ℝ², IsMeasurableKernel ν ∧ (∀ z, ν z univ ≤ 1) ∧
+      ∀ᵐ z ∂(volume : Measure ℝ²), ∀ s t, k j z s t = ∫ ξ, e ⟪s - t, ξ⟫_ℝ ∂(ν z) := by
+  classical
+  set D := TopologicalSpace.denseSeq ℝ² with hDdef
+  have hD : DenseRange D := TopologicalSpace.denseRange_denseSeq _
+  set E := TopologicalSpace.denseSeq ℂ with hEdef
+  have hE : DenseRange E := TopologicalSpace.denseRange_denseSeq _
+  set g : ℕ → ℝ² → ℂ := fun i => (hlim.meas_two j (D i) 0).mk _ with hgdef
+  have hgk : ∀ i, ∀ᵐ z ∂(volume : Measure ℝ²), k j z (D i) 0 = g i z := fun i =>
+    (hlim.meas_two j (D i) 0).ae_eq_mk
+  have hgm : ∀ i, StronglyMeasurable (g i) := fun i =>
+    (hlim.meas_two j (D i) 0).stronglyMeasurable_mk
+  have hPDd : ∀ d : Σ N : ℕ, (Fin N → ℕ) × (Fin N → ℕ), ∀ᵐ z ∂(volume : Measure ℝ²),
+      0 ≤ ∑ a, ∑ b, E (d.2.2 a) * conj (E (d.2.2 b)) * k j z (D (d.2.1 a)) (D (d.2.1 b)) := by
+    rintro ⟨N, ia, ic⟩
+    have hFm : ∀ (ab : Fin N × Fin N) n, AEStronglyMeasurable (fun z =>
+        annT R f j n (D (ia ab.1)) z * conj (annT R f j n (D (ia ab.2)) z)) volume :=
+      fun ab n => by
+        have hc := aux_ann_continuous hadm j n
+        simp only [annT]
+        exact (by fun_prop : Continuous _).aestronglyMeasurable
+    have hFb : ∀ (ab : Fin N × Fin N) n z, ‖annT R f j n (D (ia ab.1)) z *
+        conj (annT R f j n (D (ia ab.2)) z)‖ ≤ 1 := fun ab n z => by
+      rw [norm_mul, Complex.norm_conj]
+      exact mul_le_one₀ (aux_ann_annT_le_one hadm _ _ _ _) (norm_nonneg _)
+        (aux_ann_annT_le_one hadm _ _ _ _)
+    have hlimit := aux_ann_weakStar_sum (μ := volume) (Finset.univ : Finset (Fin N × Fin N))
+      (fun ab => E (ic ab.1) * conj (E (ic ab.2))) hFm hFb
+      (fun ab => aux_ann_k_memLp hlim j _ _) (fun ab => hlim.two_point j _ _)
+    have hmem : MemLp (fun z => ∑ ab : Fin N × Fin N, E (ic ab.1) * conj (E (ic ab.2)) *
+        k j z (D (ia ab.1)) (D (ia ab.2))) ⊤ volume :=
+      memLp_finsetSum _ fun ab _ => (aux_ann_k_memLp hlim j _ _).const_mul _
+    have hnn := aux_ann_weakStar_nonneg hmem (fun n => ae_of_all _ fun z => by
+      simp only [Fintype.sum_prod_type]
+      exact aux_ann_sum_mul_conj_nonneg _ _) hlimit
+    filter_upwards [hnn] with z hz
+    simp only [Fintype.sum_prod_type] at hz
+    exact hz
+  have hTd : ∀ a b, ∀ᵐ z ∂(volume : Measure ℝ²), k j z (D a) (D b) = k j z (D a - D b) 0 :=
+    fun a b => aux_ann_translation hadm hlim j _ _
+  set Good0 : Set ℝ² := {z | Continuous (fun st : ℝ² × ℝ² => k j z st.1 st.2) ∧
+    (∀ s t s' t', ‖k j z s t - k j z s' t'‖ ≤ L * (‖s - s'‖ + ‖t - t'‖)) ∧
+    (∀ a b, k j z (D a) (D b) = k j z (D a - D b) 0) ∧
+    (∀ d : Σ N : ℕ, (Fin N → ℕ) × (Fin N → ℕ),
+      0 ≤ ∑ a, ∑ b, E (d.2.2 a) * conj (E (d.2.2 b)) * k j z (D (d.2.1 a)) (D (d.2.1 b))) ∧
+    ∀ i, k j z (D i) 0 = g i z} with hGood0
+  have hG0 : ∀ᵐ z ∂(volume : Measure ℝ²), z ∈ Good0 := by
+    filter_upwards [hlim.cont_two, hlim.lip_two, ae_all_iff.2 fun a => ae_all_iff.2 (hTd a),
+      ae_all_iff.2 hPDd, ae_all_iff.2 hgk] with z h1 h2 h3 h4 h5
+    exact ⟨h1 j, h2 j, h3, h4, h5⟩
+  set Good : Set ℝ² := (toMeasurable volume Good0ᶜ)ᶜ with hGooddef
+  have hGm : MeasurableSet Good := (measurableSet_toMeasurable _ _).compl
+  have hGsub : Good ⊆ Good0 := fun z hz => by
+    by_contra h
+    exact hz (subset_toMeasurable _ _ h)
+  have hGae : ∀ᵐ z ∂(volume : Measure ℝ²), z ∈ Good := by
+    rw [ae_iff]
+    simp only [hGooddef, mem_compl_iff, not_not, ofPred_mem_eq, measure_toMeasurable]
+    exact ae_iff.1 hG0
+  -- consequences on the good set
+  have hext : ∀ z ∈ Good0, ∀ s t, k j z s t = k j z (s - t) 0 := by
+    intro z hz s t
+    have hs := aux_ann_idx_tendsto D hD s
+    have ht := aux_ann_idx_tendsto D hD t
+    have h1 := (hz.1.tendsto (s, t)).comp (hs.prodMk_nhds ht)
+    have h2 := (hz.1.tendsto (s - t, 0)).comp ((hs.sub ht).prodMk_nhds tendsto_const_nhds)
+    refine tendsto_nhds_unique h1 ?_
+    convert h2 using 1
+    funext m
+    exact hz.2.2.1 _ _
+  have hPD : ∀ z ∈ Good0, IsPositiveDefinite fun s => k j z s 0 := by
+    intro z hz N s c
+    have hs := fun a => aux_ann_idx_tendsto D hD (s a)
+    have hc := fun a => aux_ann_idx_tendsto E hE (c a)
+    have hlim' : Tendsto (fun m => ∑ a, ∑ b, E (aux_ann_idx E hE m (c a)) *
+        conj (E (aux_ann_idx E hE m (c b))) *
+        k j z (D (aux_ann_idx D hD m (s a))) (D (aux_ann_idx D hD m (s b)))) atTop
+        (𝓝 (∑ a, ∑ b, c a * conj (c b) * k j z (s a - s b) 0)) := by
+      refine tendsto_finsetSum _ fun a _ => tendsto_finsetSum _ fun b _ => ?_
+      rw [← hext z hz]
+      exact ((hc a).mul ((Complex.continuous_conj.tendsto _).comp (hc b))).mul
+        ((hz.1.tendsto (s a, s b)).comp ((hs a).prodMk_nhds (hs b)))
+    exact ge_of_tendsto' hlim' fun m =>
+      hz.2.2.2.1 ⟨N, fun a => aux_ann_idx D hD m (s a), fun a => aux_ann_idx E hE m (c a)⟩
+  have hLip : ∀ z ∈ Good0, LipschitzWith (Real.toNNReal L) fun s => k j z s 0 := by
+    intro z hz
+    refine LipschitzWith.of_dist_le' fun s s' => ?_
+    rw [dist_eq_norm, dist_eq_norm]
+    simpa using hz.2.1 s 0 s' 0
+  have hc0 : ∀ z ∈ Good0, k j z 0 0 ≤ 1 := by
+    intro z hz
+    have h := hPD z hz 1 ![0] ![1]
+    simp only [Finset.univ_unique, Fin.default_eq_zero, Finset.sum_singleton,
+      Matrix.cons_val_fin_one, sub_self, map_one, mul_one, one_mul] at h
+    have hb := hlim.bound_two j z 0 0
+    rw [Complex.le_def]
+    refine ⟨?_, ?_⟩
+    · simp only [Complex.one_re]
+      exact (Complex.re_le_norm _).trans hb
+    · simp only [Complex.one_im]
+      exact (Complex.nonneg_iff.1 h).2.symm
+  -- the family `c`
+  set c : ℝ² → ℝ² → ℂ := fun z s => if z ∈ Good then k j z s 0 else 0 with hcdef
+  have hcPD : ∀ z, IsPositiveDefinite (c z) := by
+    intro z
+    by_cases hz : z ∈ Good
+    · simpa [hcdef, hz] using hPD z (hGsub hz)
+    · intro N s w
+      simp [hcdef, hz]
+  have hcL : ∀ z, ∃ K, LipschitzWith K (c z) := by
+    intro z
+    by_cases hz : z ∈ Good
+    · exact ⟨_, by simpa [hcdef, hz] using hLip z (hGsub hz)⟩
+    · exact ⟨0, by simp [hcdef, hz, LipschitzWith.const (0 : ℂ)]⟩
+  have hc1 : ∀ z, c z 0 ≤ 1 := by
+    intro z
+    by_cases hz : z ∈ Good
+    · simpa [hcdef, hz] using hc0 z (hGsub hz)
+    · simp [hcdef, hz]
+  have hcm : ∀ s, Measurable fun z => c z s := by
+    intro s
+    refine measurable_of_tendsto_metrizable (f := fun m z =>
+      if z ∈ Good then g (aux_ann_idx D hD m s) z else 0)
+      (fun m => Measurable.ite hGm (hgm _).measurable measurable_const) ?_
+    rw [tendsto_pi_nhds]
+    intro z
+    by_cases hz : z ∈ Good
+    · simp only [hcdef, if_pos hz]
+      have hz0 := hGsub hz
+      have := (hz0.1.tendsto (s, 0)).comp ((aux_ann_idx_tendsto D hD s).prodMk_nhds
+        tendsto_const_nhds)
+      convert this using 1
+      funext m
+      exact (hz0.2.2.2.2 _).symm
+    · simp only [hcdef, if_neg hz]
+      exact tendsto_const_nhds
+  -- the measures
+  set ν : ℝ² → Measure ℝ² := fun z => (ext_bochner (hcPD z) (hcL z)).exists.choose with hνdef
+  have hνspec := fun z => (ext_bochner (hcPD z) (hcL z)).exists.choose_spec
+  have hνfin : ∀ z, IsFiniteMeasure (ν z) := fun z => (hνspec z).1
+  have hνrep : ∀ z s, c z s = ∫ ξ, Complex.exp ((2 * π * ⟪s, ξ⟫_ℝ : ℝ) * Complex.I) ∂(ν z) :=
+    fun z => (hνspec z).2.1
+  refine ⟨ν, ⟨hνfin, fun B hB => ext_measurable_spectral c hcm hcL hcPD hc1 ν hνrep hB⟩,
+    fun z => ?_, ?_⟩
+  · rw [(hνspec z).2.2]
+    exact ENNReal.ofReal_le_one.2 (Complex.le_def.1 (hc1 z)).1
+  · filter_upwards [hGae] with z hz s t
+    rw [hext z (hGsub hz) s t, show k j z (s - t) 0 = c z (s - t) by simp [hcdef, hz],
+      hνrep z (s - t)]
+    congr 1
+    funext ξ
+    simp only [e]
+    push_cast
+    ring_nf
+
+end Spectral
+
 /-- **Lemma `ann:spectral`** (Measurable spectral measures).
 For a subsequence as in Lemma `ann:extract`, there are measurable kernels of finite positive
 Borel measures $z\mapsto\nu_{j,z}$ on $\mathbb R^2$, of mass at most one, such that
@@ -136,7 +1060,8 @@ theorem ann_spectral (α β : ℝ) (Q : Set ℝ²) (C L : ℝ) (R : ℕ → ℝ)
     (hadm : IsAdmissibleSeq Q C R f) (k : Fin 3 → ℝ² → ℝ² → ℝ² → ℂ)
     (h3 : ℝ² × Ang → (Fin 3 → ℝ²) → ℂ) (hlim : aux_IsCorrelationLimits α β L R f k h3) :
     ∃ ν : Fin 3 → ℝ² → Measure ℝ², aux_IsSpectralKernels k ν := by
-  sorry
+  choose ν hνk hν1 hνrep using fun j => aux_ann_spectral_one hadm hlim j
+  exact ⟨ν, hνk, hν1, ae_all_iff.2 hνrep⟩
 
 /-! ### Polynomial translates (`ann:polynomials`) -/
 
@@ -169,6 +1094,601 @@ def tensorTranslate (α β : ℝ) (R : ℕ → ℝ) (f : Fin 3 → ℕ → ℝ²
 
 /-! ### Factorization of two-vertex quadratic correlations (`ann:factor`) -/
 
+/-! ### Auxiliary material for `ann:factor` -/
+
+section AnnFactorAux
+
+open Metric
+
+/-- Auxiliary: `e(x) \overline{e(y)} = e(x-y)`. -/
+theorem aux_ann_e_mul_conj (x y : ℝ) : e x * conj (e y) = e (x - y) := by
+  simp only [e, ← Complex.exp_conj, ← Complex.exp_add, map_mul, Complex.conj_ofReal,
+    Complex.conj_I, map_ofNat]
+  congr 1
+  push_cast
+  ring
+
+/-- Auxiliary: `|e(x)| = 1`. -/
+theorem aux_ann_norm_e (x : ℝ) : ‖e x‖ = 1 := by
+  rw [e, show (2 * (π : ℂ) * (x : ℂ) * Complex.I) = ((2 * π * x : ℝ) : ℂ) * Complex.I by
+    push_cast; ring]
+  exact Complex.norm_exp_ofReal_mul_I _
+
+/-- Auxiliary: `e` is continuous. -/
+theorem aux_ann_continuous_e : Continuous e := by
+  unfold e; fun_prop
+
+/-- Auxiliary: `e_s \overline{e_t} = e_{s-t}`. -/
+theorem aux_ann_charE_mul_conj (s t ξ : ℝ²) :
+    charE s ξ * conj (charE t ξ) = e ⟪s - t, ξ⟫_ℝ := by
+  rw [charE, charE, aux_ann_e_mul_conj, inner_sub_left]
+
+/-- Auxiliary: expansion of `|∑ c_s w_s|²`. -/
+theorem aux_ann_normSq_sum {ι : Type*} (S : Finset ι) (c w : ι → ℂ) :
+    ((‖∑ s ∈ S, c s * w s‖ ^ 2 : ℝ) : ℂ) =
+      ∑ st ∈ S ×ˢ S, c st.1 * conj (c st.2) * (w st.1 * conj (w st.2)) := by
+  push_cast
+  rw [← Complex.mul_conj', map_sum, Finset.sum_mul_sum, Finset.sum_product]
+  refine Finset.sum_congr rfl fun a _ => Finset.sum_congr rfl fun b _ => ?_
+  rw [map_mul]; ring
+
+/-- Auxiliary: characters are integrable for finite measures. -/
+theorem aux_ann_integrable_e (ν : Measure ℝ²) [IsFiniteMeasure ν] (s : ℝ²) (c : ℂ) :
+    Integrable (fun ξ => c * e ⟪s, ξ⟫_ℝ) ν := by
+  refine Integrable.of_bound (by
+    have := aux_ann_continuous_e
+    fun_prop : Continuous fun ξ : ℝ² => c * e ⟪s, ξ⟫_ℝ).aestronglyMeasurable ‖c‖
+    (ae_of_all _ fun ξ => ?_)
+  rw [norm_mul, aux_ann_norm_e, mul_one]
+
+/-- Auxiliary (`ann:factor`): `∫ |a|² dν` expanded in the coefficients of `a`. -/
+theorem aux_ann_integral_normSq_trigPoly (ν : Measure ℝ²) [IsFiniteMeasure ν] (a : ℝ² →₀ ℂ) :
+    ((∫ ξ, ‖trigPoly a ξ‖ ^ 2 ∂ν : ℝ) : ℂ) = ∑ st ∈ a.support ×ˢ a.support,
+      a st.1 * conj (a st.2) * ∫ ξ, e ⟪st.1 - st.2, ξ⟫_ℝ ∂ν := by
+  rw [← integral_complex_ofReal]
+  simp_rw [trigPoly, Finsupp.sum, aux_ann_normSq_sum, aux_ann_charE_mul_conj]
+  rw [integral_finsetSum _ fun st _ => aux_ann_integrable_e ν _ _]
+  exact Finset.sum_congr rfl fun st _ => integral_const_mul _ _
+
+section Factor
+
+variable {α β : ℝ} {Q : Set ℝ²} {C L : ℝ} {R : ℕ → ℝ} {f : Fin 3 → ℕ → ℝ² → ℂ}
+  {k : Fin 3 → ℝ² → ℝ² → ℝ² → ℂ} {h3 : ℝ² × Ang → (Fin 3 → ℝ²) → ℂ}
+
+/-- Auxiliary: the two-point products are measurable and bounded by one. -/
+theorem aux_ann_two_point_meas (hadm : IsAdmissibleSeq Q C R f) (j : Fin 3) (n : ℕ)
+    (s t : ℝ²) : Measurable fun z => annT R f j n s z * conj (annT R f j n t z) := by
+  have hc := aux_ann_continuous hadm j n
+  simp only [annT]
+  exact (by fun_prop : Continuous _).measurable
+
+theorem aux_ann_two_point_le (hadm : IsAdmissibleSeq Q C R f) (j : Fin 3) (n : ℕ)
+    (s t z : ℝ²) : ‖annT R f j n s z * conj (annT R f j n t z)‖ ≤ 1 := by
+  rw [norm_mul, Complex.norm_conj]
+  exact mul_le_one₀ (aux_ann_annT_le_one hadm _ _ _ _) (norm_nonneg _)
+    (aux_ann_annT_le_one hadm _ _ _ _)
+
+/-- Auxiliary (`ann:factor`, see `Auto.ann_factor_one`; also used for `ann:form`): one-vertex
+quadratic correlations,
+$|F_{j,n}[a]|^2\rightharpoonup^*\int|a|^2\,d\nu_{j,z}$ on the vertex space. -/
+theorem aux_ann_factor_vertex (hadm : IsAdmissibleSeq Q C R f)
+    (hlim : aux_IsCorrelationLimits α β L R f k h3) {ν : Fin 3 → ℝ² → Measure ℝ²}
+    (hν : aux_IsSpectralKernels k ν) (j : Fin 3) (a : ℝ² →₀ ℂ) :
+    annWeakStar volume (fun n z => ((‖polyTranslate R f j n a z‖ ^ 2 : ℝ) : ℂ))
+      (fun z => ((∫ ξ, ‖trigPoly a ξ‖ ^ 2 ∂(ν j z) : ℝ) : ℂ)) ∧
+    MemLp (fun z => ((∫ ξ, ‖trigPoly a ξ‖ ^ 2 ∂(ν j z) : ℝ) : ℂ)) ⊤ volume := by
+  have hfin : ∀ z, IsFiniteMeasure (ν j z) := (hν.1 j).1
+  set S := a.support ×ˢ a.support
+  have h1 := aux_ann_weakStar_sum (μ := volume) S (fun st => a st.1 * conj (a st.2))
+    (F := fun st n z => annT R f j n st.1 z * conj (annT R f j n st.2 z))
+    (G := fun st z => k j z st.1 st.2)
+    (fun st n => (aux_ann_two_point_meas hadm j n _ _).aestronglyMeasurable)
+    (fun st n z => aux_ann_two_point_le hadm j n _ _ z)
+    (fun st => aux_ann_k_memLp hlim j _ _) (fun st => hlim.two_point j _ _)
+  have hmem : MemLp (fun z => ∑ st ∈ S, a st.1 * conj (a st.2) * k j z st.1 st.2) ⊤ volume :=
+    memLp_finsetSum _ fun st _ => (aux_ann_k_memLp hlim j _ _).const_mul _
+  have hae : (fun z => ∑ st ∈ S, a st.1 * conj (a st.2) * k j z st.1 st.2) =ᵐ[volume]
+      fun z => ((∫ ξ, ‖trigPoly a ξ‖ ^ 2 ∂(ν j z) : ℝ) : ℂ) := by
+    filter_upwards [hν.2.2] with z hz
+    rw [aux_ann_integral_normSq_trigPoly]
+    exact Finset.sum_congr rfl fun st _ => by rw [hz j st.1 st.2]
+  refine ⟨fun ψ hψ => ?_, hmem.ae_eq hae⟩
+  have e1 : ∀ n, ∫ z, ((‖polyTranslate R f j n a z‖ ^ 2 : ℝ) : ℂ) * ψ z =
+      ∫ z, (∑ st ∈ S, a st.1 * conj (a st.2) *
+        (annT R f j n st.1 z * conj (annT R f j n st.2 z))) * ψ z := fun n => by
+    congr 1; funext z
+    rw [polyTranslate, Finsupp.sum, aux_ann_normSq_sum]
+  have e2 : ∫ z, ((∫ ξ, ‖trigPoly a ξ‖ ^ 2 ∂(ν j z) : ℝ) : ℂ) * ψ z =
+      ∫ z, (∑ st ∈ S, a st.1 * conj (a st.2) * k j z st.1 st.2) * ψ z :=
+    integral_congr_ae (by filter_upwards [hae] with z hz; rw [hz])
+  simp_rw [e1]
+  rw [e2]
+  exact h1 ψ hψ
+
+/-- Auxiliary (`ann:factor`): pullback of weak-* convergence by `(x, θ) ↦ x`. -/
+theorem aux_ann_weakStar_pullback_fst {F : ℕ → ℝ² → ℂ} {G : ℝ² → ℂ} {B : ℝ}
+    (hFm : ∀ n, AEStronglyMeasurable (F n) volume) (hFb : ∀ n x, ‖F n x‖ ≤ B)
+    (hG : MemLp G ⊤ volume) (h : annWeakStar volume F G) :
+    annWeakStar μinc (fun n p => F n p.1) (fun p => G p.1) := by
+  intro ψ hψ
+  have hψ' : Integrable ψ ((volume : Measure ℝ²).prod σ) := hψ
+  have hmp : MeasurePreserving (Prod.fst : ℝ² × Ang → ℝ²) ((volume : Measure ℝ²).prod σ)
+      volume := measurePreserving_fst
+  have hiF : ∀ n, Integrable (fun p : ℝ² × Ang => F n p.1 * ψ p) ((volume : Measure ℝ²).prod σ) :=
+    fun n => hψ'.bdd_mul ((hFm n).comp_measurePreserving hmp) (ae_of_all _ fun p => hFb n p.1)
+  have hiG : Integrable (fun p : ℝ² × Ang => G p.1 * ψ p) ((volume : Measure ℝ²).prod σ) :=
+    (hG.comp_measurePreserving hmp).integrable_mul (memLp_one_iff_integrable.2 hψ')
+  have e1 : ∀ n, ∫ p, F n p.1 * ψ p ∂μinc = ∫ x, F n x * ∫ θ, ψ (x, θ) ∂σ := fun n => by
+    rw [μinc, integral_prod _ (hiF n)]
+    simp_rw [integral_const_mul]
+  have e2 : ∫ p, G p.1 * ψ p ∂μinc = ∫ x, G x * ∫ θ, ψ (x, θ) ∂σ := by
+    rw [μinc, integral_prod _ hiG]
+    simp_rw [integral_const_mul]
+  simp_rw [e1, e2]
+  exact h _ hψ'.integral_prod_left
+
+/-- Auxiliary: `π_0(x,θ) = x`. -/
+theorem aux_ann_proj_zero (α β : ℝ) (p : ℝ² × Ang) : proj α β 0 p = p.1 := by
+  simp [proj, Lv]
+
+end Factor
+
+/-- Auxiliary (`ann:factor`): the shear `(z, θ) ↦ (z + φ(θ), θ)` as a measurable equivalence. -/
+def aux_ann_shearEquiv (φ : Ang → ℝ²) (hφ : Measurable φ) : ℝ² × Ang ≃ᵐ ℝ² × Ang where
+  toFun p := (p.1 + φ p.2, p.2)
+  invFun q := (q.1 - φ q.2, q.2)
+  left_inv p := by simp
+  right_inv q := by simp
+  measurable_toFun := (measurable_fst.add (hφ.comp measurable_snd)).prodMk measurable_snd
+  measurable_invFun := (measurable_fst.sub (hφ.comp measurable_snd)).prodMk measurable_snd
+
+/-- Auxiliary (`ann:factor`): shears preserve `μ`. -/
+theorem aux_ann_shear_mp (φ : Ang → ℝ²) (hφ : Measurable φ) :
+    MeasurePreserving (aux_ann_shearEquiv φ hφ) μinc μinc := by
+  have hsk : MeasurePreserving (fun q : Ang × ℝ² => (q.1, q.2 + φ q.1))
+      (σ.prod (volume : Measure ℝ²)) (σ.prod volume) := by
+    refine (MeasurePreserving.id σ).skew_product (g := fun θ x => x + φ θ)
+      (measurable_snd.add (hφ.comp measurable_fst)) (Eventually.of_forall fun θ => ?_)
+    exact (measurePreserving_add_right volume _).map_eq
+  exact (Measure.measurePreserving_swap (μ := σ) (ν := (volume : Measure ℝ²))).comp
+    (hsk.comp (Measure.measurePreserving_swap (μ := (volume : Measure ℝ²)) (ν := σ)))
+
+/-- Auxiliary: `(z, θ) ↦ z + φ(θ)` pushes `μ` to Lebesgue measure. -/
+theorem aux_ann_add_mp (φ : Ang → ℝ²) (hφ : Measurable φ) :
+    MeasurePreserving (fun q : ℝ² × Ang => q.1 + φ q.2) μinc volume := by
+  have h1 : MeasurePreserving (Prod.fst : ℝ² × Ang → ℝ²) μinc volume := by
+    unfold μinc; exact measurePreserving_fst
+  exact h1.comp (aux_ann_shear_mp φ hφ)
+
+/-- Auxiliary: `|u_θ| = 1`. -/
+theorem aux_ann_norm_u (θ : Ang) : ‖u θ‖ = 1 := by
+  induction θ using QuotientAddGroup.induction_on with
+  | H t =>
+    rw [aux_u_coe, EuclideanSpace.norm_eq, Fin.sum_univ_two]
+    simp [aux_uR, Real.cos_sq_add_sin_sq]
+
+/-- Auxiliary (`ann:factor`): the matrix `N = M - I`. -/
+abbrev aux_ann_N (α β : ℝ) : ℝ² →L[ℝ] ℝ² := M α β - ContinuousLinearMap.id ℝ ℝ²
+
+/-- Auxiliary (`ann:factor`): `M - I` is a nonzero similarity when `β ≠ 0`. -/
+theorem aux_ann_N_simil (α β : ℝ) (hβ : β ≠ 0) :
+    ∃ c > 0, ∀ x, ‖aux_ann_N α β x‖ = c * ‖x‖ := by
+  refine ⟨Real.sqrt ((α - 1) ^ 2 + β ^ 2), Real.sqrt_pos.2 (by positivity), fun x => ?_⟩
+  rw [EuclideanSpace.norm_eq, EuclideanSpace.norm_eq, ← Real.sqrt_mul (by positivity)]
+  congr 1
+  simp [Fin.sum_univ_two, aux_ann_N, simil]
+  ring
+
+/-- Auxiliary: `π_2 p = π_1 p + (M - I) u_θ`. -/
+theorem aux_ann_proj_two (α β : ℝ) (p : ℝ² × Ang) :
+    proj α β 2 p = proj α β 1 p + aux_ann_N α β (u p.2) := by
+  simp [proj, Lv, aux_ann_N]
+
+/-- Auxiliary (`ann:factor`): circle operators respect a.e. equality of the input. -/
+theorem aux_ann_circleOp_congr (N : ℝ² →L[ℝ] ℝ²) (W : ℝ² → Ang → ℂ) {f f' : ℝ² → ℂ}
+    (h : f =ᵐ[volume] f') : circleOp N W f =ᵐ[volume] circleOp N W f' := by
+  have hmp := aux_ann_add_mp (fun θ => N (u θ)) (N.continuous.measurable.comp aux_lw_u_meas)
+  have h1 : ∀ᵐ q ∂μinc, f (q.1 + N (u q.2)) = f' (q.1 + N (u q.2)) :=
+    hmp.quasiMeasurePreserving.ae_eq_comp h
+  have h2 := Measure.ae_ae_of_ae_prod (μ := (volume : Measure ℝ²)) (ν := σ) h1
+  filter_upwards [h2] with z hz
+  unfold circleOp
+  exact integral_congr_ae (hz.mono fun θ hθ => by simp only; rw [hθ])
+
+/-- Auxiliary: Cauchy–Schwarz for integrals of products. -/
+theorem aux_ann_norm_integral_mul_le {X : Type*} [MeasurableSpace X] {μ : Measure X}
+    {a b : X → ℂ} (ha : MemLp a 2 μ) (hb : MemLp b 2 μ) :
+    ‖∫ x, a x * b x ∂μ‖ ≤ (eLpNorm a 2 μ).toReal * (eLpNorm b 2 μ).toReal := by
+  have hH : ENNReal.HolderTriple 2 2 1 := ⟨by norm_num [ENNReal.inv_two_add_inv_two]⟩
+  have h1 : eLpNorm (fun x => a x * b x) 1 μ ≤ 1 * eLpNorm a 2 μ * eLpNorm b 2 μ :=
+    eLpNorm_le_eLpNorm_mul_eLpNorm_of_nnnorm ha.1 hb.1 (· * ·) 1
+      (ae_of_all _ fun x => by simp [nnnorm_mul])
+  rw [one_mul] at h1
+  have hfin : eLpNorm a 2 μ * eLpNorm b 2 μ ≠ ⊤ := ENNReal.mul_ne_top ha.2.ne hb.2.ne
+  calc ‖∫ x, a x * b x ∂μ‖ ≤ ∫ x, ‖a x * b x‖ ∂μ := norm_integral_le_integral_norm _
+    _ = (eLpNorm (fun x => a x * b x) 1 μ).toReal := by
+        rw [integral_norm_eq_lintegral_enorm (f := fun x => a x * b x) (ha.1.mul hb.1), eLpNorm_one_eq_lintegral_enorm]
+    _ ≤ (eLpNorm a 2 μ * eLpNorm b 2 μ).toReal := ENNReal.toReal_mono hfin h1
+    _ = _ := ENNReal.toReal_mul
+
+/-- Auxiliary: bounded functions restricted to a set of finite measure are square integrable. -/
+theorem aux_ann_memLp_two_indicator {Y : Set ℝ²} (hY : MeasurableSet Y) (hYf : volume Y < ∞)
+    {b : ℝ² → ℂ} (hb : AEStronglyMeasurable b volume) (hb1 : ∀ x, ‖b x‖ ≤ 1) :
+    MemLp (Y.indicator b) 2 volume := by
+  rw [memLp_indicator_iff_restrict hY]
+  have : IsFiniteMeasure (volume.restrict Y) := ⟨by rw [Measure.restrict_apply_univ]; exact hYf⟩
+  exact (memLp_top_of_bound hb.restrict 1 (ae_of_all _ hb1)).mono_exponent le_top
+
+@[simp] theorem aux_ann_shearEquiv_apply (φ : Ang → ℝ²) (hφ : Measurable φ) (p : ℝ² × Ang) :
+    aux_ann_shearEquiv φ hφ p = (p.1 + φ p.2, p.2) := rfl
+
+/-- Auxiliary: indicators of bounded sets times `σ` are integrable. -/
+theorem aux_ann_ball_integrable (r : ℝ) :
+    Integrable ((closedBall (0 : ℝ²) r ×ˢ (univ : Set Ang)).indicator fun _ => (1 : ℝ)) μinc := by
+  refine (integrable_indicator_iff (measurableSet_closedBall.prod MeasurableSet.univ)).2
+    (integrableOn_const ?_)
+  rw [μinc, Measure.prod_prod]
+  exact ENNReal.mul_ne_top measure_closedBall_lt_top.ne (measure_ne_top _ _)
+
+/-- Auxiliary: square-integrable functions are integrable on sets of finite measure. -/
+theorem aux_ann_integrable_indicator_L2 {X : Set ℝ²} (hX : MeasurableSet X) (hXf : volume X < ∞)
+    {g : ℝ² → ℂ} (hg : MemLp g 2 volume) : Integrable (X.indicator g) volume := by
+  have : IsFiniteMeasure (volume.restrict X) := ⟨by rw [Measure.restrict_apply_univ]; exact hXf⟩
+  exact IntegrableOn.integrable_indicator ((hg.restrict X).integrable one_le_two) hX
+
+/-- Auxiliary (`ann:factor`): the pairing of a vertex product with a localized test function as
+a pairing with a circle operator (change of variables `z = x + u_θ`). -/
+theorem aux_ann_pair_integral (α β : ℝ) {a b : ℝ² → ℂ} (ha : Measurable a) (hb : Measurable b)
+    (ha1 : ∀ x, ‖a x‖ ≤ 1) (hb1 : ∀ x, ‖b x‖ ≤ 1) {φ : ℝ² × Ang → ℂ} (hφm : Measurable φ)
+    (hφb : ∀ p, ‖φ p‖ ≤ 1) {ρ : ℝ} (hφs : ∀ p, ρ < ‖p.1‖ → φ p = 0) :
+    ∫ p, a (proj α β 1 p) * b (proj α β 2 p) * φ p ∂μinc =
+      ∫ z, a z * circleOp (aux_ann_N α β) (fun z θ => φ (z - u θ, θ)) b z := by
+  set N := aux_ann_N α β with hN
+  have hmp := aux_ann_shear_mp u aux_lw_u_meas
+  set g : ℝ² × Ang → ℂ := fun q => a q.1 * (φ (q.1 - u q.2, q.2) * b (q.1 + N (u q.2)))
+    with hg
+  have hrw : ∀ p, a (proj α β 1 p) * b (proj α β 2 p) * φ p =
+      g (aux_ann_shearEquiv u aux_lw_u_meas p) := by
+    intro p
+    have h1 : proj α β 1 p = p.1 + u p.2 := by simp [proj, Lv]
+    simp only [hg, aux_ann_shearEquiv_apply, aux_ann_proj_two, h1, add_sub_cancel_right]
+    ring
+  simp_rw [hrw]
+  rw [hmp.integral_comp' g]
+  have hgm : Measurable g :=
+    (ha.comp measurable_fst).mul ((hφm.comp ((measurable_fst.sub (aux_lw_u_meas.comp
+      measurable_snd)).prodMk measurable_snd)).mul (hb.comp (measurable_fst.add
+        (N.continuous.measurable.comp (aux_lw_u_meas.comp measurable_snd)))))
+  have hgi : Integrable g μinc := by
+    refine (aux_ann_ball_integrable (ρ + 1)).mono' hgm.aestronglyMeasurable
+      (ae_of_all _ fun q => ?_)
+    by_cases hq : ‖q.1‖ ≤ ρ + 1
+    · rw [indicator_of_mem (by simp [hq])]
+      simp only [hg, norm_mul]
+      calc ‖a q.1‖ * (‖φ (q.1 - u q.2, q.2)‖ * ‖b (q.1 + N (u q.2))‖) ≤ 1 * (1 * 1) := by
+            gcongr
+            · exact ha1 _
+            · exact hφb _
+            · exact hb1 _
+        _ = 1 := by ring
+    · have h0 : φ (q.1 - u q.2, q.2) = 0 := by
+        apply hφs
+        have := norm_sub_norm_le q.1 (u q.2)
+        rw [aux_ann_norm_u] at this
+        simp only
+        linarith
+      simp only [hg, h0, zero_mul, mul_zero, norm_zero]
+      exact indicator_nonneg (fun _ _ => zero_le_one) _
+  rw [μinc, integral_prod g hgi]
+  refine integral_congr_ae (ae_of_all _ fun z => ?_)
+  simp only [hg, circleOp]
+  rw [integral_const_mul]
+
+/-- Auxiliary (`ann:factor`, see `Auto.ann_factor_two`): the two-vertex product of weak-*
+convergent bounded sequences converges against bounded tests with bounded support, by compactness
+of the circle operator (`lem:circle-compact`) and `ext:compact-facts`. -/
+theorem aux_ann_pair_tendsto_bounded (α β : ℝ) (hβ : β ≠ 0) {A B : ℕ → ℝ² → ℂ}
+    {A0 B0 : ℝ² → ℂ} (hAm : ∀ n, Measurable (A n)) (hBm : ∀ n, Measurable (B n))
+    (hAb : ∀ n x, ‖A n x‖ ≤ 1) (hBb : ∀ n x, ‖B n x‖ ≤ 1) (hA0m : Measurable A0)
+    (hB0m : Measurable B0) (hA0b : ∀ x, ‖A0 x‖ ≤ 1) (hB0b : ∀ x, ‖B0 x‖ ≤ 1)
+    (hA : annWeakStar volume A A0) (hB : annWeakStar volume B B0)
+    {φ : ℝ² × Ang → ℂ} (hφm : Measurable φ) (hφb : ∀ p, ‖φ p‖ ≤ 1) {ρ : ℝ}
+    (hφs : ∀ p, ρ < ‖p.1‖ → φ p = 0) :
+    Tendsto (fun n => ∫ p, A n (proj α β 1 p) * B n (proj α β 2 p) * φ p ∂μinc) atTop
+      (𝓝 (∫ p, A0 (proj α β 1 p) * B0 (proj α β 2 p) * φ p ∂μinc)) := by
+  have e1 : ∀ n, ∫ p, A n (proj α β 1 p) * B n (proj α β 2 p) * φ p ∂μinc =
+      ∫ z, A n z * circleOp (aux_ann_N α β) (fun z θ => φ (z - u θ, θ)) (B n) z := fun n =>
+    aux_ann_pair_integral α β (hAm n) (hBm n) (hAb n) (hBb n) hφm hφb hφs
+  rw [aux_ann_pair_integral α β hA0m hB0m hA0b hB0b hφm hφb hφs]
+  simp_rw [e1]
+  set N := aux_ann_N α β with hNdef
+  set W : ℝ² → Ang → ℂ := fun z θ => φ (z - u θ, θ) with hW
+  obtain ⟨c, hc, hNc⟩ := aux_ann_N_simil α β hβ
+  set X := closedBall (0 : ℝ²) (ρ + 1) with hXdef
+  set Y := closedBall (0 : ℝ²) (ρ + 1 + c) with hYdef
+  have hWm : Measurable (Function.uncurry W) :=
+    hφm.comp ((measurable_fst.sub (aux_lw_u_meas.comp measurable_snd)).prodMk measurable_snd)
+  have hW1 : ∀ z θ, ‖W z θ‖ ≤ 1 := fun z θ => hφb _
+  have hWX : ∀ z θ, z ∉ X → W z θ = 0 := by
+    intro z θ hz
+    apply hφs
+    simp only [hXdef, mem_closedBall, dist_zero_right, not_le] at hz
+    have := norm_sub_norm_le z (u θ)
+    rw [aux_ann_norm_u] at this
+    simp only
+    linarith
+  obtain ⟨T, hT, hTc⟩ := lem_circle_compact N ⟨c, hc, hNc⟩ W hWm hW1 X isBounded_closedBall hWX
+  have hXf : volume X < ∞ := measure_closedBall_lt_top
+  have hYf : volume Y < ∞ := measure_closedBall_lt_top
+  have hCY : ∀ b z, circleOp N W b z = circleOp N W (Y.indicator b) z := by
+    intro b z
+    unfold circleOp
+    congr 1; funext θ
+    by_cases hz : z ∈ X
+    · rw [indicator_of_mem]
+      simp only [hYdef, mem_closedBall, dist_zero_right]
+      simp only [hXdef, mem_closedBall, dist_zero_right] at hz
+      calc ‖z + N (u θ)‖ ≤ ‖z‖ + ‖N (u θ)‖ := norm_add_le _ _
+        _ ≤ ρ + 1 + c := by rw [hNc, aux_ann_norm_u, mul_one]; linarith
+    · rw [hWX z θ hz, zero_mul, zero_mul]
+  have hCX : ∀ b z, z ∉ X → circleOp N W b z = 0 := by
+    intro b z hz; unfold circleOp; simp [hWX z _ hz]
+  have hBmem : ∀ n, MemLp (Y.indicator (B n)) 2 volume := fun n =>
+    aux_ann_memLp_two_indicator measurableSet_closedBall hYf (hBm n).aestronglyMeasurable (hBb n)
+  have hB0mem : MemLp (Y.indicator B0) 2 volume :=
+    aux_ann_memLp_two_indicator measurableSet_closedBall hYf hB0m.aestronglyMeasurable hB0b
+  have hAmem : ∀ n, MemLp (X.indicator (A n)) 2 volume := fun n =>
+    aux_ann_memLp_two_indicator measurableSet_closedBall hXf (hAm n).aestronglyMeasurable (hAb n)
+  have h1mem : ∀ {Z : Set ℝ²}, Z = X ∨ Z = Y → MemLp (Z.indicator fun _ => (1 : ℂ)) 2 volume :=
+    fun {Z} hZ => by
+      rcases hZ with rfl | rfl
+      · exact aux_ann_memLp_two_indicator measurableSet_closedBall hXf
+          aestronglyMeasurable_const (fun _ => by simp)
+      · exact aux_ann_memLp_two_indicator measurableSet_closedBall hYf
+          aestronglyMeasurable_const (fun _ => by simp)
+  have hle1 : ∀ (Z : Set ℝ²) (b : ℝ² → ℂ), (∀ x, ‖b x‖ ≤ 1) →
+      eLpNorm (Z.indicator b) 2 volume ≤ eLpNorm (Z.indicator fun _ => (1 : ℂ)) 2 volume := by
+    intro Z b hb
+    refine eLpNorm_mono fun x => ?_
+    by_cases hx : x ∈ Z <;> simp [hx, hb x]
+  set Bl : ℕ → Lp ℂ 2 (volume : Measure ℝ²) := fun n => (hBmem n).toLp _ with hBl
+  set B0l : Lp ℂ 2 (volume : Measure ℝ²) := hB0mem.toLp _ with hB0l
+  have hbound : ∃ C, ∀ n, ‖Bl n‖ ≤ C := by
+    refine ⟨(eLpNorm (Y.indicator fun _ => (1 : ℂ)) 2 volume).toReal, fun n => ?_⟩
+    rw [hBl, Lp.norm_toLp]
+    exact ENNReal.toReal_mono (h1mem (Or.inr rfl)).2.ne (hle1 Y _ (hBb n))
+  have hinner : ∀ (h : Lp ℂ 2 (volume : Measure ℝ²)) (b : ℝ² → ℂ)
+      (hb : MemLp (Y.indicator b) 2 volume),
+      ⟪h, hb.toLp _⟫_ℂ = ∫ x, b x * Y.indicator (fun x => conj (h x)) x := by
+    intro h b hb
+    rw [L2.inner_def]
+    refine integral_congr_ae ?_
+    filter_upwards [hb.coeFn_toLp] with x hx
+    rw [hx, RCLike.inner_apply']
+    by_cases hxY : x ∈ Y <;> simp [hxY, mul_comm]
+  have hweak : ∀ h : Lp ℂ 2 (volume : Measure ℝ²),
+      Tendsto (fun n => ⟪h, Bl n⟫_ℂ) atTop (𝓝 ⟪h, B0l⟫_ℂ) := by
+    intro h
+    have hint : Integrable (Y.indicator fun x => conj (h x)) volume :=
+      aux_ann_integrable_indicator_L2 measurableSet_closedBall hYf
+        ((Lp.memLp h).star.congr_norm (by
+          exact (Lp.memLp h).1.star.congr (ae_of_all _ fun x => rfl)) (ae_of_all _ fun x => by
+            simp))
+    simp_rw [hBl, hB0l, hinner]
+    exact hB _ hint
+  have hTconv := ext_compact_facts_weak T hTc Bl B0l hbound hweak
+  have hrw : ∀ (b : ℝ² → ℂ) (hb : MemLp (Y.indicator b) 2 volume) (a : ℝ² → ℂ),
+      ∫ z, a z * circleOp N W b z = ∫ z, X.indicator a z * T (hb.toLp _) z := by
+    intro b hb a
+    refine integral_congr_ae ?_
+    have h1 := aux_ann_circleOp_congr N W hb.coeFn_toLp
+    filter_upwards [h1, hT (hb.toLp _)] with z hz1 hz2
+    rw [hz2, hz1, ← hCY]
+    by_cases hz : z ∈ X
+    · rw [indicator_of_mem hz]
+    · rw [indicator_of_notMem hz, hCX b z hz, mul_zero, zero_mul]
+  rw [hrw B0 hB0mem A0]
+  have e2 : ∀ n, ∫ z, A n z * circleOp N W (B n) z ∂volume =
+      (∫ z, X.indicator (A n) z * (⇑(T (Bl n)) z - ⇑(T B0l) z)) +
+        ∫ z, A n z * X.indicator (⇑(T B0l)) z := by
+    intro n
+    have hi1 : Integrable (fun z => X.indicator (A n) z * (⇑(T (Bl n)) z - ⇑(T B0l) z)) :=
+      (hAmem n).integrable_mul ((Lp.memLp _).sub (Lp.memLp _))
+    have hi2 : Integrable (fun z => A n z * X.indicator (⇑(T B0l)) z) :=
+      (aux_ann_integrable_indicator_L2 measurableSet_closedBall hXf
+        (Lp.memLp (T B0l))).bdd_mul (hAm n).aestronglyMeasurable (ae_of_all _ (hAb n))
+    rw [← integral_add hi1 hi2, hrw (B n) (hBmem n) (A n)]
+    refine integral_congr_ae (ae_of_all _ fun z => ?_)
+    by_cases hz : z ∈ X
+    · simp only [indicator_of_mem hz, Bl]; ring
+    · simp [indicator_of_notMem hz]
+  simp_rw [e2]
+  have hlim0 : ∫ z, X.indicator A0 z * ⇑(T B0l) z = 0 + ∫ z, A0 z * X.indicator (⇑(T B0l)) z := by
+    rw [zero_add]
+    refine integral_congr_ae (ae_of_all _ fun z => ?_)
+    by_cases hz : z ∈ X <;> simp [hz]
+  rw [hlim0]
+  refine Tendsto.add ?_ (hA _ (aux_ann_integrable_indicator_L2 measurableSet_closedBall hXf
+    (Lp.memLp (T B0l))))
+  have hTn : Tendsto (fun n => ‖T (Bl n) - T B0l‖) atTop (𝓝 0) :=
+    tendsto_iff_norm_sub_tendsto_zero.1 hTconv
+  set CX := (eLpNorm (X.indicator fun _ => (1 : ℂ)) 2 volume).toReal
+  refine squeeze_zero_norm (fun n => ?_) (by simpa using hTn.const_mul CX)
+  have hsub : (⇑(T (Bl n)) - ⇑(T B0l)) =ᵐ[volume] ⇑(T (Bl n) - T B0l) :=
+    (Lp.coeFn_sub _ _).symm
+  refine (aux_ann_norm_integral_mul_le (hAmem n) ((Lp.memLp _).sub (Lp.memLp _))).trans ?_
+  rw [eLpNorm_congr_ae hsub, ← Lp.norm_def]
+  exact mul_le_mul_of_nonneg_right (ENNReal.toReal_mono (h1mem (Or.inl rfl)).2.ne
+    (hle1 X _ (hAb n))) (norm_nonneg _)
+
+/-- Auxiliary (`ann:factor`): for uniformly bounded sequences on configuration space, weak-*
+convergence follows from convergence against bounded tests with bounded spatial support. -/
+theorem aux_ann_weakStar_of_local {F : ℕ → ℝ² × Ang → ℂ} {F0 : ℝ² × Ang → ℂ}
+    (hFm : ∀ n, Measurable (F n)) (hFb : ∀ n p, ‖F n p‖ ≤ 1) (hF0m : Measurable F0)
+    (hF0b : ∀ p, ‖F0 p‖ ≤ 1)
+    (hloc : ∀ φ : ℝ² × Ang → ℂ, Measurable φ → (∀ p, ‖φ p‖ ≤ 1) → ∀ ρ : ℝ,
+      (∀ p, ρ < ‖p.1‖ → φ p = 0) →
+      Tendsto (fun n => ∫ p, F n p * φ p ∂μinc) atTop (𝓝 (∫ p, F0 p * φ p ∂μinc))) :
+    annWeakStar μinc F F0 := by
+  intro ψ hψ
+  set ψ' := hψ.1.mk ψ with hψ'def
+  have hψψ' : ψ =ᵐ[μinc] ψ' := hψ.1.ae_eq_mk
+  have hψ'm : Measurable ψ' := hψ.1.stronglyMeasurable_mk.measurable
+  have hψ'i : Integrable ψ' μinc := hψ.congr hψψ'
+  set ψm : ℕ → ℝ² × Ang → ℂ := fun m p =>
+    if ‖ψ' p‖ ≤ (m : ℝ) + 1 ∧ ‖p.1‖ ≤ (m : ℝ) + 1 then ψ' p else 0 with hψmdef
+  have hS : ∀ m : ℕ, MeasurableSet {p : ℝ² × Ang | ‖ψ' p‖ ≤ (m : ℝ) + 1 ∧
+      ‖p.1‖ ≤ (m : ℝ) + 1} := fun m =>
+    (measurableSet_le hψ'm.norm measurable_const).inter
+      (measurableSet_le measurable_fst.norm measurable_const)
+  have hψmm : ∀ m, Measurable (ψm m) := fun m => Measurable.ite (hS m) hψ'm measurable_const
+  have hψmb : ∀ m p, ‖ψm m p‖ ≤ ‖ψ' p‖ := fun m p => by
+    simp only [hψmdef]; split_ifs <;> simp
+  have hψmi : ∀ m, Integrable (ψm m) μinc := fun m =>
+    hψ'i.norm.mono' (hψmm m).aestronglyMeasurable (ae_of_all _ (hψmb m))
+  have hloc' : ∀ m : ℕ, Tendsto (fun n => ∫ p, F n p * ψm m p ∂μinc) atTop
+      (𝓝 (∫ p, F0 p * ψm m p ∂μinc)) := by
+    intro m
+    set c : ℂ := (((m : ℝ) + 1 : ℝ) : ℂ) with hcdef
+    have hc : c ≠ 0 := by rw [hcdef]; exact_mod_cast (by positivity : (m : ℝ) + 1 ≠ 0)
+    have hcn : ‖c‖ = (m : ℝ) + 1 := by
+      rw [hcdef, Complex.norm_real, Real.norm_eq_abs, abs_of_pos (by positivity)]
+    have h := hloc (fun p => ψm m p / c) ((hψmm m).div_const c) (fun p => by
+      rw [norm_div, hcn, div_le_one (by positivity)]
+      simp only [hψmdef]; split_ifs with h
+      · exact h.1
+      · simp; positivity) ((m : ℝ) + 1) (fun p hp => by
+        simp only [hψmdef]
+        rw [if_neg (fun h => absurd h.2 (not_le.2 hp)), zero_div])
+    have e : ∀ G : ℝ² × Ang → ℂ, ∫ p, G p * ψm m p ∂μinc = c * ∫ p, G p * (ψm m p / c) ∂μinc :=
+      fun G => by
+        rw [← integral_const_mul]
+        congr 1; funext p; field_simp
+    simp_rw [e]
+    exact h.const_mul c
+  have e1 : ∀ n, ∫ p, F n p * ψ p ∂μinc = ∫ p, F n p * ψ' p ∂μinc := fun n =>
+    integral_congr_ae (hψψ'.mono fun p hp => by simp only; rw [hp])
+  have e0 : ∫ p, F0 p * ψ p ∂μinc = ∫ p, F0 p * ψ' p ∂μinc :=
+    integral_congr_ae (hψψ'.mono fun p hp => by simp only; rw [hp])
+  rw [e0]
+  simp_rw [e1]
+  have hbd : ∀ (G : ℝ² × Ang → ℂ), Measurable G → (∀ p, ‖G p‖ ≤ 1) → ∀ m,
+      ‖∫ p, G p * ψ' p ∂μinc - ∫ p, G p * ψm m p ∂μinc‖ ≤ ∫ p, ‖ψ' p - ψm m p‖ ∂μinc := by
+    intro G hG hG1 m
+    rw [← integral_sub (hψ'i.bdd_mul hG.aestronglyMeasurable (ae_of_all _ hG1))
+      ((hψmi m).bdd_mul hG.aestronglyMeasurable (ae_of_all _ hG1))]
+    refine norm_integral_le_of_norm_le (hψ'i.sub (hψmi m)).norm (ae_of_all _ fun p => ?_)
+    rw [← mul_sub, norm_mul]
+    exact mul_le_of_le_one_left (norm_nonneg _) (hG1 p)
+  refine aux_ann_tendsto_of_approx (am := fun m n => ∫ p, F n p * ψm m p ∂μinc)
+    (bm := fun m => ∫ p, F0 p * ψm m p ∂μinc)
+    (δ := fun m => ∫ p, ‖ψ' p - ψm m p‖ ∂μinc) ?_ (fun m n => hbd _ (hFm n) (hFb n) m)
+    (fun m => hbd _ hF0m hF0b m) hloc'
+  have h0 : (0 : ℝ) = ∫ p, (0 : ℝ) ∂μinc := by simp
+  rw [h0]
+  refine tendsto_integral_of_dominated_convergence (fun p => ‖ψ' p‖)
+    (fun m => (hψ'm.sub (hψmm m)).norm.aestronglyMeasurable) hψ'i.norm
+    (fun m => ae_of_all _ fun p => ?_) (ae_of_all _ fun p => ?_)
+  · rw [norm_norm]
+    simp only [hψmdef]; split_ifs <;> simp
+  · obtain ⟨m0, hm0⟩ := exists_nat_ge (max ‖ψ' p‖ ‖p.1‖)
+    refine tendsto_const_nhds.congr' (eventually_atTop.2 ⟨m0, fun m hm => ?_⟩)
+    have h1 : (m0 : ℝ) ≤ m := by exact_mod_cast hm
+    simp only [hψmdef]
+    rw [if_pos ⟨by linarith [le_max_left ‖ψ' p‖ ‖p.1‖], by linarith [le_max_right ‖ψ' p‖ ‖p.1‖]⟩]
+    simp
+
+/-- Auxiliary: weak-* limits may be changed on null sets. -/
+theorem aux_ann_weakStar_congr {X : Type*} [MeasurableSpace X] {μ : Measure X}
+    {F : ℕ → X → ℂ} {G G' : X → ℂ} (h : annWeakStar μ F G) (hG : G =ᵐ[μ] G') :
+    annWeakStar μ F G' := fun ψ hψ => by
+  have e : ∫ x, G x * ψ x ∂μ = ∫ x, G' x * ψ x ∂μ :=
+    integral_congr_ae (by filter_upwards [hG] with x hx; rw [hx])
+  rw [← e]
+  exact h ψ hψ
+
+/-- Auxiliary: the vertex projections push `μ` to Lebesgue measure. -/
+theorem aux_ann_proj_mp (α β : ℝ) (j : Fin 3) : MeasurePreserving (proj α β j) μinc volume :=
+  aux_ann_add_mp (fun θ => Lv α β j (u θ)) ((Lv α β j).continuous.measurable.comp aux_lw_u_meas)
+
+/-- Auxiliary: a bounded measurable representative of an essentially bounded weak-* limit. -/
+theorem aux_ann_bounded_rep {A : ℕ → ℝ² → ℂ} {A0 : ℝ² → ℂ} (hAb : ∀ n x, ‖A n x‖ ≤ 1)
+    (hA0 : MemLp A0 ⊤ volume) (hA : annWeakStar volume A A0) :
+    ∃ A1 : ℝ² → ℂ, Measurable A1 ∧ (∀ x, ‖A1 x‖ ≤ 1) ∧ A0 =ᵐ[volume] A1 := by
+  have hb := aux_ann_weakStar_norm_le hA0 (fun n => ae_of_all _ (hAb n)) hA
+  obtain ⟨g, hgs, hAg⟩ : ∃ g : ℝ² → ℂ, StronglyMeasurable g ∧ A0 =ᵐ[volume] g :=
+    ⟨_, hA0.1.stronglyMeasurable_mk, hA0.1.ae_eq_mk⟩
+  have hg : Measurable g := hgs.measurable
+  refine ⟨fun x => if ‖g x‖ ≤ 1 then g x else 0,
+    Measurable.ite (measurableSet_le hg.norm measurable_const) hg measurable_const,
+    fun x => by
+      dsimp only
+      split_ifs with h
+      · exact h
+      · simp, ?_⟩
+  filter_upwards [hb, hAg] with x hx hx'
+  have h1 : ‖g x‖ ≤ 1 := by rw [← hx']; exact hx
+  simp only [if_pos h1]
+  exact hx'
+
+/-- Auxiliary (`ann:factor`, see `Auto.ann_factor_two`): the two-vertex products of weak-*
+convergent bounded sequences converge weak-* on configuration space. -/
+theorem aux_ann_pair_weakStar (α β : ℝ) (hβ : β ≠ 0) {A B : ℕ → ℝ² → ℂ} {A0 B0 : ℝ² → ℂ}
+    (hAm : ∀ n, Measurable (A n)) (hBm : ∀ n, Measurable (B n))
+    (hAb : ∀ n x, ‖A n x‖ ≤ 1) (hBb : ∀ n x, ‖B n x‖ ≤ 1)
+    (hA0 : MemLp A0 ⊤ volume) (hB0 : MemLp B0 ⊤ volume)
+    (hA : annWeakStar volume A A0) (hB : annWeakStar volume B B0) :
+    annWeakStar μinc (fun n p => A n (proj α β 1 p) * B n (proj α β 2 p))
+      (fun p => A0 (proj α β 1 p) * B0 (proj α β 2 p)) := by
+  obtain ⟨A1, hA1m, hA1b, hAA1⟩ := aux_ann_bounded_rep hAb hA0 hA
+  obtain ⟨B1, hB1m, hB1b, hBB1⟩ := aux_ann_bounded_rep hBb hB0 hB
+  have hA' : annWeakStar volume A A1 := aux_ann_weakStar_congr hA hAA1
+  have hB' : annWeakStar volume B B1 := aux_ann_weakStar_congr hB hBB1
+  have hae : (fun p => A0 (proj α β 1 p) * B0 (proj α β 2 p)) =ᵐ[μinc]
+      fun p => A1 (proj α β 1 p) * B1 (proj α β 2 p) := by
+    filter_upwards [(aux_ann_proj_mp α β 1).quasiMeasurePreserving.ae_eq_comp hAA1,
+      (aux_ann_proj_mp α β 2).quasiMeasurePreserving.ae_eq_comp hBB1] with p h1 h2
+    simp only [Function.comp_apply] at h1 h2
+    rw [h1, h2]
+  have hp := fun j => (aux_ann_proj_continuous α β j).measurable
+  refine aux_ann_weakStar_congr (aux_ann_weakStar_of_local
+    (F0 := fun p => A1 (proj α β 1 p) * B1 (proj α β 2 p)) (fun n => ((hAm n).comp (hp 1)).mul ((hBm n).comp (hp 2)))
+    (fun n p => ?_) ((hA1m.comp (hp 1)).mul (hB1m.comp (hp 2))) (fun p => ?_)
+    (fun φ hφm hφb ρ hφs => aux_ann_pair_tendsto_bounded α β hβ hAm hBm hAb hBb hA1m hB1m hA1b
+      hB1b hA' hB' hφm hφb hφs)) hae.symm
+  · rw [norm_mul]; exact mul_le_one₀ (hAb _ _) (norm_nonneg _) (hBb _ _)
+  · rw [norm_mul]; exact mul_le_one₀ (hA1b _) (norm_nonneg _) (hB1b _)
+
+/-- Auxiliary (`ann:factor`): `∫ |G|² d(μ₁ ⊗ μ₂)` expanded in the coefficients of `G`. -/
+theorem aux_ann_integral_normSq_tensorPoly (μ₁ μ₂ : Measure ℝ²) [IsFiniteMeasure μ₁]
+    [IsFiniteMeasure μ₂] (G : ℝ² × ℝ² →₀ ℂ) :
+    ((∫ ξ, ‖tensorPoly G ξ‖ ^ 2 ∂(μ₁.prod μ₂) : ℝ) : ℂ) =
+      ∑ P ∈ G.support ×ˢ G.support, G P.1 * conj (G P.2) *
+        ((∫ ξ, e ⟪P.1.1 - P.2.1, ξ⟫_ℝ ∂μ₁) * ∫ ξ, e ⟪P.1.2 - P.2.2, ξ⟫_ℝ ∂μ₂) := by
+  rw [← integral_complex_ofReal]
+  have e1 : ∀ ξ : ℝ² × ℝ², tensorPoly G ξ =
+      ∑ st ∈ G.support, G st * (charE st.1 ξ.1 * charE st.2 ξ.2) := fun ξ => by
+    rw [tensorPoly, Finsupp.sum]
+    exact Finset.sum_congr rfl fun st _ => by ring
+  simp_rw [e1, aux_ann_normSq_sum]
+  have e2 : ∀ (P : (ℝ² × ℝ²) × (ℝ² × ℝ²)) (ξ : ℝ² × ℝ²),
+      charE P.1.1 ξ.1 * charE P.1.2 ξ.2 * conj (charE P.2.1 ξ.1 * charE P.2.2 ξ.2) =
+        e ⟪P.1.1 - P.2.1, ξ.1⟫_ℝ * e ⟪P.1.2 - P.2.2, ξ.2⟫_ℝ := fun P ξ => by
+    rw [← aux_ann_charE_mul_conj, ← aux_ann_charE_mul_conj, map_mul]; ring
+  simp_rw [e2]
+  rw [integral_finsetSum _ fun P _ => ?_]
+  · refine Finset.sum_congr rfl fun P _ => ?_
+    rw [integral_const_mul, integral_prod_mul (fun ξ => e ⟪P.1.1 - P.2.1, ξ⟫_ℝ)
+      (fun ξ => e ⟪P.1.2 - P.2.2, ξ⟫_ℝ)]
+  · refine Integrable.of_bound (by
+      have := aux_ann_continuous_e
+      fun_prop : Continuous fun ξ : ℝ² × ℝ² => G P.1 * conj (G P.2) *
+        (e ⟪P.1.1 - P.2.1, ξ.1⟫_ℝ * e ⟪P.1.2 - P.2.2, ξ.2⟫_ℝ)).aestronglyMeasurable
+      (‖G P.1 * conj (G P.2)‖) (ae_of_all _ fun ξ => ?_)
+    rw [norm_mul, norm_mul (e _), aux_ann_norm_e, aux_ann_norm_e, mul_one, mul_one]
+
+end AnnFactorAux
+
 /-- **Lemma `ann:factor`** (first assertion).  For the notation of Definition `ann:polynomials`,
 $$|F_{0,n}[a](\pi_0p)|^2\stackrel{*}{\rightharpoonup}\int|a|^2\,d\nu_0,\qquad
 |G_n(p)|^2\stackrel{*}{\rightharpoonup}\int|G|^2\,d(\nu_1\otimes\nu_2).$$ -/
@@ -179,7 +1699,19 @@ theorem ann_factor_one (α β : ℝ) (hβ : β ≠ 0) (Q : Set ℝ²) (hQ : Born
     (hν : aux_IsSpectralKernels k ν) (a : ℝ² →₀ ℂ) :
     annWeakStar μinc (fun n p => ((‖polyTranslate R f 0 n a (proj α β 0 p)‖ ^ 2 : ℝ) : ℂ))
       (fun p => ((∫ ξ, ‖trigPoly a ξ‖ ^ 2 ∂(ν 0 (proj α β 0 p)) : ℝ) : ℂ)) := by
-  sorry
+  obtain ⟨h1, h2⟩ := aux_ann_factor_vertex hadm hlim hν 0 a
+  have hm : ∀ n, Measurable fun z => ((‖polyTranslate R f 0 n a z‖ ^ 2 : ℝ) : ℂ) := fun n => by
+    have hc := fun j => aux_ann_continuous hadm j n
+    simp only [polyTranslate, Finsupp.sum, annT]
+    exact (by fun_prop : Continuous _).measurable
+  simp_rw [aux_ann_proj_zero]
+  refine aux_ann_weakStar_pullback_fst (B := (∑ s ∈ a.support, ‖a s‖) ^ 2)
+    (fun n => (hm n).aestronglyMeasurable) (fun n z => ?_) h2 h1
+  rw [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+  gcongr
+  refine (norm_sum_le _ _).trans (Finset.sum_le_sum fun s _ => ?_)
+  rw [norm_mul]
+  exact mul_le_of_le_one_right (norm_nonneg _) (aux_ann_annT_le_one hadm _ _ _ _)
 
 /-- **Lemma `ann:factor`** (second assertion).  For the notation of Definition
 `ann:polynomials`,
@@ -193,7 +1725,58 @@ theorem ann_factor_two (α β : ℝ) (hβ : β ≠ 0) (Q : Set ℝ²) (hQ : Born
     annWeakStar μinc (fun n p => ((‖tensorTranslate α β R f n G p‖ ^ 2 : ℝ) : ℂ))
       (fun p => ((∫ ξ, ‖tensorPoly G ξ‖ ^ 2 ∂((ν 1 (proj α β 1 p)).prod (ν 2 (proj α β 2 p)))
         : ℝ) : ℂ)) := by
-  sorry
+  have hfin : ∀ j z, IsFiniteMeasure (ν j z) := fun j => (hν.1 j).1
+  set S := G.support ×ˢ G.support with hS
+  set A : (ℝ² × ℝ²) × (ℝ² × ℝ²) → ℕ → ℝ² → ℂ := fun P n z =>
+    annT R f 1 n P.1.1 z * conj (annT R f 1 n P.2.1 z) with hA
+  set B : (ℝ² × ℝ²) × (ℝ² × ℝ²) → ℕ → ℝ² → ℂ := fun P n z =>
+    annT R f 2 n P.1.2 z * conj (annT R f 2 n P.2.2 z) with hB
+  have hpair : ∀ P, annWeakStar μinc (fun n p => A P n (proj α β 1 p) * B P n (proj α β 2 p))
+      (fun p => k 1 (proj α β 1 p) P.1.1 P.2.1 * k 2 (proj α β 2 p) P.1.2 P.2.2) := fun P =>
+    aux_ann_pair_weakStar α β hβ (fun n => aux_ann_two_point_meas hadm 1 n _ _)
+      (fun n => aux_ann_two_point_meas hadm 2 n _ _)
+      (fun n z => aux_ann_two_point_le hadm 1 n _ _ z)
+      (fun n z => aux_ann_two_point_le hadm 2 n _ _ z) (aux_ann_k_memLp hlim 1 _ _)
+      (aux_ann_k_memLp hlim 2 _ _) (hlim.two_point 1 _ _) (hlim.two_point 2 _ _)
+  have hp := fun j => (aux_ann_proj_continuous α β j).measurable
+  have hsum := aux_ann_weakStar_sum (μ := μinc) S (fun P => G P.1 * conj (G P.2))
+    (F := fun P n p => A P n (proj α β 1 p) * B P n (proj α β 2 p))
+    (G := fun P p => k 1 (proj α β 1 p) P.1.1 P.2.1 * k 2 (proj α β 2 p) P.1.2 P.2.2)
+    (fun P n => (((aux_ann_two_point_meas hadm 1 n _ _).comp (hp 1)).mul
+      ((aux_ann_two_point_meas hadm 2 n _ _).comp (hp 2))).aestronglyMeasurable)
+    (fun P n p => by
+      rw [norm_mul]
+      exact mul_le_one₀ (aux_ann_two_point_le hadm 1 n _ _ _) (norm_nonneg _)
+        (aux_ann_two_point_le hadm 2 n _ _ _))
+    (fun P => memLp_top_of_bound
+      ((((hlim.meas_two 1 _ _).comp_measurePreserving (aux_ann_proj_mp α β 1))).mul
+        ((hlim.meas_two 2 _ _).comp_measurePreserving (aux_ann_proj_mp α β 2))) 1
+      (ae_of_all _ fun p => by
+        simp only [norm_mul]
+        exact mul_le_one₀ (hlim.bound_two 1 _ _ _) (norm_nonneg _) (hlim.bound_two 2 _ _ _)))
+    hpair
+  have hseq : ∀ n p, ((‖tensorTranslate α β R f n G p‖ ^ 2 : ℝ) : ℂ) =
+      ∑ P ∈ S, G P.1 * conj (G P.2) * (A P n (proj α β 1 p) * B P n (proj α β 2 p)) := by
+    intro n p
+    have e1 : tensorTranslate α β R f n G p = ∑ st ∈ G.support, G st *
+        (annT R f 1 n st.1 (proj α β 1 p) * annT R f 2 n st.2 (proj α β 2 p)) := by
+      rw [tensorTranslate, Finsupp.sum]
+      exact Finset.sum_congr rfl fun st _ => by ring
+    rw [e1, aux_ann_normSq_sum]
+    refine Finset.sum_congr rfl fun P _ => ?_
+    simp only [hA, hB, map_mul]
+    ring
+  have hae : (fun p => ∑ P ∈ S, G P.1 * conj (G P.2) *
+      (k 1 (proj α β 1 p) P.1.1 P.2.1 * k 2 (proj α β 2 p) P.1.2 P.2.2)) =ᵐ[μinc]
+      fun p => ((∫ ξ, ‖tensorPoly G ξ‖ ^ 2 ∂((ν 1 (proj α β 1 p)).prod (ν 2 (proj α β 2 p)))
+        : ℝ) : ℂ) := by
+    filter_upwards [(aux_ann_proj_mp α β 1).quasiMeasurePreserving.ae hν.2.2,
+      (aux_ann_proj_mp α β 2).quasiMeasurePreserving.ae hν.2.2] with p h1 h2
+    rw [aux_ann_integral_normSq_tensorPoly]
+    refine Finset.sum_congr rfl fun P _ => ?_
+    rw [h1 1, h2 2]
+  simp_rw [hseq]
+  exact aux_ann_weakStar_congr hsum hae
 
 /-! ### The limiting bilinear correlation form (`ann:form`) -/
 
@@ -225,6 +1808,703 @@ def aux_IsLimitForm (α β : ℝ) (R : ℕ → ℝ) (f : Fin 3 → ℕ → ℝ²
   ∀ᵐ p ∂μinc, ∀ s : Fin 3 → ℝ²,
     ℓ p (charE (s 0)) (fun ξ => charE (s 1) ξ.1 * charE (s 2) ξ.2) = h3 p s
 
+/-! ### Auxiliary material for `ann:form` -/
+
+section BilinExt
+
+variable {E1 E2 H1 H2 : Type*} [AddCommGroup E1] [Module ℂ E1] [AddCommGroup E2] [Module ℂ E2]
+  [NormedAddCommGroup H1] [InnerProductSpace ℂ H1] [CompleteSpace H1]
+  [NormedAddCommGroup H2] [InnerProductSpace ℂ H2] [CompleteSpace H2]
+
+/-- Auxiliary: corestriction of a linear map to the closure of its range has dense range. -/
+theorem aux_ann_denseRange_codRestrict (e : E1 →ₗ[ℂ] H1) :
+    DenseRange (e.codRestrict (LinearMap.range e).topologicalClosure
+      (fun x => (LinearMap.range e).le_topologicalClosure (LinearMap.mem_range_self e x))) := by
+  set K := (LinearMap.range e).topologicalClosure
+  intro k
+  rw [Topology.IsInducing.subtypeVal.closure_eq_preimage_closure_image, mem_preimage]
+  have hk : (k : H1) ∈ closure (LinearMap.range e : Set H1) := by
+    rw [← Submodule.topologicalClosure_coe]; exact k.2
+  convert hk using 2
+  ext y
+  simp only [LinearMap.codRestrict, LinearMap.coe_mk, AddHom.coe_mk, SetLike.mem_coe,
+    LinearMap.mem_range]
+  constructor
+  · rintro ⟨_, ⟨c, rfl⟩, rfl⟩; exact ⟨c, rfl⟩
+  · rintro ⟨c, rfl⟩; exact ⟨_, ⟨c, rfl⟩, rfl⟩
+
+/-- Auxiliary (`ann:form`, see `Auto.ann_form`): a bilinear form defined on spanning data and
+bounded by the norms of the images extends to a bounded bilinear form on the Hilbert spaces with
+the same bound. -/
+theorem aux_ann_bilinear_extend (e1 : E1 →ₗ[ℂ] H1) (e2 : E2 →ₗ[ℂ] H2)
+    (Λ : E1 →ₗ[ℂ] E2 →ₗ[ℂ] ℂ) (hΛ : ∀ x y, ‖Λ x y‖ ≤ ‖e1 x‖ * ‖e2 y‖) :
+    ∃ B : H1 →L[ℂ] H2 →L[ℂ] ℂ, (∀ x y, B (e1 x) (e2 y) = Λ x y) ∧
+      ∀ u v, ‖B u v‖ ≤ ‖u‖ * ‖v‖ := by
+  set K1 := (LinearMap.range e1).topologicalClosure with hK1
+  set K2 := (LinearMap.range e2).topologicalClosure with hK2
+  have : CompleteSpace K1 := (Submodule.isClosed_topologicalClosure _).completeSpace_coe
+  have : CompleteSpace K2 := (Submodule.isClosed_topologicalClosure _).completeSpace_coe
+  set e1' : E1 →ₗ[ℂ] K1 := e1.codRestrict K1
+    (fun x => (LinearMap.range e1).le_topologicalClosure (LinearMap.mem_range_self e1 x))
+  set e2' : E2 →ₗ[ℂ] K2 := e2.codRestrict K2
+    (fun x => (LinearMap.range e2).le_topologicalClosure (LinearMap.mem_range_self e2 x))
+  have hd1 : DenseRange e1' := aux_ann_denseRange_codRestrict e1
+  have hd2 : DenseRange e2' := aux_ann_denseRange_codRestrict e2
+  have hn1 : ∀ x, ‖e1' x‖ = ‖e1 x‖ := fun x => rfl
+  have hn2 : ∀ y, ‖e2' y‖ = ‖e2 y‖ := fun y => rfl
+  have hb : ∀ y x, ‖Λ.flip y x‖ ≤ ‖e2 y‖ * ‖e1' x‖ := fun y x => by
+    rw [LinearMap.flip_apply, hn1, mul_comm]; exact hΛ x y
+  set Ψf : E2 → K1 →L[ℂ] ℂ := fun y => (Λ.flip y).extendOfNorm e1' with hΨf
+  have hΨe : ∀ y x, Ψf y (e1' x) = Λ x y := fun y x => by
+    rw [hΨf, LinearMap.extendOfNorm_eq hd1 ⟨_, hb y⟩]; rfl
+  have hΨadd : ∀ y y', Ψf (y + y') = Ψf y + Ψf y' := fun y y' => by
+    refine LinearMap.extendOfNorm_unique hd1 _ (hb (y + y')) _ ?_
+    ext x
+    simp [hΨe]
+  have hΨsmul : ∀ (c : ℂ) y, Ψf (c • y) = c • Ψf y := fun c y => by
+    refine LinearMap.extendOfNorm_unique hd1 _ (hb (c • y)) _ ?_
+    ext x
+    simp [hΨe]
+  set Ψ : E2 →ₗ[ℂ] K1 →L[ℂ] ℂ := ⟨⟨Ψf, hΨadd⟩, hΨsmul⟩ with hΨ
+  have hΨn : ∀ y, ‖Ψ y‖ ≤ 1 * ‖e2' y‖ := fun y => by
+    rw [one_mul, hn2]
+    exact LinearMap.opNorm_extendOfNorm_le hd1 (norm_nonneg _) (hb y)
+  set Ψx : K2 →L[ℂ] K1 →L[ℂ] ℂ := LinearMap.extendOfNorm (𝕜 := ℂ) (𝕜₂ := ℂ)
+    (σ₁₂ := RingHom.id ℂ) (F := K1 →L[ℂ] ℂ) Ψ e2' with hΨx
+  have hΨxe : ∀ y, Ψx (e2' y) = Ψ y := fun y => LinearMap.extendOfNorm_eq hd2 ⟨1, hΨn⟩ y
+  have hΨxn : ∀ v, ‖Ψx v‖ ≤ 1 * ‖v‖ := LinearMap.norm_extendOfNorm_apply_le hd2 1 hΨn
+  set P1 := K1.orthogonalProjectionOnto
+  set P2 := K2.orthogonalProjectionOnto
+  set B : H1 →L[ℂ] H2 →L[ℂ] ℂ :=
+    (((ContinuousLinearMap.compL ℂ H1 K1 ℂ).flip P1).comp (Ψx.comp P2)).flip with hB
+  have hBapp : ∀ u v, B u v = Ψx (P2 v) (P1 u) := fun u v => rfl
+  refine ⟨B, fun x y => ?_, fun u v => ?_⟩
+  · rw [hBapp]
+    have h2 : P2 (e2 y) = e2' y := Submodule.orthogonalProjectionOnto_mem_subspace_eq_self (e2' y)
+    have h1 : P1 (e1 x) = e1' x := Submodule.orthogonalProjectionOnto_mem_subspace_eq_self (e1' x)
+    rw [h2, h1, hΨxe]
+    exact hΨe y x
+  · rw [hBapp]
+    calc ‖Ψx (P2 v) (P1 u)‖ ≤ ‖Ψx (P2 v)‖ * ‖P1 u‖ := ContinuousLinearMap.le_opNorm _ _
+      _ ≤ (1 * ‖P2 v‖) * ‖P1 u‖ := by gcongr; exact hΨxn _
+      _ ≤ ‖v‖ * ‖u‖ := by
+          rw [one_mul]
+          gcongr
+          · exact Submodule.norm_orthogonalProjectionOnto_apply_le _ _
+          · exact Submodule.norm_orthogonalProjectionOnto_apply_le _ _
+      _ = ‖u‖ * ‖v‖ := mul_comm _ _
+
+end BilinExt
+
+section WeakStarAlg
+
+variable {X : Type*} [MeasurableSpace X] {μ : Measure X}
+
+/-- Auxiliary: weak-* limits of sums of bounded sequences. -/
+theorem aux_ann_weakStar_add {F F' : ℕ → X → ℂ} {G G' : X → ℂ}
+    (hF : ∀ n, AEStronglyMeasurable (F n) μ) (hFb : ∃ C, ∀ n x, ‖F n x‖ ≤ C)
+    (hF' : ∀ n, AEStronglyMeasurable (F' n) μ) (hFb' : ∃ C, ∀ n x, ‖F' n x‖ ≤ C)
+    (hG : MemLp G ⊤ μ) (hG' : MemLp G' ⊤ μ)
+    (h : annWeakStar μ F G) (h' : annWeakStar μ F' G') :
+    annWeakStar μ (fun n x => F n x + F' n x) (fun x => G x + G' x) := by
+  intro ψ hψ
+  obtain ⟨C, hC⟩ := hFb
+  obtain ⟨C', hC'⟩ := hFb'
+  have e1 : ∀ n, ∫ x, (F n x + F' n x) * ψ x ∂μ =
+      ∫ x, F n x * ψ x ∂μ + ∫ x, F' n x * ψ x ∂μ := fun n => by
+    simp_rw [add_mul]
+    exact integral_add (hψ.bdd_mul (hF n) (ae_of_all _ (hC n)))
+      (hψ.bdd_mul (hF' n) (ae_of_all _ (hC' n)))
+  have e2 : ∫ x, (G x + G' x) * ψ x ∂μ = ∫ x, G x * ψ x ∂μ + ∫ x, G' x * ψ x ∂μ := by
+    simp_rw [add_mul]
+    exact integral_add (hG.integrable_mul (memLp_one_iff_integrable.2 hψ))
+      (hG'.integrable_mul (memLp_one_iff_integrable.2 hψ))
+  simp_rw [e1, e2]
+  exact (h ψ hψ).add (h' ψ hψ)
+
+/-- Auxiliary: weak-* limits of scalar multiples. -/
+theorem aux_ann_weakStar_const_mul {F : ℕ → X → ℂ} {G : X → ℂ} (c : ℂ)
+    (h : annWeakStar μ F G) : annWeakStar μ (fun n x => c * F n x) (fun x => c * G x) := by
+  intro ψ hψ
+  simp_rw [mul_assoc, integral_const_mul]
+  exact (h ψ hψ).const_mul c
+
+/-- Auxiliary: weak-* limits of complex conjugates. -/
+theorem aux_ann_weakStar_conj {F : ℕ → X → ℂ} {G : X → ℂ} (h : annWeakStar μ F G) :
+    annWeakStar μ (fun n x => conj (F n x)) (fun x => conj (G x)) := by
+  intro ψ hψ
+  have hψ' : Integrable (fun x => conj (ψ x)) μ :=
+    hψ.congr' (Complex.continuous_conj.comp_aestronglyMeasurable hψ.1)
+      (ae_of_all _ fun x => by simp)
+  have e : ∀ H : X → ℂ, ∫ x, conj (H x) * ψ x ∂μ = conj (∫ x, H x * conj (ψ x) ∂μ) := fun H => by
+    rw [← integral_conj]
+    congr 1; funext x
+    simp
+  simp_rw [e]
+  exact (Complex.continuous_conj.tendsto _).comp (h _ hψ')
+
+end WeakStarAlg
+
+/-- Auxiliary (`ann:form`): `∫ |∑ c_i e_{s_i}|² dν` expanded. -/
+theorem aux_ann_integral_normSq_sum (ν : Measure ℝ²) [IsFiniteMeasure ν] {ι : Type*}
+    (S : Finset ι) (c : ι → ℂ) (s : ι → ℝ²) :
+    ((∫ ξ, ‖∑ i ∈ S, c i * charE (s i) ξ‖ ^ 2 ∂ν : ℝ) : ℂ) =
+      ∑ P ∈ S ×ˢ S, c P.1 * conj (c P.2) * ∫ ξ, e ⟪s P.1 - s P.2, ξ⟫_ℝ ∂ν := by
+  rw [← integral_complex_ofReal]
+  simp_rw [aux_ann_normSq_sum, aux_ann_charE_mul_conj]
+  rw [integral_finsetSum _ fun P _ => aux_ann_integrable_e ν _ _]
+  exact Finset.sum_congr rfl fun P _ => integral_const_mul _ _
+
+/-- Auxiliary (`ann:form`): `∫ |∑ d_i e_{s_i} ⊗ e_{t_i}|² d(μ₁ ⊗ μ₂)` expanded. -/
+theorem aux_ann_integral_normSq_sum2 (μ₁ μ₂ : Measure ℝ²) [IsFiniteMeasure μ₁]
+    [IsFiniteMeasure μ₂] {ι : Type*} (S : Finset ι) (d : ι → ℂ) (s t : ι → ℝ²) :
+    ((∫ ξ, ‖∑ i ∈ S, d i * charE (s i) ξ.1 * charE (t i) ξ.2‖ ^ 2 ∂(μ₁.prod μ₂) : ℝ) : ℂ) =
+      ∑ P ∈ S ×ˢ S, d P.1 * conj (d P.2) *
+        ((∫ ξ, e ⟪s P.1 - s P.2, ξ⟫_ℝ ∂μ₁) * ∫ ξ, e ⟪t P.1 - t P.2, ξ⟫_ℝ ∂μ₂) := by
+  rw [← integral_complex_ofReal]
+  have e1 : ∀ ξ : ℝ² × ℝ², ∑ i ∈ S, d i * charE (s i) ξ.1 * charE (t i) ξ.2 =
+      ∑ i ∈ S, d i * (charE (s i) ξ.1 * charE (t i) ξ.2) := fun ξ =>
+    Finset.sum_congr rfl fun i _ => by ring
+  simp_rw [e1, aux_ann_normSq_sum]
+  have e2 : ∀ (P : ι × ι) (ξ : ℝ² × ℝ²),
+      charE (s P.1) ξ.1 * charE (t P.1) ξ.2 * conj (charE (s P.2) ξ.1 * charE (t P.2) ξ.2) =
+        e ⟪s P.1 - s P.2, ξ.1⟫_ℝ * e ⟪t P.1 - t P.2, ξ.2⟫_ℝ := fun P ξ => by
+    rw [← aux_ann_charE_mul_conj, ← aux_ann_charE_mul_conj, map_mul]; ring
+  simp_rw [e2]
+  rw [integral_finsetSum _ fun P _ => ?_]
+  · refine Finset.sum_congr rfl fun P _ => ?_
+    rw [integral_const_mul, integral_prod_mul (fun ξ => e ⟪s P.1 - s P.2, ξ⟫_ℝ)
+      (fun ξ => e ⟪t P.1 - t P.2, ξ⟫_ℝ)]
+  · refine Integrable.of_bound (by
+      have := aux_ann_continuous_e
+      fun_prop : Continuous fun ξ : ℝ² × ℝ² => d P.1 * conj (d P.2) *
+        (e ⟪s P.1 - s P.2, ξ.1⟫_ℝ * e ⟪t P.1 - t P.2, ξ.2⟫_ℝ)).aestronglyMeasurable
+      (‖d P.1 * conj (d P.2)‖) (ae_of_all _ fun ξ => ?_)
+    rw [norm_mul, norm_mul (e _), aux_ann_norm_e, aux_ann_norm_e, mul_one, mul_one]
+
+/-- Auxiliary (`ann:form`): the polynomial form
+$\Lambda_p(a,G)=\sum_{s,t}a_sG_t\,h(p;s,t_1,t_2)$ on coefficient families. -/
+def aux_ann_Λ (h3 : ℝ² × Ang → (Fin 3 → ℝ²) → ℂ) (p : ℝ² × Ang) (a : ℝ² →₀ ℂ)
+    (G : ℝ² × ℝ² →₀ ℂ) : ℂ :=
+  a.sum fun s c => G.sum fun t d => c * d * h3 p ![s, t.1, t.2]
+
+section FormLimit
+
+variable {α β : ℝ} {Q : Set ℝ²} {C L : ℝ} {R : ℕ → ℝ} {f : Fin 3 → ℕ → ℝ² → ℂ}
+  {k : Fin 3 → ℝ² → ℝ² → ℝ² → ℂ} {h3 : ℝ² × Ang → (Fin 3 → ℝ²) → ℂ}
+
+/-- Auxiliary: the three-point limits are essentially bounded. -/
+theorem aux_ann_h3_memLp (hlim : aux_IsCorrelationLimits α β L R f k h3) (s : Fin 3 → ℝ²) :
+    MemLp (fun p => h3 p s) ⊤ μinc :=
+  memLp_top_of_bound (hlim.meas_three s) 1 (ae_of_all _ fun p => hlim.bound_three p s)
+
+/-- Auxiliary (`ann:form`, see `Auto.ann_form`): $F_{0,n}[a](\pi_0p)G_n(p)$ converges weak-* to
+the polynomial form `aux_ann_Λ`. -/
+theorem aux_ann_form_limit (hadm : IsAdmissibleSeq Q C R f)
+    (hlim : aux_IsCorrelationLimits α β L R f k h3) (a : ℝ² →₀ ℂ) (G : ℝ² × ℝ² →₀ ℂ) :
+    annWeakStar μinc
+      (fun n p => polyTranslate R f 0 n a (proj α β 0 p) * tensorTranslate α β R f n G p)
+      (fun p => aux_ann_Λ h3 p a G) := by
+  set S := a.support ×ˢ G.support
+  set sh : ℝ² × (ℝ² × ℝ²) → Fin 3 → ℝ² := fun P => ![P.1, P.2.1, P.2.2] with hsh
+  have hT : ∀ j n, Continuous fun q : ℝ² × ℝ² => annT R f j n q.1 q.2 := fun j n => by
+    have hc := aux_ann_continuous hadm j n
+    unfold annT
+    fun_prop
+  have hsum := aux_ann_weakStar_sum (μ := μinc) S (fun P => a P.1 * G P.2)
+    (F := fun P n p => ∏ j, annT R f j n (sh P j) (proj α β j p))
+    (G := fun P p => h3 p (sh P))
+    (fun P n => (continuous_finsetProd _ fun j _ => (hT j n).comp (continuous_const.prodMk
+      (aux_ann_proj_continuous α β j))).measurable.aestronglyMeasurable)
+    (fun P n p => by
+      rw [norm_prod]
+      exact Finset.prod_le_one (fun _ _ => norm_nonneg _) fun j _ =>
+        aux_ann_annT_le_one hadm _ _ _ _)
+    (fun P => aux_ann_h3_memLp hlim _) (fun P => hlim.three_point _)
+  have e1 : ∀ n p, polyTranslate R f 0 n a (proj α β 0 p) * tensorTranslate α β R f n G p =
+      ∑ P ∈ S, a P.1 * G P.2 * ∏ j, annT R f j n (sh P j) (proj α β j p) := by
+    intro n p
+    rw [polyTranslate, tensorTranslate, Finsupp.sum, Finsupp.sum, Finset.sum_mul_sum,
+      Finset.sum_product]
+    refine Finset.sum_congr rfl fun s _ => Finset.sum_congr rfl fun t _ => ?_
+    simp only [hsh, Fin.prod_univ_three, Matrix.cons_val_zero, Matrix.cons_val_one,
+      Matrix.cons_val_two, Matrix.head_cons, Matrix.tail_cons]
+    ring
+  have e2 : ∀ p, aux_ann_Λ h3 p a G = ∑ P ∈ S, a P.1 * G P.2 * h3 p (sh P) := by
+    intro p
+    rw [aux_ann_Λ, Finsupp.sum, Finset.sum_product]
+    rfl
+  simp_rw [e1, e2]
+  exact hsum
+
+end FormLimit
+
+/-- Auxiliary (`ann:form`): the trigonometric polynomial $\sum_{i<N}c_ie_{D_i}$ as a coefficient
+family. -/
+def aux_ann_aOf (D : ℕ → ℝ²) (N : ℕ) (c : Fin N → ℂ) : ℝ² →₀ ℂ :=
+  ∑ i : Fin N, Finsupp.single (D i) (c i)
+
+/-- Auxiliary (`ann:form`): the tensor sum $\sum_{k,l<N}d_{kl}e_{D_k}\otimes e_{D_l}$ as a
+coefficient family. -/
+def aux_ann_GOf (D : ℕ → ℝ²) (N : ℕ) (d : Fin N × Fin N → ℂ) : ℝ² × ℝ² →₀ ℂ :=
+  ∑ kl : Fin N × Fin N, Finsupp.single (D kl.1, D kl.2) (d kl)
+
+theorem aux_ann_sum_aOf {M : Type*} [AddCommMonoid M] (D : ℕ → ℝ²) (N : ℕ) (c : Fin N → ℂ)
+    (g : ℝ² → ℂ → M) (h0 : ∀ s, g s 0 = 0) (hadd : ∀ s b b', g s (b + b') = g s b + g s b') :
+    (aux_ann_aOf D N c).sum g = ∑ i : Fin N, g (D i) (c i) := by
+  rw [aux_ann_aOf, ← Finsupp.sum_finsetSum_index h0 hadd]
+  exact Finset.sum_congr rfl fun i _ => Finsupp.sum_single_index (h0 _)
+
+theorem aux_ann_sum_GOf {M : Type*} [AddCommMonoid M] (D : ℕ → ℝ²) (N : ℕ)
+    (d : Fin N × Fin N → ℂ) (g : ℝ² × ℝ² → ℂ → M) (h0 : ∀ s, g s 0 = 0)
+    (hadd : ∀ s b b', g s (b + b') = g s b + g s b') :
+    (aux_ann_GOf D N d).sum g = ∑ kl : Fin N × Fin N, g (D kl.1, D kl.2) (d kl) := by
+  rw [aux_ann_GOf, ← Finsupp.sum_finsetSum_index h0 hadd]
+  exact Finset.sum_congr rfl fun i _ => Finsupp.sum_single_index (h0 _)
+
+theorem aux_ann_trigPoly_aOf (D : ℕ → ℝ²) (N : ℕ) (c : Fin N → ℂ) (ξ : ℝ²) :
+    trigPoly (aux_ann_aOf D N c) ξ = ∑ i : Fin N, c i * charE (D i) ξ :=
+  aux_ann_sum_aOf D N c _ (fun _ => zero_mul _) (fun _ _ _ => add_mul _ _ _)
+
+theorem aux_ann_polyTranslate_aOf (D : ℕ → ℝ²) (N : ℕ) (c : Fin N → ℂ) (R : ℕ → ℝ)
+    (f : Fin 3 → ℕ → ℝ² → ℂ) (j : Fin 3) (n : ℕ) (z : ℝ²) :
+    polyTranslate R f j n (aux_ann_aOf D N c) z = ∑ i : Fin N, c i * annT R f j n (D i) z :=
+  aux_ann_sum_aOf D N c _ (fun _ => zero_mul _) (fun _ _ _ => add_mul _ _ _)
+
+theorem aux_ann_tensorPoly_GOf (D : ℕ → ℝ²) (N : ℕ) (d : Fin N × Fin N → ℂ)
+    (ξ : ℝ² × ℝ²) :
+    tensorPoly (aux_ann_GOf D N d) ξ =
+      ∑ kl : Fin N × Fin N, d kl * charE (D kl.1) ξ.1 * charE (D kl.2) ξ.2 :=
+  aux_ann_sum_GOf D N d _ (fun s => by simp) (fun s b b' => by ring)
+
+theorem aux_ann_tensorTranslate_GOf (D : ℕ → ℝ²) (N : ℕ) (d : Fin N × Fin N → ℂ) (α β : ℝ)
+    (R : ℕ → ℝ) (f : Fin 3 → ℕ → ℝ² → ℂ) (n : ℕ) (p : ℝ² × Ang) :
+    tensorTranslate α β R f n (aux_ann_GOf D N d) p = ∑ kl : Fin N × Fin N, d kl *
+      annT R f 1 n (D kl.1) (proj α β 1 p) * annT R f 2 n (D kl.2) (proj α β 2 p) :=
+  aux_ann_sum_GOf D N d _ (fun s => by simp) (fun s b b' => by ring)
+
+theorem aux_ann_Λ_of (D : ℕ → ℝ²) (N : ℕ) (c : Fin N → ℂ) (d : Fin N × Fin N → ℂ)
+    (h3 : ℝ² × Ang → (Fin 3 → ℝ²) → ℂ) (p : ℝ² × Ang) :
+    aux_ann_Λ h3 p (aux_ann_aOf D N c) (aux_ann_GOf D N d) =
+      ∑ i : Fin N, ∑ kl : Fin N × Fin N, c i * d kl * h3 p ![D i, D kl.1, D kl.2] := by
+  rw [aux_ann_Λ, aux_ann_sum_aOf D N c _ (fun s => by simp [Finsupp.sum])
+    (fun s b b' => by simp only [Finsupp.sum, ← Finset.sum_add_distrib]; congr 1; funext t; ring)]
+  refine Finset.sum_congr rfl fun i _ => ?_
+  exact aux_ann_sum_GOf D N d _ (fun s => by simp) (fun s b b' => by ring)
+
+/-- Auxiliary (`ann:form`): the quadratic-form argument of `ann:form`: nonnegativity of
+$|q|^2A+B-2\operatorname{Re}(ql)$ for all `q` forces $|l|^2\le AB$. -/
+theorem aux_ann_quad (A B : ℝ) (l : ℂ) (hA : 0 ≤ A)
+    (h : ∀ q : ℂ, 0 ≤ ‖q‖ ^ 2 * A + B - 2 * (q * l).re) : ‖l‖ ^ 2 ≤ A * B := by
+  rcases hA.lt_or_eq with hA | hA
+  · have h1 := h (conj l / (A : ℂ))
+    have e1 : ‖conj l / (A : ℂ)‖ ^ 2 = ‖l‖ ^ 2 / A ^ 2 := by
+      rw [norm_div, Complex.norm_conj, Complex.norm_real, Real.norm_eq_abs, abs_of_pos hA,
+        div_pow]
+    have e2 : (conj l / (A : ℂ) * l).re = ‖l‖ ^ 2 / A := by
+      rw [div_mul_eq_mul_div, mul_comm, Complex.mul_conj, ← Complex.ofReal_div,
+        Complex.ofReal_re, Complex.normSq_eq_norm_sq]
+    rw [e1, e2] at h1
+    have : ‖l‖ ^ 2 / A ^ 2 * A = ‖l‖ ^ 2 / A := by field_simp
+    rw [this] at h1
+    have h2 : ‖l‖ ^ 2 / A ≤ B := by linarith
+    rwa [div_le_iff₀ hA, mul_comm] at h2
+  · subst hA
+    rw [zero_mul]
+    by_contra hcon
+    push Not at hcon
+    have h1 := h (((B + 1) / (2 * ‖l‖ ^ 2) : ℝ) * conj l)
+    have e2 : ((((B + 1) / (2 * ‖l‖ ^ 2) : ℝ) : ℂ) * conj l * l).re = (B + 1) / 2 := by
+      rw [mul_assoc, mul_comm (conj l), Complex.mul_conj, ← Complex.ofReal_mul,
+        Complex.ofReal_re, Complex.normSq_eq_norm_sq]
+      have : ‖l‖ ≠ 0 := by
+        intro h0; rw [h0] at hcon; norm_num at hcon
+      field_simp
+    rw [e2] at h1
+    linarith
+
+/-- Auxiliary (`ann:form`): $\int|\sum_{i<N}c_ie_{D_i}|^2\,d\nu$ in coefficient form. -/
+def aux_ann_Aq (ν : Measure ℝ²) (D : ℕ → ℝ²) (N : ℕ) (c : Fin N → ℂ) : ℂ :=
+  ∑ P ∈ (Finset.univ : Finset (Fin N)) ×ˢ Finset.univ,
+    c P.1 * conj (c P.2) * ∫ ξ, e ⟪D P.1 - D P.2, ξ⟫_ℝ ∂ν
+
+/-- Auxiliary (`ann:form`): $\int|\sum_{k,l<N}d_{kl}e_{D_k}\otimes e_{D_l}|^2\,d(\nu_1\otimes\nu_2)$
+in coefficient form. -/
+def aux_ann_Bq (ν₁ ν₂ : Measure ℝ²) (D : ℕ → ℝ²) (N : ℕ) (d : Fin N × Fin N → ℂ) : ℂ :=
+  ∑ P ∈ (Finset.univ : Finset (Fin N × Fin N)) ×ˢ Finset.univ, d P.1 * conj (d P.2) *
+    ((∫ ξ, e ⟪D P.1.1 - D P.2.1, ξ⟫_ℝ ∂ν₁) * ∫ ξ, e ⟪D P.1.2 - D P.2.2, ξ⟫_ℝ ∂ν₂)
+
+/-- Auxiliary (`ann:form`): the polynomial form in coefficient form. -/
+def aux_ann_lq (h3 : ℝ² × Ang → (Fin 3 → ℝ²) → ℂ) (p : ℝ² × Ang) (D : ℕ → ℝ²) (N : ℕ)
+    (c : Fin N → ℂ) (d : Fin N × Fin N → ℂ) : ℂ :=
+  ∑ i : Fin N, ∑ kl : Fin N × Fin N, c i * d kl * h3 p ![D i, D kl.1, D kl.2]
+
+theorem aux_ann_Aq_eq (ν : Measure ℝ²) [IsFiniteMeasure ν] (D : ℕ → ℝ²) (N : ℕ)
+    (c : Fin N → ℂ) :
+    ((∫ ξ, ‖∑ i : Fin N, c i * charE (D i) ξ‖ ^ 2 ∂ν : ℝ) : ℂ) = aux_ann_Aq ν D N c :=
+  aux_ann_integral_normSq_sum ν Finset.univ c (fun i => D i)
+
+theorem aux_ann_Bq_eq (ν₁ ν₂ : Measure ℝ²) [IsFiniteMeasure ν₁] [IsFiniteMeasure ν₂]
+    (D : ℕ → ℝ²) (N : ℕ) (d : Fin N × Fin N → ℂ) :
+    ((∫ ξ, ‖∑ kl : Fin N × Fin N, d kl * charE (D kl.1) ξ.1 * charE (D kl.2) ξ.2‖ ^ 2
+      ∂(ν₁.prod ν₂) : ℝ) : ℂ) = aux_ann_Bq ν₁ ν₂ D N d :=
+  aux_ann_integral_normSq_sum2 ν₁ ν₂ Finset.univ d (fun kl => D kl.1) (fun kl => D kl.2)
+
+/-- Auxiliary: characters integrated against a measurable kernel give essentially bounded
+functions of the configuration. -/
+theorem aux_ann_I_memLp (α β : ℝ) {ν : ℝ² → Measure ℝ²} (hν : IsMeasurableKernel ν)
+    (hν1 : ∀ z, ν z univ ≤ 1) (j : Fin 3) (s : ℝ²) :
+    MemLp (fun p => ∫ ξ, e ⟪s, ξ⟫_ℝ ∂(ν (proj α β j p))) ⊤ μinc := by
+  have hfin := hν.1
+  have hm : StronglyMeasurable fun z => ∫ ξ, e ⟪s, ξ⟫_ℝ ∂(ν z) :=
+    ext_kernel_integration_measurable_complex hν (F := fun q : ℝ² × ℝ² => e ⟪s, q.2⟫_ℝ)
+      (by have := aux_ann_continuous_e; fun_prop : Continuous fun q : ℝ² × ℝ² =>
+        e ⟪s, q.2⟫_ℝ).stronglyMeasurable
+  refine memLp_top_of_bound (hm.measurable.comp (aux_ann_proj_continuous α β j).measurable
+    |>.aestronglyMeasurable) 1 (ae_of_all _ fun p => ?_)
+  refine (norm_integral_le_of_norm_le_const (C := 1) (ae_of_all _ fun ξ =>
+    (aux_ann_norm_e _).le)).trans ?_
+  rw [one_mul]
+  exact ENNReal.toReal_le_of_le_ofReal zero_le_one (by simpa using hν1 _)
+
+section CS
+
+variable {α β : ℝ} {Q : Set ℝ²} {C L : ℝ} {R : ℕ → ℝ} {f : Fin 3 → ℕ → ℝ² → ℂ}
+  {k : Fin 3 → ℝ² → ℝ² → ℝ² → ℂ} {h3 : ℝ² × Ang → (Fin 3 → ℝ²) → ℂ}
+  {ν : Fin 3 → ℝ² → Measure ℝ²}
+
+/-- Auxiliary (`ann:form`, see `Auto.ann_form`): for fixed coefficient data, the quadratic
+expression $|q|^2a_0+b_0-2\operatorname{Re}(q\,l)$ is a.e. nonnegative, as the weak-* limit of
+$|qF_{0,n}[a](\pi_0p)-\overline{G_n(p)}|^2$. -/
+theorem aux_ann_ineq_ae (hβ : β ≠ 0) (hQ : Bornology.IsBounded Q)
+    (hadm : IsAdmissibleSeq Q C R f) (hlim : aux_IsCorrelationLimits α β L R f k h3)
+    (hν : aux_IsSpectralKernels k ν) (D : ℕ → ℝ²) (N : ℕ) (c : Fin N → ℂ)
+    (d : Fin N × Fin N → ℂ) (q : ℂ) :
+    ∀ᵐ p ∂μinc, 0 ≤ ((‖q‖ ^ 2 : ℝ) : ℂ) * aux_ann_Aq (ν 0 (proj α β 0 p)) D N c +
+      aux_ann_Bq (ν 1 (proj α β 1 p)) (ν 2 (proj α β 2 p)) D N d -
+      q * aux_ann_lq h3 p D N c d - conj (q * aux_ann_lq h3 p D N c d) := by
+  have hfin : ∀ j z, IsFiniteMeasure (ν j z) := fun j => (hν.1 j).1
+  have hA := ann_factor_one α β hβ Q hQ C L R f hadm k h3 hlim ν hν (aux_ann_aOf D N c)
+  have hB := ann_factor_two α β hβ Q hQ C L R f hadm k h3 hlim ν hν (aux_ann_GOf D N d)
+  have hL := aux_ann_form_limit hadm hlim (aux_ann_aOf D N c) (aux_ann_GOf D N d)
+  simp_rw [aux_ann_trigPoly_aOf, aux_ann_Aq_eq] at hA
+  simp_rw [aux_ann_tensorPoly_GOf, aux_ann_Bq_eq] at hB
+  simp_rw [aux_ann_Λ_of] at hL
+  set Fn : ℕ → ℝ² × Ang → ℂ := fun n p => polyTranslate R f 0 n (aux_ann_aOf D N c) (proj α β 0 p) with hFn
+  set Gn : ℕ → ℝ² × Ang → ℂ := fun n p => tensorTranslate α β R f n (aux_ann_GOf D N d) p with hGn
+  have hc := fun j n => aux_ann_continuous hadm j n
+  have hp := fun j => aux_ann_proj_continuous α β j
+  have hFc : ∀ n, Continuous (Fn n) := fun n => by
+    simp only [hFn, aux_ann_polyTranslate_aOf, annT]
+    have := hc 0 n; have := hp 0
+    fun_prop
+  have hGc : ∀ n, Continuous (Gn n) := fun n => by
+    simp only [hGn, aux_ann_tensorTranslate_GOf, annT]
+    have := hc 1 n; have := hc 2 n; have := hp 1; have := hp 2
+    fun_prop
+  set Cc := ∑ i : Fin N, ‖c i‖
+  set Cd := ∑ kl : Fin N × Fin N, ‖d kl‖
+  have hFb : ∀ n p, ‖Fn n p‖ ≤ Cc := fun n p => by
+    simp only [hFn, aux_ann_polyTranslate_aOf]
+    refine (norm_sum_le _ _).trans (Finset.sum_le_sum fun i _ => ?_)
+    rw [norm_mul]
+    exact mul_le_of_le_one_right (norm_nonneg _) (aux_ann_annT_le_one hadm _ _ _ _)
+  have hGb : ∀ n p, ‖Gn n p‖ ≤ Cd := fun n p => by
+    simp only [hGn, aux_ann_tensorTranslate_GOf]
+    refine (norm_sum_le _ _).trans (Finset.sum_le_sum fun kl _ => ?_)
+    rw [norm_mul, norm_mul]
+    exact (mul_le_of_le_one_right (by positivity) (aux_ann_annT_le_one hadm _ _ _ _)).trans
+      (mul_le_of_le_one_right (norm_nonneg _) (aux_ann_annT_le_one hadm _ _ _ _))
+  -- memberships of the limits
+  have hI := fun j s => aux_ann_I_memLp α β (hν.1 j) (hν.2.1 j) j s
+  have hAm : MemLp (fun p => aux_ann_Aq (ν 0 (proj α β 0 p)) D N c) ⊤ μinc := by
+    unfold aux_ann_Aq
+    exact memLp_finsetSum _ fun P _ => (hI 0 _).const_mul _
+  have hBm : MemLp (fun p => aux_ann_Bq (ν 1 (proj α β 1 p)) (ν 2 (proj α β 2 p)) D N d) ⊤
+      μinc := by
+    unfold aux_ann_Bq
+    exact memLp_finsetSum _ fun P _ => ((hI 2 _).mul (r := ⊤) (hI 1 _)).const_mul _
+  have hLm : MemLp (fun p => aux_ann_lq h3 p D N c d) ⊤ μinc := by
+    unfold aux_ann_lq
+    exact memLp_finsetSum _ fun i _ => memLp_finsetSum _ fun kl _ =>
+      (aux_ann_h3_memLp hlim _).const_mul _
+  have hLc : MemLp (fun p => conj (-q * aux_ann_lq h3 p D N c d)) ⊤ μinc :=
+    (hLm.const_mul (-q)).star
+  -- the combined sequence
+  have h1 := aux_ann_weakStar_const_mul ((‖q‖ ^ 2 : ℝ) : ℂ) hA
+  have h3' := aux_ann_weakStar_const_mul (-q) hL
+  have h4 := aux_ann_weakStar_conj h3'
+  have hm1 : ∀ n, AEStronglyMeasurable (fun p => ((‖q‖ ^ 2 : ℝ) : ℂ) *
+      ((‖Fn n p‖ ^ 2 : ℝ) : ℂ)) μinc := fun n =>
+    (by have := hFc n; fun_prop : Continuous fun p => ((‖q‖ ^ 2 : ℝ) : ℂ) *
+      ((‖Fn n p‖ ^ 2 : ℝ) : ℂ)).aestronglyMeasurable
+  have hm2 : ∀ n, AEStronglyMeasurable (fun p => ((‖Gn n p‖ ^ 2 : ℝ) : ℂ)) μinc := fun n =>
+    (by have := hGc n; fun_prop : Continuous fun p => ((‖Gn n p‖ ^ 2 : ℝ) : ℂ)).aestronglyMeasurable
+  have hm3 : ∀ n, AEStronglyMeasurable (fun p => -q * (Fn n p * Gn n p)) μinc := fun n =>
+    (by have := hFc n; have := hGc n; fun_prop :
+      Continuous fun p => -q * (Fn n p * Gn n p)).aestronglyMeasurable
+  have hm4 : ∀ n, AEStronglyMeasurable (fun p => conj (-q * (Fn n p * Gn n p))) μinc := fun n =>
+    (Complex.continuous_conj.comp_aestronglyMeasurable (hm3 n))
+  have hb1 : ∃ K, ∀ n p, ‖((‖q‖ ^ 2 : ℝ) : ℂ) * ((‖Fn n p‖ ^ 2 : ℝ) : ℂ)‖ ≤ K :=
+    ⟨‖q‖ ^ 2 * Cc ^ 2, fun n p => by
+      rw [norm_mul, Complex.norm_real, Complex.norm_real, Real.norm_eq_abs, Real.norm_eq_abs,
+        abs_of_nonneg (by positivity), abs_of_nonneg (by positivity)]
+      gcongr; exact hFb n p⟩
+  have hb2 : ∃ K, ∀ n p, ‖((‖Gn n p‖ ^ 2 : ℝ) : ℂ)‖ ≤ K :=
+    ⟨Cd ^ 2, fun n p => by
+      rw [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+      gcongr; exact hGb n p⟩
+  have hb3 : ∃ K, ∀ n p, ‖-q * (Fn n p * Gn n p)‖ ≤ K :=
+    ⟨‖q‖ * (Cc * Cd), fun n p => by
+      rw [norm_mul, norm_mul, norm_neg]
+      gcongr
+      · exact hFb n p
+      · exact hGb n p⟩
+  have hb4 : ∃ K, ∀ n p, ‖conj (-q * (Fn n p * Gn n p))‖ ≤ K := by
+    obtain ⟨K, hK⟩ := hb3
+    exact ⟨K, fun n p => by rw [Complex.norm_conj]; exact hK n p⟩
+  have hsum12 := aux_ann_weakStar_add hm1 hb1 hm2 hb2 (hAm.const_mul _) hBm h1 hB
+  have hsum123 := aux_ann_weakStar_add (fun n => (hm1 n).add (hm2 n))
+    (by obtain ⟨K1, h1⟩ := hb1; obtain ⟨K2, h2⟩ := hb2
+        exact ⟨K1 + K2, fun n p => (norm_add_le _ _).trans (add_le_add (h1 n p) (h2 n p))⟩)
+    hm3 hb3 ((hAm.const_mul _).add hBm) (hLm.const_mul _) hsum12 h3'
+  have hall := aux_ann_weakStar_add (fun n => ((hm1 n).add (hm2 n)).add (hm3 n))
+    (by obtain ⟨K1, h1⟩ := hb1; obtain ⟨K2, h2⟩ := hb2; obtain ⟨K3, h3⟩ := hb3
+        exact ⟨K1 + K2 + K3, fun n p => (norm_add_le _ _).trans (add_le_add
+          ((norm_add_le _ _).trans (add_le_add (h1 n p) (h2 n p))) (h3 n p))⟩)
+    hm4 hb4 (((hAm.const_mul _).add hBm).add (hLm.const_mul _))
+    hLc hsum123 h4
+  have hnn := aux_ann_weakStar_nonneg (μ := μinc)
+    ((((hAm.const_mul _).add hBm).add (hLm.const_mul _)).add
+      hLc)
+    (fun n => ae_of_all _ fun p => by
+      have key : ((‖q * Fn n p - conj (Gn n p)‖ ^ 2 : ℝ) : ℂ) =
+          ((‖q‖ ^ 2 : ℝ) : ℂ) * ((‖Fn n p‖ ^ 2 : ℝ) : ℂ) + ((‖Gn n p‖ ^ 2 : ℝ) : ℂ) +
+            -q * (Fn n p * Gn n p) + conj (-q * (Fn n p * Gn n p)) := by
+        push_cast
+        rw [← Complex.mul_conj', ← Complex.mul_conj', ← Complex.mul_conj', ← Complex.mul_conj']
+        simp only [map_sub, map_mul, map_neg, Complex.conj_conj]
+        ring
+      simp only [Pi.add_apply]
+      rw [← key]
+      exact Complex.zero_le_real.2 (by positivity)) hall
+  filter_upwards [hnn] with p hp
+  convert hp using 1
+  simp only [Pi.add_apply, map_mul, map_neg]
+  ring
+
+end CS
+
+section CS2
+
+variable {α β : ℝ} {Q : Set ℝ²} {C L : ℝ} {R : ℕ → ℝ} {f : Fin 3 → ℕ → ℝ² → ℂ}
+  {k : Fin 3 → ℝ² → ℝ² → ℝ² → ℂ} {h3 : ℝ² × Ang → (Fin 3 → ℝ²) → ℂ}
+  {ν : Fin 3 → ℝ² → Measure ℝ²}
+
+theorem aux_ann_Aq_continuous {X : Type*} [TopologicalSpace X] (ν₀ : Measure ℝ²) (D : ℕ → ℝ²)
+    (N : ℕ) {g : X → Fin N → ℂ} (hg : Continuous g) :
+    Continuous fun x => aux_ann_Aq ν₀ D N (g x) := by
+  unfold aux_ann_Aq
+  exact continuous_finsetSum _ fun P _ => (((continuous_apply P.1).comp hg).mul
+    (Complex.continuous_conj.comp ((continuous_apply P.2).comp hg))).mul continuous_const
+
+theorem aux_ann_Bq_continuous {X : Type*} [TopologicalSpace X] (ν₁ ν₂ : Measure ℝ²)
+    (D : ℕ → ℝ²) (N : ℕ) {g : X → Fin N × Fin N → ℂ} (hg : Continuous g) :
+    Continuous fun x => aux_ann_Bq ν₁ ν₂ D N (g x) := by
+  unfold aux_ann_Bq
+  exact continuous_finsetSum _ fun P _ => (((continuous_apply P.1).comp hg).mul
+    (Complex.continuous_conj.comp ((continuous_apply P.2).comp hg))).mul continuous_const
+
+theorem aux_ann_lq_continuous {X : Type*} [TopologicalSpace X]
+    (h3 : ℝ² × Ang → (Fin 3 → ℝ²) → ℂ) (p : ℝ² × Ang) (D : ℕ → ℝ²) (N : ℕ)
+    {g : X → Fin N → ℂ} {g' : X → Fin N × Fin N → ℂ} (hg : Continuous g) (hg' : Continuous g') :
+    Continuous fun x => aux_ann_lq h3 p D N (g x) (g' x) := by
+  unfold aux_ann_lq
+  exact continuous_finsetSum _ fun i _ => continuous_finsetSum _ fun kl _ =>
+    (((continuous_apply i).comp hg).mul ((continuous_apply kl).comp hg')).mul continuous_const
+
+/-- Auxiliary: continuity of the quadratic expression of `ann:form` in the coefficients. -/
+theorem aux_ann_ineq_continuous (ν₀ ν₁ ν₂ : Measure ℝ²) (h3 : ℝ² × Ang → (Fin 3 → ℝ²) → ℂ)
+    (p : ℝ² × Ang) (D : ℕ → ℝ²) (N : ℕ) :
+    Continuous fun x : (Fin N → ℂ) × (Fin N × Fin N → ℂ) × ℂ =>
+      ((‖x.2.2‖ ^ 2 : ℝ) : ℂ) * aux_ann_Aq ν₀ D N x.1 + aux_ann_Bq ν₁ ν₂ D N x.2.1 -
+        x.2.2 * aux_ann_lq h3 p D N x.1 x.2.1 - conj (x.2.2 * aux_ann_lq h3 p D N x.1 x.2.1) := by
+  have h1 : Continuous fun x : (Fin N → ℂ) × (Fin N × Fin N → ℂ) × ℂ => x.1 := continuous_fst
+  have h2 : Continuous fun x : (Fin N → ℂ) × (Fin N × Fin N → ℂ) × ℂ => x.2.1 :=
+    continuous_fst.comp continuous_snd
+  have hq : Continuous fun x : (Fin N → ℂ) × (Fin N × Fin N → ℂ) × ℂ => x.2.2 :=
+    continuous_snd.comp continuous_snd
+  have hA := aux_ann_Aq_continuous ν₀ D N h1
+  have hB := aux_ann_Bq_continuous ν₁ ν₂ D N h2
+  have hl := aux_ann_lq_continuous h3 p D N h1 h2
+  have hql := hq.mul hl
+  exact (((Complex.continuous_ofReal.comp (hq.norm.pow 2)).mul hA).add hB |>.sub hql).sub
+    (Complex.continuous_conj.comp hql)
+
+/-- Auxiliary (`ann:form`, see `Auto.ann_form`): the quadratic inequality holds outside one null
+set for all coefficient data (countably many rational data and continuity). -/
+theorem aux_ann_ineq_all (hβ : β ≠ 0) (hQ : Bornology.IsBounded Q)
+    (hadm : IsAdmissibleSeq Q C R f) (hlim : aux_IsCorrelationLimits α β L R f k h3)
+    (hν : aux_IsSpectralKernels k ν) (D : ℕ → ℝ²) :
+    ∀ᵐ p ∂μinc, ∀ (N : ℕ) (c : Fin N → ℂ) (d : Fin N × Fin N → ℂ) (q : ℂ),
+      0 ≤ ((‖q‖ ^ 2 : ℝ) : ℂ) * aux_ann_Aq (ν 0 (proj α β 0 p)) D N c +
+      aux_ann_Bq (ν 1 (proj α β 1 p)) (ν 2 (proj α β 2 p)) D N d -
+      q * aux_ann_lq h3 p D N c d - conj (q * aux_ann_lq h3 p D N c d) := by
+  set E := TopologicalSpace.denseSeq ℂ
+  have hE : DenseRange E := TopologicalSpace.denseRange_denseSeq _
+  have hrat : ∀ x : Σ N : ℕ, (Fin N → ℕ) × (Fin N × Fin N → ℕ) × ℕ, ∀ᵐ p ∂μinc,
+      0 ≤ ((‖E x.2.2.2‖ ^ 2 : ℝ) : ℂ) * aux_ann_Aq (ν 0 (proj α β 0 p)) D x.1 (E ∘ x.2.1) +
+      aux_ann_Bq (ν 1 (proj α β 1 p)) (ν 2 (proj α β 2 p)) D x.1 (E ∘ x.2.2.1) -
+      E x.2.2.2 * aux_ann_lq h3 p D x.1 (E ∘ x.2.1) (E ∘ x.2.2.1) -
+      conj (E x.2.2.2 * aux_ann_lq h3 p D x.1 (E ∘ x.2.1) (E ∘ x.2.2.1)) := fun x =>
+    aux_ann_ineq_ae hβ hQ hadm hlim hν D x.1 (E ∘ x.2.1) (E ∘ x.2.2.1) (E x.2.2.2)
+  filter_upwards [ae_all_iff.2 hrat] with p hp N c d q
+  have hcont := aux_ann_ineq_continuous (ν 0 (proj α β 0 p)) (ν 1 (proj α β 1 p))
+    (ν 2 (proj α β 2 p)) h3 p D N
+  have ht : Tendsto (fun m => ((fun i => E (aux_ann_idx E hE m (c i))),
+      (fun kl => E (aux_ann_idx E hE m (d kl))), E (aux_ann_idx E hE m q))) atTop
+      (𝓝 (c, d, q)) :=
+    (tendsto_pi_nhds.2 fun i => aux_ann_idx_tendsto E hE (c i)).prodMk_nhds
+      ((tendsto_pi_nhds.2 fun kl => aux_ann_idx_tendsto E hE (d kl)).prodMk_nhds
+        (aux_ann_idx_tendsto E hE q))
+  have hlimit := (hcont.tendsto (c, d, q)).comp ht
+  refine ge_of_tendsto' hlimit fun m => ?_
+  have hm := hp ⟨N, fun i => aux_ann_idx E hE m (c i), fun kl => aux_ann_idx E hE m (d kl),
+      aux_ann_idx E hE m q⟩
+  simp only [Function.comp_def] at hm ⊢
+  exact hm
+
+/-- Auxiliary (`ann:form`, see `Auto.ann_form`): the Cauchy–Schwarz inequality `(ann:cs)` for
+all polynomial data outside one null set. -/
+theorem aux_ann_cs_all (hβ : β ≠ 0) (hQ : Bornology.IsBounded Q)
+    (hadm : IsAdmissibleSeq Q C R f) (hlim : aux_IsCorrelationLimits α β L R f k h3)
+    (hν : aux_IsSpectralKernels k ν) (D : ℕ → ℝ²) :
+    ∀ᵐ p ∂μinc, ∀ (N : ℕ) (c : Fin N → ℂ) (d : Fin N × Fin N → ℂ),
+      ‖aux_ann_lq h3 p D N c d‖ ^ 2 ≤
+        (∫ ξ, ‖∑ i : Fin N, c i * charE (D i) ξ‖ ^ 2 ∂(ν 0 (proj α β 0 p))) *
+        ∫ ξ, ‖∑ kl : Fin N × Fin N, d kl * charE (D kl.1) ξ.1 * charE (D kl.2) ξ.2‖ ^ 2
+          ∂((ν 1 (proj α β 1 p)).prod (ν 2 (proj α β 2 p))) := by
+  have hfin : ∀ j z, IsFiniteMeasure (ν j z) := fun j => (hν.1 j).1
+  filter_upwards [aux_ann_ineq_all hβ hQ hadm hlim hν D] with p hp N c d
+  refine aux_ann_quad _ _ _ (integral_nonneg fun _ => by positivity) fun q => ?_
+  have h := Complex.nonneg_iff.1 (hp N c d q) |>.1
+  rw [← aux_ann_Aq_eq, ← aux_ann_Bq_eq] at h
+  convert h using 1
+  simp only [Complex.sub_re, Complex.add_re, Complex.conj_re, Complex.mul_re,
+    Complex.ofReal_re, Complex.ofReal_im]
+  ring
+
+end CS2
+
+section L2aux
+
+variable {X : Type*} [MeasurableSpace X] {ν : Measure X}
+
+/-- Auxiliary: the squared `L²` norm as an integral. -/
+theorem aux_ann_norm_toLp_sq {g : X → ℂ} (hg : MemLp g 2 ν) :
+    ‖hg.toLp g‖ ^ 2 = ∫ x, ‖g x‖ ^ 2 ∂ν := by
+  rw [Lp.norm_toLp, hg.eLpNorm_eq_integral_rpow_norm two_ne_zero ENNReal.ofNat_ne_top,
+    ENNReal.toReal_ofReal (by positivity)]
+  have h2 : (2 : ℝ≥0∞).toReal = ((2 : ℕ) : ℝ) := by norm_num
+  rw [h2, Real.rpow_inv_natCast_pow (integral_nonneg fun _ => by positivity) two_ne_zero]
+  congr 1; funext x
+  exact Real.rpow_natCast _ 2
+
+/-- Auxiliary: bounded functions on a finite measure space are square integrable. -/
+theorem aux_ann_memLp_two_of_le [IsFiniteMeasure ν] {g : X → ℂ} (hg : Measurable g)
+    (hb : ∀ x, ‖g x‖ ≤ 1) : MemLp g 2 ν :=
+  MemLp.of_bound hg.aestronglyMeasurable 1 (ae_of_all _ hb)
+
+/-- Auxiliary: dominated pointwise convergence of functions bounded by one gives `L²`
+convergence (finite measure). -/
+theorem aux_ann_tendsto_toLp [IsFiniteMeasure ν] {g : ℕ → X → ℂ} {g0 : X → ℂ}
+    (hgm : ∀ m, Measurable (g m)) (hg0m : Measurable g0) (hb : ∀ m x, ‖g m x‖ ≤ 1)
+    (hb0 : ∀ x, ‖g0 x‖ ≤ 1) (hconv : ∀ x, Tendsto (fun m => g m x) atTop (𝓝 (g0 x))) :
+    Tendsto (fun m => (aux_ann_memLp_two_of_le (ν := ν) (hgm m) (hb m)).toLp (g m)) atTop
+      (𝓝 ((aux_ann_memLp_two_of_le (ν := ν) hg0m hb0).toLp g0)) := by
+  have : Fact ((1 : ℝ≥0∞) ≤ 2) := ⟨by norm_num⟩
+  rw [Lp.tendsto_Lp_iff_tendsto_eLpNorm'']
+  have hsub : ∀ m, MemLp (g m - g0) 2 ν := fun m =>
+    (aux_ann_memLp_two_of_le (hgm m) (hb m)).sub (aux_ann_memLp_two_of_le hg0m hb0)
+  have e : ∀ m, eLpNorm (g m - g0) 2 ν =
+      ENNReal.ofReal ((∫ x, ‖g m x - g0 x‖ ^ (2 : ℝ) ∂ν) ^ (2 : ℝ)⁻¹) := fun m => by
+    rw [(hsub m).eLpNorm_eq_integral_rpow_norm two_ne_zero ENNReal.ofNat_ne_top]
+    norm_num
+  simp_rw [e]
+  have hint : Tendsto (fun m => ∫ x, ‖g m x - g0 x‖ ^ (2 : ℝ) ∂ν) atTop (𝓝 0) := by
+    have h0 : (0 : ℝ) = ∫ x, (0 : ℝ) ∂ν := by simp
+    rw [h0]
+    refine tendsto_integral_of_dominated_convergence (fun _ => (2 : ℝ) ^ (2 : ℝ))
+      (fun m => ((hgm m).sub hg0m).norm.pow_const _ |>.aestronglyMeasurable)
+      (integrable_const _) (fun m => ae_of_all _ fun x => ?_) (ae_of_all _ fun x => ?_)
+    · rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+      refine Real.rpow_le_rpow (norm_nonneg _) ((norm_sub_le _ _).trans ?_) (by norm_num)
+      linarith [hb m x, hb0 x]
+    · have := ((hconv x).sub (tendsto_const_nhds (x := g0 x))).norm
+      rw [sub_self, norm_zero] at this
+      have h2 := (Real.continuousAt_rpow_const 0 (2 : ℝ) (Or.inr (by norm_num))).tendsto.comp
+        this
+      simpa [Function.comp_def, Real.zero_rpow (by norm_num : (2 : ℝ) ≠ 0)] using h2
+  have h3 := (Real.continuousAt_rpow_const 0 (2 : ℝ)⁻¹ (Or.inr (by norm_num))).tendsto.comp hint
+  rw [Real.zero_rpow (by norm_num)] at h3
+  simpa using ENNReal.tendsto_ofReal h3
+
+end L2aux
+
+theorem aux_ann_charE_le (s ξ : ℝ²) : ‖charE s ξ‖ ≤ 1 := (aux_ann_norm_e _).le
+
+theorem aux_ann_charE_meas (s : ℝ²) : Measurable (charE s) := by
+  have := aux_ann_continuous_e
+  unfold charE; exact (by fun_prop : Continuous fun ξ : ℝ² => e ⟪s, ξ⟫_ℝ).measurable
+
+theorem aux_ann_charE2_le (s t : ℝ²) (ξ : ℝ² × ℝ²) : ‖charE s ξ.1 * charE t ξ.2‖ ≤ 1 := by
+  rw [norm_mul]; exact mul_le_one₀ (aux_ann_charE_le _ _) (norm_nonneg _) (aux_ann_charE_le _ _)
+
+theorem aux_ann_charE2_meas (s t : ℝ²) : Measurable fun ξ : ℝ² × ℝ² => charE s ξ.1 * charE t ξ.2 :=
+  ((aux_ann_charE_meas s).comp measurable_fst).mul ((aux_ann_charE_meas t).comp measurable_snd)
+
+theorem aux_ann_charE_tendsto {s : ℕ → ℝ²} {s0 : ℝ²} (h : Tendsto s atTop (𝓝 s0)) (ξ : ℝ²) :
+    Tendsto (fun m => charE (s m) ξ) atTop (𝓝 (charE s0 ξ)) := by
+  unfold charE
+  exact (aux_ann_continuous_e.tendsto _).comp ((continuous_id.inner continuous_const).tendsto _
+    |>.comp h)
+
+/-- Auxiliary: an `L²` class with a given representative has the corresponding norm. -/
+theorem aux_ann_norm_sq_of_ae {X : Type*} [MeasurableSpace X] {ν : Measure X}
+    (u : Lp ℂ 2 ν) {g : X → ℂ} (hg : MemLp g 2 ν) (h : ⇑u =ᵐ[ν] g) :
+    ‖u‖ ^ 2 = ∫ x, ‖g x‖ ^ 2 ∂ν := by
+  have : u = hg.toLp g := Lp.ext (h.trans hg.coeFn_toLp.symm)
+  rw [this, aux_ann_norm_toLp_sq]
+
+/-- Auxiliary: sums over a finsupp on `ℕ` supported in `range N`. -/
+theorem aux_ann_sum_range {M : Type*} [AddCommMonoid M] (x : ℕ →₀ ℂ) {N : ℕ}
+    (hx : x.support ⊆ Finset.range N) (g : ℕ → ℂ → M) (h0 : ∀ i, g i 0 = 0) :
+    x.sum g = ∑ i : Fin N, g i (x i) := by
+  rw [Finsupp.sum_of_support_subset x hx g (fun i _ => h0 i)]
+  exact (Fin.sum_univ_eq_sum_range (fun i => g i (x i)) N).symm
+
+theorem aux_ann_sum_range2 {M : Type*} [AddCommMonoid M] (y : ℕ × ℕ →₀ ℂ) {N : ℕ}
+    (hy : y.support ⊆ Finset.range N ×ˢ Finset.range N) (g : ℕ × ℕ → ℂ → M)
+    (h0 : ∀ i, g i 0 = 0) :
+    y.sum g = ∑ kl : Fin N × Fin N, g (kl.1, kl.2) (y (kl.1, kl.2)) := by
+  rw [Finsupp.sum_of_support_subset y hy g (fun i _ => h0 i), Finset.sum_product,
+    Fintype.sum_prod_type]
+  rw [← Fin.sum_univ_eq_sum_range (fun i => ∑ j ∈ Finset.range N, g (i, j) (y (i, j))) N]
+  exact Finset.sum_congr rfl fun i _ =>
+    (Fin.sum_univ_eq_sum_range (fun j => g (i, j) (y (i, j))) N).symm
+
+/-- Auxiliary: every pair of finsupps is supported in some `range N`. -/
+theorem aux_ann_exists_range (x : ℕ →₀ ℂ) (y : ℕ × ℕ →₀ ℂ) :
+    ∃ N, x.support ⊆ Finset.range N ∧ y.support ⊆ Finset.range N ×ˢ Finset.range N := by
+  refine ⟨x.support.sup id + y.support.sup (fun kl => max kl.1 kl.2) + 1, fun i hi => ?_,
+    fun kl hkl => ?_⟩
+  · have := Finset.le_sup (f := id) hi
+    simp only [Finset.mem_range, id] at this ⊢; omega
+  · have := Finset.le_sup (f := fun kl : ℕ × ℕ => max kl.1 kl.2) hkl
+    simp only [Finset.mem_product, Finset.mem_range] at this ⊢
+    omega
+
+set_option maxHeartbeats 2000000 in
 /-- **Lemma `ann:form`** (The limiting bilinear correlation form).
 For almost every configuration $p$, there is a complex bilinear form
 $$\ell_p:L^2(\nu_0)\times L^2(\nu_1\otimes\nu_2)\longrightarrow\mathbb C$$
@@ -239,7 +2519,231 @@ theorem ann_form (α β : ℝ) (hβ : β ≠ 0) (Q : Set ℝ²) (hQ : Bornology.
     (hlim : aux_IsCorrelationLimits α β L R f k h3) (ν : Fin 3 → ℝ² → Measure ℝ²)
     (hν : aux_IsSpectralKernels k ν) :
     ∃ ℓ : ℝ² × Ang → (ℝ² → ℂ) → (ℝ² × ℝ² → ℂ) → ℂ, aux_IsLimitForm α β R f ν h3 ℓ := by
-  sorry
+  classical
+  have hfin : ∀ j z, IsFiniteMeasure (ν j z) := fun j => (hν.1 j).1
+  set D := TopologicalSpace.denseSeq ℝ² with hDdef
+  have hD : DenseRange D := TopologicalSpace.denseRange_denseSeq _
+  -- the linear data at a configuration
+  set u1 : ∀ (p : ℝ² × Ang) (i : ℕ), Lp ℂ 2 (ν 0 (proj α β 0 p)) := fun p i =>
+    (aux_ann_memLp_two_of_le (aux_ann_charE_meas (D i)) (aux_ann_charE_le (D i))).toLp
+      (charE (D i)) with hu1
+  set u2 : ∀ (p : ℝ² × Ang) (kl : ℕ × ℕ),
+      Lp ℂ 2 ((ν 1 (proj α β 1 p)).prod (ν 2 (proj α β 2 p))) := fun p kl =>
+    (aux_ann_memLp_two_of_le (aux_ann_charE2_meas (D kl.1) (D kl.2))
+      (aux_ann_charE2_le (D kl.1) (D kl.2))).toLp
+      (fun ξ : ℝ² × ℝ² => charE (D kl.1) ξ.1 * charE (D kl.2) ξ.2) with hu2
+  set e1 : ∀ p : ℝ² × Ang, (ℕ →₀ ℂ) →ₗ[ℂ] Lp ℂ 2 (ν 0 (proj α β 0 p)) := fun p =>
+    Finsupp.linearCombination ℂ (u1 p) with he1
+  set e2 : ∀ p : ℝ² × Ang, (ℕ × ℕ →₀ ℂ) →ₗ[ℂ]
+      Lp ℂ 2 ((ν 1 (proj α β 1 p)).prod (ν 2 (proj α β 2 p))) := fun p =>
+    Finsupp.linearCombination ℂ (u2 p) with he2
+  set Λ : ∀ p : ℝ² × Ang, (ℕ →₀ ℂ) →ₗ[ℂ] (ℕ × ℕ →₀ ℂ) →ₗ[ℂ] ℂ := fun p =>
+    Finsupp.linearCombination ℂ fun i =>
+      Finsupp.linearCombination ℂ fun kl => h3 p ![D i, D kl.1, D kl.2] with hΛ
+  have hΛapp : ∀ p x y, Λ p x y =
+      x.sum fun i a => a * y.sum fun kl b => b * h3 p ![D i, D kl.1, D kl.2] := by
+    intro p x y
+    simp only [hΛ, Finsupp.linearCombination_apply, Finsupp.sum, LinearMap.sum_apply,
+      LinearMap.smul_apply, smul_eq_mul]
+  have he1ae : ∀ p (x : ℕ →₀ ℂ) N, x.support ⊆ Finset.range N →
+      ⇑(e1 p x) =ᵐ[ν 0 (proj α β 0 p)] fun ξ => ∑ i : Fin N, x i * charE (D i) ξ := by
+    intro p x N hx
+    have h1 : e1 p x = ∑ i : Fin N, x i • u1 p i := by
+      rw [he1, Finsupp.linearCombination_apply,
+        aux_ann_sum_range x hx (fun i a => a • u1 p i) (fun i => zero_smul _ _)]
+    rw [h1]
+    filter_upwards [Lp.coeFn_finsetSum Finset.univ (fun i : Fin N => x i • u1 p i),
+      eventually_all.2 fun i : Fin N => Lp.coeFn_smul (x i) (u1 p i),
+      eventually_all.2 fun i : Fin N => (aux_ann_memLp_two_of_le (ν := ν 0 (proj α β 0 p))
+        (aux_ann_charE_meas (D i)) (aux_ann_charE_le (D i))).coeFn_toLp] with ξ h1 h2 h3
+    rw [h1, Finset.sum_apply]
+    refine Finset.sum_congr rfl fun i _ => ?_
+    rw [h2 i, Pi.smul_apply, smul_eq_mul]
+    exact congrArg _ (h3 i)
+  have he2ae : ∀ p (y : ℕ × ℕ →₀ ℂ) N, y.support ⊆ Finset.range N ×ˢ Finset.range N →
+      ⇑(e2 p y) =ᵐ[(ν 1 (proj α β 1 p)).prod (ν 2 (proj α β 2 p))] fun ξ =>
+        ∑ kl : Fin N × Fin N, y (kl.1, kl.2) * charE (D kl.1) ξ.1 * charE (D kl.2) ξ.2 := by
+    intro p y N hy
+    have h1 : e2 p y = ∑ kl : Fin N × Fin N, y (kl.1, kl.2) • u2 p (kl.1, kl.2) := by
+      rw [he2, Finsupp.linearCombination_apply,
+        aux_ann_sum_range2 y hy (fun i a => a • u2 p i) (fun i => zero_smul _ _)]
+    rw [h1]
+    filter_upwards [Lp.coeFn_finsetSum Finset.univ
+        (fun kl : Fin N × Fin N => y (kl.1, kl.2) • u2 p (kl.1, kl.2)),
+      eventually_all.2 fun kl : Fin N × Fin N => Lp.coeFn_smul (y (kl.1, kl.2)) (u2 p (kl.1, kl.2)),
+      eventually_all.2 fun kl : Fin N × Fin N => (aux_ann_memLp_two_of_le
+        (ν := (ν 1 (proj α β 1 p)).prod (ν 2 (proj α β 2 p)))
+        (aux_ann_charE2_meas (D kl.1) (D kl.2)) (aux_ann_charE2_le (D kl.1) (D kl.2))).coeFn_toLp]
+      with ξ h1 h2 h3
+    rw [h1, Finset.sum_apply]
+    refine Finset.sum_congr rfl fun kl _ => ?_
+    rw [h2 kl, Pi.smul_apply, smul_eq_mul, h3 kl, mul_assoc]
+  -- the good set
+  set Good : Set (ℝ² × Ang) := {p | Continuous (h3 p) ∧ ∀ (N : ℕ) (c : Fin N → ℂ)
+      (d : Fin N × Fin N → ℂ), ‖aux_ann_lq h3 p D N c d‖ ^ 2 ≤
+        (∫ ξ, ‖∑ i : Fin N, c i * charE (D i) ξ‖ ^ 2 ∂(ν 0 (proj α β 0 p))) *
+        ∫ ξ, ‖∑ kl : Fin N × Fin N, d kl * charE (D kl.1) ξ.1 * charE (D kl.2) ξ.2‖ ^ 2
+          ∂((ν 1 (proj α β 1 p)).prod (ν 2 (proj α β 2 p)))} with hGood
+  have hGae : ∀ᵐ p ∂μinc, p ∈ Good := by
+    filter_upwards [hlim.cont_three, aux_ann_cs_all hβ hQ hadm hlim hν D] with p h1 h2
+    exact ⟨h1, h2⟩
+  have hbound : ∀ p ∈ Good, ∀ x y, ‖Λ p x y‖ ≤ ‖e1 p x‖ * ‖e2 p y‖ := by
+    intro p hp x y
+    obtain ⟨N, hx, hy⟩ := aux_ann_exists_range x y
+    have hl : Λ p x y = aux_ann_lq h3 p D N (fun i => x i) (fun kl => y (kl.1, kl.2)) := by
+      rw [hΛapp, aux_ann_sum_range x hx
+        (fun i a => a * y.sum fun kl b => b * h3 p ![D i, D kl.1, D kl.2]) (fun i => zero_mul _)]
+      unfold aux_ann_lq
+      refine Finset.sum_congr rfl fun i _ => ?_
+      rw [aux_ann_sum_range2 y hy (fun kl b => b * h3 p ![D i, D kl.1, D kl.2])
+        (fun i => zero_mul _), Finset.mul_sum]
+      exact Finset.sum_congr rfl fun kl _ => by ring
+    have hA := aux_ann_norm_sq_of_ae (e1 p x) (memLp_finsetSum (Finset.univ : Finset (Fin N))
+      fun i _ =>
+      (aux_ann_memLp_two_of_le (ν := ν 0 (proj α β 0 p)) (aux_ann_charE_meas (D i))
+        (aux_ann_charE_le (D i))).const_mul (x i)) (he1ae p x N hx)
+    have hB := aux_ann_norm_sq_of_ae (e2 p y) (memLp_finsetSum
+      (Finset.univ : Finset (Fin N × Fin N)) fun kl _ =>
+      ((aux_ann_memLp_two_of_le (ν := (ν 1 (proj α β 1 p)).prod (ν 2 (proj α β 2 p)))
+        (aux_ann_charE2_meas (D kl.1) (D kl.2)) (aux_ann_charE2_le (D kl.1) (D kl.2))).const_mul
+          (y (kl.1, kl.2))).ae_eq (ae_of_all _ fun ξ => by ring))
+      (he2ae p y N hy)
+    have hcs := hp.2 N (fun i => x i) (fun kl => y (kl.1, kl.2))
+    rw [← hA, ← hB, ← hl, ← mul_pow] at hcs
+    exact (pow_le_pow_iff_left₀ (norm_nonneg _) (by positivity) two_ne_zero).1 hcs
+  choose B hBe hBn using fun p (hp : p ∈ Good) =>
+    aux_ann_bilinear_extend (e1 p) (e2 p) (Λ p) (hbound p hp)
+  set c1 : ∀ (p : ℝ² × Ang) (s : ℝ²), Lp ℂ 2 (ν 0 (proj α β 0 p)) := fun p s =>
+    (aux_ann_memLp_two_of_le (aux_ann_charE_meas s) (aux_ann_charE_le s)).toLp (charE s)
+    with hc1
+  set c2 : ∀ (p : ℝ² × Ang) (s t : ℝ²),
+      Lp ℂ 2 ((ν 1 (proj α β 1 p)).prod (ν 2 (proj α β 2 p))) := fun p s t =>
+    (aux_ann_memLp_two_of_le (aux_ann_charE2_meas s t) (aux_ann_charE2_le s t)).toLp
+      (fun ξ : ℝ² × ℝ² => charE s ξ.1 * charE t ξ.2) with hc2
+  have hB3 : ∀ p (hp : p ∈ Good) (s : Fin 3 → ℝ²),
+      B p hp (c1 p (s 0)) (c2 p (s 1) (s 2)) = h3 p s := by
+    intro p hp s
+    have hD3 : ∀ i k l : ℕ, B p hp (c1 p (D i)) (c2 p (D k) (D l)) = h3 p ![D i, D k, D l] := by
+      intro i k l
+      have h1 : c1 p (D i) = e1 p (Finsupp.single i 1) := by
+        rw [he1]; simp only [Finsupp.linearCombination_single, one_smul]; rfl
+      have h2 : c2 p (D k) (D l) = e2 p (Finsupp.single (k, l) 1) := by
+        rw [he2]; simp only [Finsupp.linearCombination_single, one_smul]; rfl
+      rw [h1, h2, hBe, hΛapp]
+      simp [Finsupp.sum_single_index]
+    set i0 : ℕ → ℕ := fun m => aux_ann_idx D hD m (s 0)
+    set i1 : ℕ → ℕ := fun m => aux_ann_idx D hD m (s 1)
+    set i2 : ℕ → ℕ := fun m => aux_ann_idx D hD m (s 2)
+    have ht0 := aux_ann_idx_tendsto D hD (s 0)
+    have ht1 := aux_ann_idx_tendsto D hD (s 1)
+    have ht2 := aux_ann_idx_tendsto D hD (s 2)
+    have t1 : Tendsto (fun m => c1 p (D (i0 m))) atTop (𝓝 (c1 p (s 0))) :=
+      aux_ann_tendsto_toLp (fun m => aux_ann_charE_meas _) (aux_ann_charE_meas _)
+        (fun m => aux_ann_charE_le _) (aux_ann_charE_le _) fun ξ => aux_ann_charE_tendsto ht0 ξ
+    have t2 : Tendsto (fun m => c2 p (D (i1 m)) (D (i2 m))) atTop
+        (𝓝 (c2 p (s 1) (s 2))) :=
+      aux_ann_tendsto_toLp (fun m => aux_ann_charE2_meas _ _) (aux_ann_charE2_meas _ _)
+        (fun m => aux_ann_charE2_le _ _) (aux_ann_charE2_le _ _) fun ξ =>
+          (aux_ann_charE_tendsto ht1 ξ.1).mul (aux_ann_charE_tendsto ht2 ξ.2)
+    have hL := ((B p hp).continuous₂.tendsto (c1 p (s 0), c2 p (s 1) (s 2))).comp
+      (t1.prodMk_nhds t2)
+    have hvec : Tendsto (fun m => (![D (i0 m), D (i1 m), D (i2 m)] : Fin 3 → ℝ²)) atTop
+        (𝓝 s) := by
+      rw [tendsto_pi_nhds]
+      intro j
+      fin_cases j
+      · exact ht0
+      · exact ht1
+      · exact ht2
+    have hR := (hp.1.tendsto s).comp hvec
+    refine tendsto_nhds_unique hL ?_
+    convert hR using 1
+    funext m
+    exact hD3 _ _ _
+  have hmem1 : ∀ p s, MemLp (charE s) 2 (ν 0 (proj α β 0 p)) := fun p s =>
+    aux_ann_memLp_two_of_le (aux_ann_charE_meas s) (aux_ann_charE_le s)
+  have hmem2 : ∀ p s t, MemLp (fun ξ : ℝ² × ℝ² => charE s ξ.1 * charE t ξ.2) 2
+      ((ν 1 (proj α β 1 p)).prod (ν 2 (proj α β 2 p))) := fun p s t =>
+    aux_ann_memLp_two_of_le (aux_ann_charE2_meas s t) (aux_ann_charE2_le s t)
+  refine ⟨fun p a G => if hp : p ∈ Good then
+    (if h : MemLp a 2 (ν 0 (proj α β 0 p)) ∧
+        MemLp G 2 ((ν 1 (proj α β 1 p)).prod (ν 2 (proj α β 2 p))) then
+      B p hp (h.1.toLp a) (h.2.toLp G) else 0) else 0, ?_, ?_, ?_⟩
+  · filter_upwards [hGae] with p hp
+    refine ⟨fun a a' G ha ha' hG => ?_, fun c a G ha hG => ?_, fun a G G' ha hG hG' => ?_,
+      fun c a G ha hG => ?_, fun a G ha hG => ?_⟩
+    · simp only [dif_pos hp, dif_pos (And.intro (ha.add ha') hG), dif_pos (And.intro ha hG),
+        dif_pos (And.intro ha' hG)]
+      rw [MemLp.toLp_add ha ha', (B p hp).map_add]
+      rfl
+    · simp only [dif_pos hp, dif_pos (And.intro (ha.const_smul c) hG), dif_pos (And.intro ha hG)]
+      rw [MemLp.toLp_const_smul c ha, (B p hp).map_smul]
+      rfl
+    · simp only [dif_pos hp, dif_pos (And.intro ha (hG.add hG')), dif_pos (And.intro ha hG),
+        dif_pos (And.intro ha hG')]
+      exact (congrArg (B p hp (ha.toLp a)) (MemLp.toLp_add hG hG')).trans
+        ((B p hp (ha.toLp a)).map_add _ _)
+    · simp only [dif_pos hp, dif_pos (And.intro ha (hG.const_smul c)), dif_pos (And.intro ha hG)]
+      exact (congrArg (B p hp (ha.toLp a)) (MemLp.toLp_const_smul c hG)).trans
+        ((B p hp (ha.toLp a)).map_smul _ _)
+    · simp only [dif_pos hp, dif_pos (And.intro ha hG)]
+      have h := hBn p hp (ha.toLp a) (hG.toLp G)
+      rw [Lp.norm_toLp, Lp.norm_toLp] at h
+      rw [← ofReal_norm]
+      calc ENNReal.ofReal ‖B p hp (ha.toLp a) (hG.toLp G)‖
+          ≤ ENNReal.ofReal ((eLpNorm a 2 _).toReal * (eLpNorm G 2 _).toReal) :=
+            ENNReal.ofReal_le_ofReal h
+        _ = eLpNorm a 2 _ * eLpNorm G 2 _ := by
+            rw [ENNReal.ofReal_mul ENNReal.toReal_nonneg, ENNReal.ofReal_toReal ha.2.ne,
+              ENNReal.ofReal_toReal hG.2.ne]
+  · intro a G
+    refine aux_ann_weakStar_congr (aux_ann_form_limit hadm hlim a G) ?_
+    filter_upwards [hGae] with p hp
+    have hta : MemLp (trigPoly a) 2 (ν 0 (proj α β 0 p)) :=
+      memLp_finsetSum a.support fun s _ => (hmem1 p s).const_mul (a s)
+    have htG : MemLp (tensorPoly G) 2 ((ν 1 (proj α β 1 p)).prod (ν 2 (proj α β 2 p))) :=
+      (memLp_finsetSum G.support fun t _ => (hmem2 p t.1 t.2).const_mul (G t)).ae_eq
+        (ae_of_all _ fun ξ => by
+          simp only [tensorPoly, Finsupp.sum]
+          exact Finset.sum_congr rfl fun t _ => by ring)
+    have h1 : hta.toLp (trigPoly a) = ∑ s ∈ a.support, a s • c1 p s := by
+      refine Lp.ext (hta.coeFn_toLp.trans ?_)
+      filter_upwards [Lp.coeFn_finsetSum a.support (fun s => a s • c1 p s),
+        eventually_all_finset a.support |>.2 fun s _ => Lp.coeFn_smul (a s) (c1 p s),
+        eventually_all_finset a.support |>.2 fun s _ => (hmem1 p s).coeFn_toLp] with ξ h1 h2 h3
+      rw [h1, Finset.sum_apply, trigPoly, Finsupp.sum]
+      refine Finset.sum_congr rfl fun s hs => ?_
+      rw [h2 s hs, Pi.smul_apply, smul_eq_mul, h3 s hs]
+    have h2 : htG.toLp (tensorPoly G) = ∑ t ∈ G.support, G t • c2 p t.1 t.2 := by
+      refine Lp.ext (htG.coeFn_toLp.trans ?_)
+      have hs2 : ∀ t ∈ G.support, ⇑(G t • c2 p t.1 t.2) =ᵐ[(ν 1 (proj α β 1 p)).prod (ν 2 (proj α β 2 p))] G t • ⇑(c2 p t.1 t.2) :=
+        fun t _ => Lp.coeFn_smul _ _
+      have hs3 : ∀ t ∈ G.support, ⇑(c2 p t.1 t.2) =ᵐ[(ν 1 (proj α β 1 p)).prod (ν 2 (proj α β 2 p))]
+          fun ξ : ℝ² × ℝ² => charE t.1 ξ.1 * charE t.2 ξ.2 :=
+        fun t _ => (hmem2 p t.1 t.2).coeFn_toLp
+      filter_upwards [Lp.coeFn_finsetSum G.support (fun t => G t • c2 p t.1 t.2),
+        (eventually_all_finset G.support).2 hs2, (eventually_all_finset G.support).2 hs3]
+        with ξ h1 h2 h3
+      rw [h1, Finset.sum_apply, tensorPoly, Finsupp.sum]
+      refine Finset.sum_congr rfl fun t ht => ?_
+      rw [h2 t ht, Pi.smul_apply, smul_eq_mul, h3 t ht, mul_assoc]
+    simp only [dif_pos hp, dif_pos (And.intro hta htG)]
+    rw [h1, h2, map_sum, aux_ann_Λ, Finsupp.sum]
+    simp only [ContinuousLinearMap.sum_apply, map_smul, ContinuousLinearMap.smul_apply,
+      map_sum, smul_eq_mul]
+    simp_rw [Finset.mul_sum]
+    rw [Finset.sum_comm]
+    refine Finset.sum_congr rfl fun s _ => ?_
+    rw [Finsupp.sum]
+    refine Finset.sum_congr rfl fun t _ => ?_
+    have := hB3 p hp ![s, t.1, t.2]
+    simp only [Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
+      Matrix.head_cons, Matrix.tail_cons] at this
+    rw [this]
+    ring
+  · filter_upwards [hGae] with p hp s
+    simp only [dif_pos hp, dif_pos (And.intro (hmem1 p (s 0)) (hmem2 p (s 1) (s 2)))]
+    exact hB3 p hp s
 
 /-! ### Infinitesimal translation and rotation invariance (`ann:invariance`) -/
 
