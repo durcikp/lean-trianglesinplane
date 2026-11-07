@@ -32,6 +32,1149 @@ namespace Auto
 
 /-! ### From bounded local inputs to endpoint operator norms (`ann:localize`) -/
 
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the counting form as a single integral
+over the product space `Z × ℝ²`, for endpoint inputs. -/
+lemma aux_loc_form_eq_prod (α β : ℝ) (ν : FCMeasure) (i : Fin 3) (F : Fin 3 → ℝ² → ℂ)
+    (hF : ∀ m, MemLp (F m) (aux_slotExp i m) volume) :
+    form α β ν (F 0) (F 1) (F 2) = ∫ p : ν.Z × ℝ², F 0 p.2 * F 1 (p.2 + ν.φ p.1) *
+      F 2 (p.2 + M α β (ν.φ p.1)) * ν.w p.1 ∂(ν.m.prod volume) := by
+  rw [integral_prod _ (lem_form_basic_integrable α β ν i F hF)]
+  unfold form
+  congr 1; funext z
+  exact (integral_mul_const (ν.w z) _).symm
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): replacing one slot keeps the endpoint
+integrability classes. -/
+lemma aux_loc_upd_memLp (i l : Fin 3) (F : Fin 3 → ℝ² → ℂ)
+    (hF : ∀ m, MemLp (F m) (aux_slotExp i m) volume) (a : ℝ² → ℂ)
+    (ha : MemLp a (aux_slotExp i l) volume) :
+    ∀ m, MemLp (Function.update F l a m) (aux_slotExp i m) volume := by
+  intro m
+  by_cases hm : m = l
+  · subst hm; simpa using ha
+  · simpa [Function.update_of_ne hm] using hF m
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): additivity of the form in one slot. -/
+lemma aux_loc_form_add (α β : ℝ) (ν : FCMeasure) (i l : Fin 3) (F : Fin 3 → ℝ² → ℂ)
+    (hF : ∀ m, MemLp (F m) (aux_slotExp i m) volume) (a b : ℝ² → ℂ)
+    (ha : MemLp a (aux_slotExp i l) volume) (hb : MemLp b (aux_slotExp i l) volume) :
+    form α β ν (Function.update F l (a + b) 0) (Function.update F l (a + b) 1)
+        (Function.update F l (a + b) 2) =
+      form α β ν (Function.update F l a 0) (Function.update F l a 1) (Function.update F l a 2) +
+      form α β ν (Function.update F l b 0) (Function.update F l b 1)
+        (Function.update F l b 2) := by
+  rw [aux_loc_form_eq_prod α β ν i _ (aux_loc_upd_memLp i l F hF _ (ha.add hb)),
+    aux_loc_form_eq_prod α β ν i _ (aux_loc_upd_memLp i l F hF _ ha),
+    aux_loc_form_eq_prod α β ν i _ (aux_loc_upd_memLp i l F hF _ hb),
+    ← integral_add (lem_form_basic_integrable α β ν i _ (aux_loc_upd_memLp i l F hF _ ha))
+      (lem_form_basic_integrable α β ν i _ (aux_loc_upd_memLp i l F hF _ hb))]
+  congr 1; funext p
+  fin_cases l <;> simp [Function.update] <;> ring
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the integrand of the form factors
+through the replaced slot. -/
+lemma aux_loc_prod_update (α β : ℝ) (F : Fin 3 → ℝ² → ℂ) (l : Fin 3) (H : ℝ² → ℂ) (x a : ℝ²) :
+    Function.update F l H 0 x * Function.update F l H 1 (x + a) *
+        Function.update F l H 2 (x + M α β a) =
+      H (x + Lv α β l a) * (Function.update F l 1 0 x * Function.update F l 1 1 (x + a) *
+        Function.update F l 1 2 (x + M α β a)) := by
+  fin_cases l <;> simp [Function.update, Lv] <;> ring
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the convolution `κ * f` only depends on
+the a.e. class of `f`. -/
+lemma aux_loc_conv_ae (P : FCMeasure) {f g : ℝ² → ℂ} (h : f =ᵐ[volume] g) :
+    P.convFun f =ᵐ[volume] P.convFun g := by
+  filter_upwards [aux_ae_ae_sub_comp P h] with x hx
+  unfold FCMeasure.convFun FCMeasure.integral
+  exact integral_congr_ae (by filter_upwards [hx] with z hz; rw [hz])
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): `κ * f` is a.e. strongly measurable. -/
+lemma aux_loc_conv_aesm (P : FCMeasure) {f : ℝ² → ℂ} (hf : AEStronglyMeasurable f volume) :
+    AEStronglyMeasurable (P.convFun f) volume := by
+  have h1 : AEStronglyMeasurable (P.convFun (hf.mk f)) volume := by
+    unfold FCMeasure.convFun FCMeasure.integral
+    refine AEStronglyMeasurable.integral_prod_right'
+      (f := fun q : ℝ² × P.Z => hf.mk f (q.1 - P.φ q.2) * P.w q.2) ?_
+    refine AEStronglyMeasurable.mul ?_ ?_
+    · exact (hf.stronglyMeasurable_mk.comp_measurable
+        (measurable_fst.sub (P.measurable_φ.comp measurable_snd))).aestronglyMeasurable
+    · exact P.integrable_w.1.comp_quasiMeasurePreserving Measure.quasiMeasurePreserving_snd
+  exact h1.congr (aux_loc_conv_ae P hf.ae_eq_mk).symm
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): `κ * (c f) = c (κ * f)`. -/
+lemma aux_loc_conv_smul (P : FCMeasure) (c : ℂ) (f : ℝ² → ℂ) :
+    P.convFun (fun x => c * f x) = fun x => c * P.convFun f x := by
+  funext x
+  unfold FCMeasure.convFun FCMeasure.integral
+  simp_rw [mul_assoc]
+  exact integral_const_mul c _
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): `κ *` commutes with translations. -/
+lemma aux_loc_conv_translate (P : FCMeasure) (f : ℝ² → ℂ) (q x : ℝ²) :
+    P.convFun (fun y => f (y + q)) x = P.convFun f (x + q) := by
+  unfold FCMeasure.convFun FCMeasure.integral
+  simp_rw [sub_add_eq_add_sub]
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): for `f ∈ L² ∪ L^∞` the convolution
+integral defining `κ * f` converges absolutely at almost every point. -/
+lemma aux_loc_conv_int (P : FCMeasure) {f : ℝ² → ℂ} {p : ℝ≥0∞} (hp : p = 2 ∨ p = ⊤)
+    (hf : MemLp f p volume) :
+    ∀ᵐ x ∂(volume : Measure ℝ²), Integrable (fun z => f (x - P.φ z) * P.w z) P.m := by
+  set g := hf.1.mk f
+  have hg : Measurable g := hf.1.stronglyMeasurable_mk.measurable
+  have hw : AEMeasurable (fun z => ‖P.w z‖ₑ) P.m := P.integrable_w.1.aemeasurable.enorm
+  have htv : P.tv < ⊤ := P.integrable_w.2
+  have hfin : ∀ᵐ x ∂(volume : Measure ℝ²), ∫⁻ z, ‖g (x - P.φ z)‖ₑ * ‖P.w z‖ₑ ∂P.m < ⊤ := by
+    rcases hp with hp | hp
+    · subst hp
+      have hj : AEMeasurable (fun q : ℝ² × P.Z => ‖g (q.1 - P.φ q.2)‖ₑ ^ (2:ℝ) * ‖P.w q.2‖ₑ)
+          ((volume : Measure ℝ²).prod P.m) :=
+        ((hg.comp (measurable_fst.sub (P.measurable_φ.comp measurable_snd))).enorm.pow_const
+          _).aemeasurable.mul (hw.comp_quasiMeasurePreserving Measure.quasiMeasurePreserving_snd)
+      have hsw := aux_young_swap P hg 2
+      have hL : (∫⁻ x, ‖g x‖ₑ ^ (2:ℝ)) < ⊤ := by
+        have := (hf.ae_eq hf.1.ae_eq_mk).2
+        rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)] at this
+        simp only [ENNReal.toReal_ofNat] at this
+        exact (ENNReal.rpow_lt_top_iff_of_pos (by norm_num)).1 this
+      have hae := ae_lt_top' hj.lintegral_prod_right' (by
+        rw [hsw]; exact (ENNReal.mul_lt_top hL htv).ne)
+      filter_upwards [hae] with x hx
+      have h2 := aux_lintegral_mul_sq_le P.m (a := fun z => ‖g (x - P.φ z)‖ₑ)
+        (hg.comp (measurable_const.sub P.measurable_φ)).enorm hw
+      have h3 : (∫⁻ z, ‖g (x - P.φ z)‖ₑ * ‖P.w z‖ₑ ∂P.m) ^ (2:ℝ) < ⊤ :=
+        h2.trans_lt (ENNReal.mul_lt_top htv hx)
+      exact (ENNReal.rpow_lt_top_iff_of_pos (by norm_num)).1 h3
+    · subst hp
+      have hb := aux_ae_ae_sub_comp P (enorm_ae_le_eLpNormEssSup (μ := volume) g)
+      filter_upwards [hb] with x hx
+      calc ∫⁻ z, ‖g (x - P.φ z)‖ₑ * ‖P.w z‖ₑ ∂P.m
+          ≤ ∫⁻ z, eLpNormEssSup g volume * ‖P.w z‖ₑ ∂P.m := by
+            refine lintegral_mono_ae ?_
+            filter_upwards [hx] with z hz
+            gcongr
+        _ = eLpNormEssSup g volume * P.tv := lintegral_const_mul'' _ hw
+        _ < ⊤ := by
+            refine ENNReal.mul_lt_top ?_ htv
+            have := (hf.ae_eq hf.1.ae_eq_mk).2
+            simpa [eLpNorm_exponent_top] using this
+  filter_upwards [hfin, aux_ae_ae_sub_comp P hf.1.ae_eq_mk] with x hx hx'
+  have hi : Integrable (fun z => g (x - P.φ z) * P.w z) P.m := by
+    refine ⟨((hg.comp (measurable_const.sub P.measurable_φ)).aestronglyMeasurable).mul
+      P.integrable_w.1, ?_⟩
+    simpa [HasFiniteIntegral, enorm_mul] using hx
+  refine hi.congr ?_
+  filter_upwards [hx'] with z hz
+  rw [hz]
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): `κ * (a + b) = κ * a + κ * b` a.e. for
+inputs in `L²` or `L^∞`. -/
+lemma aux_loc_conv_add (P : FCMeasure) {a b : ℝ² → ℂ} {p : ℝ≥0∞} (hp : p = 2 ∨ p = ⊤)
+    (ha : MemLp a p volume) (hb : MemLp b p volume) :
+    P.convFun (a + b) =ᵐ[volume] P.convFun a + P.convFun b := by
+  filter_upwards [aux_loc_conv_int P hp ha, aux_loc_conv_int P hp hb] with x hxa hxb
+  unfold FCMeasure.convFun FCMeasure.integral
+  simp only [Pi.add_apply, add_mul]
+  exact integral_add hxa hxb
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): if the measure of `P` is carried by the
+closed unit ball, then near a point `x` with `|x| ≤ R`, `P * f` only sees `f` on `B(0, R+2)`. -/
+lemma aux_loc_conv_restrict (P : FCMeasure) (hP : P.varOn {u | 1 < ‖u‖} = 0) (f : ℝ² → ℂ)
+    (R : ℝ) (x : ℝ²) (hx : ‖x‖ ≤ R) :
+    P.convFun f x = P.convFun ((Metric.ball (0:ℝ²) (R + 2)).indicator f) x := by
+  have hS : MeasurableSet (P.φ ⁻¹' {u : ℝ² | 1 < ‖u‖}) :=
+    (isOpen_lt continuous_const continuous_norm).measurableSet.preimage P.measurable_φ
+  have h0 : ∀ᵐ z ∂P.m, z ∈ P.φ ⁻¹' {u : ℝ² | 1 < ‖u‖} → P.w z = 0 := by
+    have := (lintegral_eq_zero_iff' P.integrable_w.1.aemeasurable.enorm.restrict).1 hP
+    rw [Filter.EventuallyEq, ae_restrict_iff' hS] at this
+    filter_upwards [this] with z hz hzS
+    simpa using hz hzS
+  unfold FCMeasure.convFun FCMeasure.integral
+  refine integral_congr_ae ?_
+  filter_upwards [h0] with z hz
+  by_cases h1 : 1 < ‖P.φ z‖
+  · simp [hz h1]
+  · rw [not_lt] at h1
+    have : x - P.φ z ∈ Metric.ball (0:ℝ²) (R + 2) := by
+      rw [mem_ball_zero_iff]
+      calc ‖x - P.φ z‖ ≤ ‖x‖ + ‖P.φ z‖ := norm_sub_le _ _
+        _ < R + 2 := by linarith
+    simp [Set.indicator_of_mem this]
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): multiplying by a real cutoff bounded by
+one preserves `L^p` and does not increase the norm. -/
+lemma aux_loc_cut_memLp (θ : ℝ² → ℝ) (hθc : Continuous θ) (hθ : ∀ x, ‖θ x‖ ≤ 1)
+    {g : ℝ² → ℂ} {p : ℝ≥0∞} (hg : MemLp g p volume) :
+    MemLp (fun x => (θ x : ℂ) * g x) p volume ∧
+      eLpNorm (fun x => (θ x : ℂ) * g x) p volume ≤ eLpNorm g p volume := by
+  have hle : ∀ x, ‖(θ x : ℂ) * g x‖ ≤ ‖g x‖ := fun x => by
+    rw [norm_mul, Complex.norm_real]
+    exact mul_le_of_le_one_left (norm_nonneg _) (hθ x)
+  exact ⟨hg.of_le ((Complex.continuous_ofReal.comp hθc).aestronglyMeasurable.mul hg.1)
+    (Eventually.of_forall hle), eLpNorm_mono hle⟩
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): `κ * f ∈ L^p` for `f ∈ L^p`,
+`p ∈ {2, ∞}`, with the Young bound. -/
+lemma aux_loc_conv_memLp (P : FCMeasure) {f : ℝ² → ℂ} {p : ℝ≥0∞} (hp : p = 2 ∨ p = ⊤)
+    (hf : MemLp f p volume) :
+    MemLp (P.convFun f) p volume ∧ eLpNorm (P.convFun f) p volume ≤ P.tv * eLpNorm f p volume := by
+  have hb : eLpNorm (P.convFun f) p volume ≤ P.tv * eLpNorm f p volume := by
+    rcases hp with hp | hp <;> subst hp
+    · exact ext_young_two P f hf.1
+    · exact ext_young_top P f hf.1
+  exact ⟨⟨aux_loc_conv_aesm P hf.1, hb.trans_lt (ENNReal.mul_lt_top P.integrable_w.2 hf.2)⟩, hb⟩
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the absolute bound of the form integrand on
+the product space. -/
+lemma aux_loc_abs_prod (α β : ℝ) (ν : FCMeasure) (i : Fin 3) (f : Fin 3 → ℝ² → ℂ)
+    (hf : ∀ j, AEStronglyMeasurable (f j) volume) :
+    ∫⁻ p : ν.Z × ℝ², ‖f 0 p.2 * f 1 (p.2 + ν.φ p.1) * f 2 (p.2 + M α β (ν.φ p.1)) * ν.w p.1‖ₑ
+      ∂(ν.m.prod volume) ≤ ν.tv * ∏ j : Fin 3, eLpNorm (f j) (aux_slotExp i j) volume := by
+  have hm := aux_fb_aesm α β ν f hf
+  rw [lintegral_prod _ hm.enorm]
+  refine le_trans (le_of_eq (lintegral_congr fun z => ?_)) (aux_fb_abs α β ν i f hf)
+  simp only [enorm_mul]
+  rw [lintegral_mul_const'' _ ?_]
+  have hmp := fun c : ℝ² => measurePreserving_add_right (volume : Measure ℝ²) c
+  exact (((hf 0).enorm.mul ((hf 1).comp_quasiMeasurePreserving
+    (hmp _).quasiMeasurePreserving).enorm).mul ((hf 2).comp_quasiMeasurePreserving
+    (hmp _).quasiMeasurePreserving).enorm)
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the convolution `P * G` in one `L²` slot
+(after a cutoff `θ`) can be expanded as an integral of translates,
+`Λ(…, θ (P * G), …) = ∫ Λ(…, θ G(· - y), …) dP(y)`. -/
+lemma aux_loc_expand (α β : ℝ) (ν P : FCMeasure) (i l : Fin 3) (hl : l ≠ i)
+    (F : Fin 3 → ℝ² → ℂ) (hF : ∀ m, MemLp (F m) (aux_slotExp i m) volume)
+    (θ : ℝ² → ℝ) (hθc : Continuous θ) (hθ : ∀ x, ‖θ x‖ ≤ 1)
+    (G : ℝ² → ℂ) (hGm : Measurable G) (hG : MemLp G 2 volume) :
+    form α β ν (Function.update F l (fun x => (θ x : ℂ) * P.convFun G x) 0)
+        (Function.update F l (fun x => (θ x : ℂ) * P.convFun G x) 1)
+        (Function.update F l (fun x => (θ x : ℂ) * P.convFun G x) 2) =
+      P.integral (fun y => form α β ν (Function.update F l (fun x => (θ x : ℂ) * G (x - y)) 0)
+        (Function.update F l (fun x => (θ x : ℂ) * G (x - y)) 1)
+        (Function.update F l (fun x => (θ x : ℂ) * G (x - y)) 2)) := by
+  have hsl : aux_slotExp i l = 2 := by simp [aux_slotExp, hl]
+  have hH : MemLp (fun x => (θ x : ℂ) * P.convFun G x) (aux_slotExp i l) volume := by
+    rw [hsl]; exact (aux_loc_cut_memLp θ hθc hθ (aux_loc_conv_memLp P (Or.inl rfl) hG).1).1
+  have hGy : ∀ y : ℝ², MemLp (fun x => G (x - y)) 2 volume := fun y =>
+    hG.comp_measurePreserving (measurePreserving_sub_right (volume : Measure ℝ²) y)
+  have hGyn : ∀ y : ℝ², eLpNorm (fun x => G (x - y)) 2 volume = eLpNorm G 2 volume := fun y =>
+    eLpNorm_comp_measurePreserving hG.1 (measurePreserving_sub_right (volume : Measure ℝ²) y)
+  have hcy : ∀ y : ℝ², MemLp (fun x => (θ x : ℂ) * G (x - y)) (aux_slotExp i l) volume :=
+    fun y => by rw [hsl]; exact (aux_loc_cut_memLp θ hθc hθ (hGy y)).1
+  set E : ν.Z × ℝ² → ℂ := fun p => Function.update F l 1 0 p.2 *
+    Function.update F l 1 1 (p.2 + ν.φ p.1) * Function.update F l 1 2 (p.2 + M α β (ν.φ p.1)) *
+      ν.w p.1 with hE
+  set Y : ν.Z × ℝ² → ℝ² := fun p => p.2 + Lv α β l (ν.φ p.1) with hY
+  set Ψ : ν.Z × ℝ² → P.Z → ℂ := fun p z' =>
+    (θ (Y p) : ℂ) * G (Y p - P.φ z') * E p * P.w z' with hΨ
+  have key : ∀ (H : ℝ² → ℂ) (p : ν.Z × ℝ²), Function.update F l H 0 p.2 *
+      Function.update F l H 1 (p.2 + ν.φ p.1) * Function.update F l H 2 (p.2 + M α β (ν.φ p.1)) *
+        ν.w p.1 = H (Y p) * E p := by
+    intro H p
+    rw [aux_loc_prod_update α β F l H p.2 (ν.φ p.1)]
+    simp only [hE, hY]; ring
+  have hFm : ∀ m, AEStronglyMeasurable (Function.update F l 1 m) volume := by
+    intro m
+    by_cases hm : m = l
+    · subst hm; simp only [Function.update_self]; exact aestronglyMeasurable_const
+    · simp only [Function.update_of_ne hm]; exact (hF m).1
+  have hYm : Measurable Y :=
+    measurable_snd.add ((Lv α β l).continuous.measurable.comp (ν.measurable_φ.comp measurable_fst))
+  have hΨm : AEStronglyMeasurable (Function.uncurry Ψ) ((ν.m.prod volume).prod P.m) := by
+    have h1 : Measurable (fun q : (ν.Z × ℝ²) × P.Z => (θ (Y q.1) : ℂ) * G (Y q.1 - P.φ q.2)) :=
+      (Complex.continuous_ofReal.measurable.comp (hθc.measurable.comp (hYm.comp measurable_fst))).mul
+        (hGm.comp ((hYm.comp measurable_fst).sub (P.measurable_φ.comp measurable_snd)))
+    have h2 : AEStronglyMeasurable (fun q : (ν.Z × ℝ²) × P.Z => E q.1)
+        ((ν.m.prod volume).prod P.m) := (aux_fb_aesm α β ν _ hFm).comp_fst
+    have h3 : AEStronglyMeasurable (fun q : (ν.Z × ℝ²) × P.Z => P.w q.2)
+        ((ν.m.prod volume).prod P.m) := P.integrable_w.1.comp_snd
+    exact (h1.aestronglyMeasurable.mul h2).mul h3
+  set N := ∏ m, eLpNorm (Function.update F l G m) (aux_slotExp i m) volume
+  have hNlt : N < ⊤ := ENNReal.prod_lt_top fun m _ =>
+    (aux_loc_upd_memLp i l F hF G (by rw [hsl]; exact hG) m).2
+  have hslice : ∀ z' : P.Z, ∫⁻ p, ‖Ψ p z'‖ₑ ∂(ν.m.prod volume) ≤ ν.tv * N * ‖P.w z'‖ₑ := by
+    intro z'
+    have hc := aux_loc_upd_memLp i l F hF _ (hcy (P.φ z'))
+    calc ∫⁻ p, ‖Ψ p z'‖ₑ ∂(ν.m.prod volume)
+        = ∫⁻ p, ‖Function.update F l (fun x => (θ x : ℂ) * G (x - P.φ z')) 0 p.2 *
+            Function.update F l (fun x => (θ x : ℂ) * G (x - P.φ z')) 1 (p.2 + ν.φ p.1) *
+            Function.update F l (fun x => (θ x : ℂ) * G (x - P.φ z')) 2
+              (p.2 + M α β (ν.φ p.1)) * ν.w p.1‖ₑ * ‖P.w z'‖ₑ ∂(ν.m.prod volume) := by
+          refine lintegral_congr fun p => ?_
+          rw [key, hΨ]; simp only; rw [enorm_mul]
+      _ = (∫⁻ p, ‖Function.update F l (fun x => (θ x : ℂ) * G (x - P.φ z')) 0 p.2 *
+            Function.update F l (fun x => (θ x : ℂ) * G (x - P.φ z')) 1 (p.2 + ν.φ p.1) *
+            Function.update F l (fun x => (θ x : ℂ) * G (x - P.φ z')) 2
+              (p.2 + M α β (ν.φ p.1)) * ν.w p.1‖ₑ ∂(ν.m.prod volume)) * ‖P.w z'‖ₑ :=
+          lintegral_mul_const' _ _ enorm_ne_top
+      _ ≤ ν.tv * N * ‖P.w z'‖ₑ := by
+          gcongr
+          refine (aux_loc_abs_prod α β ν i _ fun m => (hc m).1).trans ?_
+          gcongr
+          refine Finset.prod_le_prod' fun m _ => ?_
+          by_cases hm : m = l
+          · subst hm
+            simp only [Function.update_self]
+            rw [hsl, ← hGyn (P.φ z')]
+            exact (aux_loc_cut_memLp θ hθc hθ (hGy (P.φ z'))).2
+          · simp only [Function.update_of_ne hm]; exact le_rfl
+  have hΨint : Integrable (Function.uncurry Ψ) ((ν.m.prod volume).prod P.m) := by
+    refine ⟨hΨm, ?_⟩
+    rw [HasFiniteIntegral, lintegral_prod_symm _ hΨm.enorm]
+    calc ∫⁻ z', ∫⁻ p, ‖Function.uncurry Ψ (p, z')‖ₑ ∂(ν.m.prod volume) ∂P.m
+        ≤ ∫⁻ z', ν.tv * N * ‖P.w z'‖ₑ ∂P.m := lintegral_mono fun z' => hslice z'
+      _ = ν.tv * N * P.tv := lintegral_const_mul'' _ P.integrable_w.1.aemeasurable.enorm
+      _ < ⊤ := ENNReal.mul_lt_top (ENNReal.mul_lt_top ν.integrable_w.2 hNlt) P.integrable_w.2
+  have h1 : form α β ν (Function.update F l (fun x => (θ x : ℂ) * P.convFun G x) 0)
+        (Function.update F l (fun x => (θ x : ℂ) * P.convFun G x) 1)
+        (Function.update F l (fun x => (θ x : ℂ) * P.convFun G x) 2) =
+      ∫ p, ∫ z', Ψ p z' ∂P.m ∂(ν.m.prod volume) := by
+    rw [aux_loc_form_eq_prod α β ν i _ (aux_loc_upd_memLp i l F hF _ hH)]
+    congr 1; funext p
+    rw [key]
+    simp only [hΨ, FCMeasure.convFun, FCMeasure.integral]
+    rw [← integral_const_mul, ← integral_mul_const]
+    congr 1; funext z'; ring
+  have h4 : ∀ z' : P.Z, ∫ p, Ψ p z' ∂(ν.m.prod volume) =
+      form α β ν (Function.update F l (fun x => (θ x : ℂ) * G (x - P.φ z')) 0)
+        (Function.update F l (fun x => (θ x : ℂ) * G (x - P.φ z')) 1)
+        (Function.update F l (fun x => (θ x : ℂ) * G (x - P.φ z')) 2) * P.w z' := by
+    intro z'
+    rw [aux_loc_form_eq_prod α β ν i _ (aux_loc_upd_memLp i l F hF _ (hcy (P.φ z'))),
+      ← integral_mul_const]
+    congr 1; funext p
+    rw [key]
+  rw [h1, integral_integral_swap hΨint]
+  unfold FCMeasure.integral
+  congr 1; funext z'
+  exact h4 z'
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the small-support estimate of
+`lem:small-support` survives a convolution `P` and a cutoff `θ` in the small-support slot. -/
+lemma aux_loc_big (α β : ℝ) (ω : ℝ → ℝ)
+    (hω : ∀ (i j : Fin 3), i ≠ j → ∀ (f : Fin 3 → ℝ² → ℂ),
+        (∀ l, MemLp (f l) (aux_slotExp i l) volume) →
+        ∀ (A : Set ℝ²) (s : ℝ), MeasurableSet A → volume A ≤ ENNReal.ofReal s →
+        (∀ x, x ∉ A → f j x = 0) → ∀ κ : FCMeasure,
+        ‖form α β (FCMeasure.sigma.conv κ) (f 0) (f 1) (f 2)‖ₑ ≤
+          κ.tv * ENNReal.ofReal (ω s) * ∏ l : Fin 3, eLpNorm (f l) (aux_slotExp i l) volume)
+    (κ P : FCMeasure) (i l : Fin 3) (hl : l ≠ i)
+    (F : Fin 3 → ℝ² → ℂ) (hF : ∀ m, MemLp (F m) (aux_slotExp i m) volume)
+    (θ : ℝ² → ℝ) (hθc : Continuous θ) (hθ : ∀ x, ‖θ x‖ ≤ 1)
+    (G : ℝ² → ℂ) (hGm : Measurable G) (hG : MemLp G 2 volume)
+    (A : Set ℝ²) (s : ℝ) (hA : MeasurableSet A) (hAs : volume A ≤ ENNReal.ofReal s)
+    (hGA : ∀ x, x ∉ A → G x = 0) :
+    ‖form α β (FCMeasure.sigma.conv κ)
+        (Function.update F l (fun x => (θ x : ℂ) * P.convFun G x) 0)
+        (Function.update F l (fun x => (θ x : ℂ) * P.convFun G x) 1)
+        (Function.update F l (fun x => (θ x : ℂ) * P.convFun G x) 2)‖ₑ ≤
+      P.tv * (κ.tv * ENNReal.ofReal (ω s) *
+        ∏ m, eLpNorm (Function.update F l G m) (aux_slotExp i m) volume) := by
+  have hsl : aux_slotExp i l = 2 := by simp [aux_slotExp, hl]
+  rw [aux_loc_expand α β _ P i l hl F hF θ hθc hθ G hGm hG]
+  refine aux_ct_integral_bound P _ _ fun y => ?_
+  have hGy : MemLp (fun x => G (x - y)) 2 volume :=
+    hG.comp_measurePreserving (measurePreserving_sub_right (volume : Measure ℝ²) y)
+  have hGyn : eLpNorm (fun x => G (x - y)) 2 volume = eLpNorm G 2 volume :=
+    eLpNorm_comp_measurePreserving hG.1 (measurePreserving_sub_right (volume : Measure ℝ²) y)
+  have hcy := aux_loc_cut_memLp θ hθc hθ hGy
+  have hpre : (fun x : ℝ² => x - y) ⁻¹' A = (fun x : ℝ² => x + -y) ⁻¹' A := by
+    ext x; simp [sub_eq_add_neg]
+  refine (hω i l hl.symm _ (aux_loc_upd_memLp i l F hF _ (by rw [hsl]; exact hcy.1))
+    ((fun x : ℝ² => x - y) ⁻¹' A) s (hA.preimage (measurable_sub_const y))
+    (by rw [hpre, measure_preimage_add_right]; exact hAs) (fun x hx => ?_) κ).trans ?_
+  · simp only [Function.update_self]
+    rw [hGA _ hx, mul_zero]
+  · refine mul_le_mul' le_rfl (Finset.prod_le_prod' fun m _ => ?_)
+    by_cases hm : m = l
+    · subst hm
+      simp only [Function.update_self]
+      rw [hsl, ← hGyn]; exact hcy.2
+    · simp only [Function.update_of_ne hm]; exact le_rfl
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the localized inputs
+`θ_m · (P * g_m)` of the hypothesis (ann:bounded-local-hyp). -/
+def aux_locIn (P : FCMeasure) (θ : Fin 3 → ℝ² → ℝ) (g : Fin 3 → ℝ² → ℂ) (m : Fin 3) (x : ℝ²) :
+    ℂ := (θ m x : ℂ) * P.convFun (g m) x
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the endpoint exponents are `2` or `∞`. -/
+lemma aux_loc_slotExp_cases (i m : Fin 3) : aux_slotExp i m = 2 ∨ aux_slotExp i m = ⊤ := by
+  unfold aux_slotExp; split_ifs <;> simp
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): three distinct elements exhaust `Fin 3`. -/
+lemma aux_loc_fin3 : ∀ i j k m : Fin 3, i ≠ j → i ≠ k → j ≠ k → m = i ∨ m = j ∨ m = k := by
+  decide
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): replacing one raw input replaces one
+localized input. -/
+lemma aux_locIn_update (P : FCMeasure) (θ : Fin 3 → ℝ² → ℝ) (g : Fin 3 → ℝ² → ℂ) (l : Fin 3)
+    (G : ℝ² → ℂ) :
+    aux_locIn P θ (Function.update g l G) =
+      Function.update (aux_locIn P θ g) l (fun x => (θ l x : ℂ) * P.convFun G x) := by
+  funext m x
+  by_cases hm : m = l
+  · subst hm; simp [aux_locIn]
+  · simp [aux_locIn, Function.update_of_ne hm]
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): integrability classes and norm bounds of
+the localized inputs. -/
+lemma aux_locIn_memLp (P : FCMeasure) (θ : Fin 3 → ℝ² → ℝ) (hθc : ∀ m, Continuous (θ m))
+    (hθ : ∀ m x, ‖θ m x‖ ≤ 1) (g : Fin 3 → ℝ² → ℂ) (i m : Fin 3)
+    (hg : MemLp (g m) (aux_slotExp i m) volume) :
+    MemLp (aux_locIn P θ g m) (aux_slotExp i m) volume ∧
+      eLpNorm (aux_locIn P θ g m) (aux_slotExp i m) volume ≤
+        P.tv * eLpNorm (g m) (aux_slotExp i m) volume := by
+  have h := aux_loc_conv_memLp P (aux_loc_slotExp_cases i m) hg
+  have h2 := aux_loc_cut_memLp (θ m) (hθc m) (hθ m) h.1
+  exact ⟨h2.1, h2.2.trans h.2⟩
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the form vanishes if one input vanishes. -/
+lemma aux_loc_form_zero (α β : ℝ) (ν : FCMeasure) (F : Fin 3 → ℝ² → ℂ) (m : Fin 3)
+    (h : ∀ x, F m x = 0) : form α β ν (F 0) (F 1) (F 2) = 0 := by
+  unfold form
+  rcases (show m = 0 ∨ m = 1 ∨ m = 2 by fin_cases m <;> simp) with rfl | rfl | rfl <;> simp [h]
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the localized form only depends on the
+a.e. classes of the raw inputs. -/
+lemma aux_loc_Phi_ae (α β : ℝ) (hβ : β ≠ 0) (ν P : FCMeasure) (θ : Fin 3 → ℝ² → ℝ)
+    (g g' : Fin 3 → ℝ² → ℂ) (h : ∀ m, g m =ᵐ[volume] g' m) :
+    form α β ν (aux_locIn P θ g 0) (aux_locIn P θ g 1) (aux_locIn P θ g 2) =
+      form α β ν (aux_locIn P θ g' 0) (aux_locIn P θ g' 1) (aux_locIn P θ g' 2) := by
+  refine lem_form_basic_ae α β hβ ν _ _ fun m => ?_
+  filter_upwards [aux_loc_conv_ae P (h m)] with x hx
+  simp only [aux_locIn, hx]
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): additivity of the localized form in one
+slot. -/
+lemma aux_loc_Phi_add (α β : ℝ) (hβ : β ≠ 0) (ν P : FCMeasure) (θ : Fin 3 → ℝ² → ℝ)
+    (hθc : ∀ m, Continuous (θ m)) (hθ : ∀ m x, ‖θ m x‖ ≤ 1) (i l : Fin 3)
+    (g : Fin 3 → ℝ² → ℂ) (hg : ∀ m, MemLp (g m) (aux_slotExp i m) volume) (a b : ℝ² → ℂ)
+    (ha : MemLp a (aux_slotExp i l) volume) (hb : MemLp b (aux_slotExp i l) volume) :
+    form α β ν (aux_locIn P θ (Function.update g l (a + b)) 0)
+        (aux_locIn P θ (Function.update g l (a + b)) 1)
+        (aux_locIn P θ (Function.update g l (a + b)) 2) =
+      form α β ν (aux_locIn P θ (Function.update g l a) 0)
+        (aux_locIn P θ (Function.update g l a) 1) (aux_locIn P θ (Function.update g l a) 2) +
+      form α β ν (aux_locIn P θ (Function.update g l b) 0)
+        (aux_locIn P θ (Function.update g l b) 1) (aux_locIn P θ (Function.update g l b) 2) := by
+  set F := aux_locIn P θ g with hFdef
+  have hF : ∀ m, MemLp (F m) (aux_slotExp i m) volume :=
+    fun m => (aux_locIn_memLp P θ hθc hθ g i m (hg m)).1
+  set A : ℝ² → ℂ := fun x => (θ l x : ℂ) * P.convFun a x with hAdef
+  set B : ℝ² → ℂ := fun x => (θ l x : ℂ) * P.convFun b x with hBdef
+  have hA : MemLp A (aux_slotExp i l) volume := (aux_loc_cut_memLp (θ l) (hθc l) (hθ l)
+    (aux_loc_conv_memLp P (aux_loc_slotExp_cases i l) ha).1).1
+  have hB : MemLp B (aux_slotExp i l) volume := (aux_loc_cut_memLp (θ l) (hθc l) (hθ l)
+    (aux_loc_conv_memLp P (aux_loc_slotExp_cases i l) hb).1).1
+  have e1 := aux_locIn_update P θ g l (a + b)
+  have e2 : aux_locIn P θ (Function.update g l a) = Function.update F l A :=
+    aux_locIn_update P θ g l a
+  have e3 : aux_locIn P θ (Function.update g l b) = Function.update F l B :=
+    aux_locIn_update P θ g l b
+  have hsum : form α β ν (aux_locIn P θ (Function.update g l (a + b)) 0)
+      (aux_locIn P θ (Function.update g l (a + b)) 1)
+      (aux_locIn P θ (Function.update g l (a + b)) 2) =
+      form α β ν (Function.update F l (A + B) 0) (Function.update F l (A + B) 1)
+        (Function.update F l (A + B) 2) := by
+    rw [e1]
+    refine lem_form_basic_ae α β hβ ν _ _ fun m => ?_
+    by_cases hm : m = l
+    · subst hm
+      rw [Function.update_self, Function.update_self]
+      filter_upwards [aux_loc_conv_add P (aux_loc_slotExp_cases i m) ha hb] with x hx
+      simp only [hx, Pi.add_apply, mul_add, hAdef, hBdef]
+    · rw [Function.update_of_ne hm, Function.update_of_ne hm]
+  rw [hsum, e2, e3]
+  exact aux_loc_form_add α β ν i l F hF A B hA hB
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the hypothesis (ann:bounded-local-hyp) at a
+fixed `n`, rescaled to inputs bounded by `c_m`. -/
+lemma aux_loc_scaled (α β : ℝ) (hβ : β ≠ 0) (ν P : FCMeasure) (θ : Fin 3 → ℝ² → ℝ)
+    (ε : ℝ≥0∞) (hε : ∀ f : Fin 3 → ℝ² → ℂ, (∀ m, AEStronglyMeasurable (f m) volume) →
+      (∀ m, eLpNorm (f m) ⊤ volume ≤ 1) →
+      ‖form α β ν (aux_locIn P θ f 0) (aux_locIn P θ f 1) (aux_locIn P θ f 2)‖ₑ ≤ ε)
+    (h : Fin 3 → ℝ² → ℂ) (hh : ∀ m, AEStronglyMeasurable (h m) volume) (c : Fin 3 → ℝ)
+    (hc : ∀ m, eLpNorm (h m) ⊤ volume ≤ ENNReal.ofReal (c m)) :
+    ‖form α β ν (aux_locIn P θ h 0) (aux_locIn P θ h 1) (aux_locIn P θ h 2)‖ₑ ≤
+      ε * ∏ m, ENNReal.ofReal (c m) := by
+  by_cases hpos : ∀ m, 0 < c m
+  · set h' : Fin 3 → ℝ² → ℂ := fun m x => ((c m)⁻¹ : ℂ) * h m x with hh'def
+    have hh' : ∀ m, eLpNorm (h' m) ⊤ volume ≤ 1 := by
+      intro m
+      have hsm : h' m = ((c m)⁻¹ : ℂ) • h m := by
+        funext x; simp only [hh'def, Pi.smul_apply, smul_eq_mul]
+      have : eLpNorm (h' m) ⊤ volume = ‖((c m)⁻¹ : ℂ)‖ₑ * eLpNorm (h m) ⊤ volume := by
+        rw [hsm]; exact eLpNorm_const_smul _ _ _ _
+      rw [this]
+      calc ‖((c m)⁻¹ : ℂ)‖ₑ * eLpNorm (h m) ⊤ volume
+          ≤ ENNReal.ofReal (c m)⁻¹ * ENNReal.ofReal (c m) := by
+            gcongr
+            · rw [← ofReal_norm]; gcongr
+              rw [norm_inv, Complex.norm_real, Real.norm_of_nonneg (hpos m).le]
+            · exact hc m
+        _ = 1 := by
+            rw [← ENNReal.ofReal_mul (inv_nonneg.2 (hpos m).le), inv_mul_cancel₀ (hpos m).ne',
+              ENNReal.ofReal_one]
+    have heq : ∀ m, aux_locIn P θ h m = fun x => (c m : ℂ) * aux_locIn P θ h' m x := by
+      intro m; funext x
+      have : (c m : ℂ) ≠ 0 := by exact_mod_cast (hpos m).ne'
+      simp only [aux_locIn, hh'def, aux_loc_conv_smul]
+      rw [mul_left_comm, mul_inv_cancel_left₀ this]
+    rw [heq 0, heq 1, heq 2, aux_fb_form_smul α β ν (fun m => (c m : ℂ)) (aux_locIn P θ h')]
+    rw [enorm_mul, mul_comm]
+    gcongr
+    · exact hε h' (fun m => (hh m).const_mul _) hh'
+    · rw [Fin.prod_univ_three, enorm_mul, enorm_mul]
+      simp only [← ofReal_norm, Complex.norm_real, Real.norm_of_nonneg (hpos _).le]
+      exact le_rfl
+  · push Not at hpos
+    obtain ⟨m, hm⟩ := hpos
+    have h0 : h m =ᵐ[volume] 0 := by
+      have := hc m
+      rw [ENNReal.ofReal_of_nonpos hm, nonpos_iff_eq_zero, eLpNorm_eq_zero_iff (hh m) (by simp)]
+        at this
+      exact this
+    rw [aux_loc_Phi_ae α β hβ ν P θ h (Function.update h m 0) (fun l => by
+      by_cases hl : l = m
+      · subst hl; simpa using h0
+      · simp [Function.update_of_ne hl])]
+    rw [aux_loc_form_zero α β ν _ m (fun x => by
+      simp [aux_locIn, FCMeasure.convFun, FCMeasure.integral])]
+    simp
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): Chebyshev's inequality in the form
+`|{|g| > T‖g‖₂}| ≤ T⁻²`. -/
+lemma aux_loc_cheb (g : ℝ² → ℂ) (hg : MemLp g 2 volume) (T : ℝ) (hT : 0 < T) :
+    volume {x | T * (eLpNorm g 2 volume).toReal < ‖g x‖} ≤ ENNReal.ofReal (1 / T ^ 2) := by
+  set r := (eLpNorm g 2 volume).toReal
+  have hr : eLpNorm g 2 volume = ENNReal.ofReal r := (ENNReal.ofReal_toReal hg.2.ne).symm
+  rcases (ENNReal.toReal_nonneg (a := eLpNorm g 2 volume)).lt_or_eq with hpos | hzero
+  · have hc : 0 < T * r := mul_pos hT hpos
+    have h := mul_meas_ge_le_pow_eLpNorm' (volume : Measure ℝ²) (p := 2) (by norm_num) (by norm_num)
+      hg.1 (ENNReal.ofReal (T * r))
+    simp only [ENNReal.toReal_ofNat] at h
+    have hsub : {x | T * r < ‖g x‖} ⊆ {x | ENNReal.ofReal (T * r) ≤ ‖g x‖ₑ} := by
+      intro x hx
+      simp only [mem_ofPred_eq] at hx ⊢
+      rw [← ofReal_norm]; exact ENNReal.ofReal_le_ofReal hx.le
+    refine (measure_mono hsub).trans ?_
+    rw [hr, ENNReal.ofReal_rpow_of_nonneg hc.le (by norm_num),
+      ENNReal.ofReal_rpow_of_nonneg hpos.le (by norm_num)] at h
+    have hne : ENNReal.ofReal ((T * r) ^ (2:ℝ)) ≠ 0 := by
+      rw [ENNReal.ofReal_ne_zero_iff]; positivity
+    rw [mul_comm, ← ENNReal.le_div_iff_mul_le (Or.inl hne) (Or.inl ENNReal.ofReal_ne_top)] at h
+    refine h.trans (le_of_eq ?_)
+    rw [← ENNReal.ofReal_div_of_pos (by positivity)]
+    congr 1
+    rw [Real.rpow_two, Real.rpow_two]
+    field_simp
+    exact div_self (pow_ne_zero 2 hpos.ne')
+  · have hr0 : r = 0 := hzero.symm
+    have h0 : eLpNorm g 2 volume = 0 := by rw [hr, hr0, ENNReal.ofReal_zero]
+    rw [eLpNorm_eq_zero_iff hg.1 (by norm_num)] at h0
+    have : volume {x | T * r < ‖g x‖} = 0 := by
+      refine measure_mono_null (fun x hx => ?_) (ae_iff.1 h0)
+      simp only [mem_ofPred_eq, hr0, mul_zero] at hx ⊢
+      intro hgx
+      simp [hgx] at hx
+    rw [this]; exact zero_le
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the small-support property
+(conclusion of `Auto.lem_small_support`) for a modulus `ω`. -/
+def aux_loc_SmallSupp (α β : ℝ) (ω : ℝ → ℝ) : Prop :=
+  ∀ (i j : Fin 3), i ≠ j → ∀ (f : Fin 3 → ℝ² → ℂ),
+    (∀ l, MemLp (f l) (aux_slotExp i l) volume) →
+    ∀ (A : Set ℝ²) (s : ℝ), MeasurableSet A → volume A ≤ ENNReal.ofReal s →
+    (∀ x, x ∉ A → f j x = 0) → ∀ κ : FCMeasure,
+    ‖form α β (FCMeasure.sigma.conv κ) (f 0) (f 1) (f 2)‖ₑ ≤
+      κ.tv * ENNReal.ofReal (ω s) * ∏ l : Fin 3, eLpNorm (f l) (aux_slotExp i l) volume
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the localized form with a small-support
+input in an `L²` slot is small. -/
+lemma aux_loc_Phi_big (α β : ℝ) (ω : ℝ → ℝ) (hω : aux_loc_SmallSupp α β ω) (κ P : FCMeasure)
+    (θ : Fin 3 → ℝ² → ℝ) (hθc : ∀ m, Continuous (θ m)) (hθ : ∀ m x, ‖θ m x‖ ≤ 1)
+    (Bp : ℝ≥0∞) (hBp1 : 1 ≤ Bp) (hPB : P.tv ≤ Bp)
+    (i l : Fin 3) (hl : l ≠ i) (h : Fin 3 → ℝ² → ℂ) (hhm : Measurable (h l))
+    (hh : ∀ m, MemLp (h m) (aux_slotExp i m) volume)
+    (A : Set ℝ²) (s : ℝ) (hA : MeasurableSet A) (hAs : volume A ≤ ENNReal.ofReal s)
+    (hA0 : ∀ x, x ∉ A → h l x = 0) :
+    ‖form α β (FCMeasure.sigma.conv κ) (aux_locIn P θ h 0) (aux_locIn P θ h 1)
+        (aux_locIn P θ h 2)‖ₑ ≤
+      Bp ^ 4 * κ.tv * ENNReal.ofReal (ω s) * ∏ m, eLpNorm (h m) (aux_slotExp i m) volume := by
+  have hsl : aux_slotExp i l = 2 := by simp [aux_slotExp, hl]
+  have e : aux_locIn P θ h =
+      Function.update (aux_locIn P θ h) l (fun x => (θ l x : ℂ) * P.convFun (h l) x) := by
+    rw [← aux_locIn_update, Function.update_eq_self]
+  rw [e]
+  refine (aux_loc_big α β ω hω κ P i l hl (aux_locIn P θ h)
+    (fun m => (aux_locIn_memLp P θ hθc hθ h i m (hh m)).1) (θ l) (hθc l) (hθ l) (h l) hhm
+    (by have := hh l; rwa [hsl] at this) A s hA hAs hA0).trans ?_
+  have hprod : ∏ m, eLpNorm (Function.update (aux_locIn P θ h) l (h l) m) (aux_slotExp i m) volume
+      ≤ Bp ^ 3 * ∏ m, eLpNorm (h m) (aux_slotExp i m) volume := by
+    calc _ ≤ ∏ m : Fin 3, Bp * eLpNorm (h m) (aux_slotExp i m) volume := by
+          refine Finset.prod_le_prod' fun m _ => ?_
+          by_cases hm : m = l
+          · subst hm; rw [Function.update_self]; exact le_mul_of_one_le_left' hBp1
+          · rw [Function.update_of_ne hm]
+            exact (aux_locIn_memLp P θ hθc hθ h i m (hh m)).2.trans (by gcongr)
+      _ = Bp ^ 3 * ∏ m, eLpNorm (h m) (aux_slotExp i m) volume := by
+          rw [Finset.prod_mul_distrib]; simp
+  calc P.tv * (κ.tv * ENNReal.ofReal (ω s) *
+        ∏ m, eLpNorm (Function.update (aux_locIn P θ h) l (h l) m) (aux_slotExp i m) volume)
+      ≤ Bp * (κ.tv * ENNReal.ofReal (ω s) * (Bp ^ 3 * ∏ m, eLpNorm (h m) (aux_slotExp i m) volume)) := by
+        gcongr
+    _ = _ := by ring
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the local estimate with one normalized
+bounded input and two `L²` inputs: truncation at height `T‖g‖₂`, the small-support estimate for the
+large parts, and hypothesis (ann:bounded-local-hyp) for the bounded parts. -/
+lemma aux_loc_core (α β : ℝ) (hβ : β ≠ 0) (ω : ℝ → ℝ) (hω : aux_loc_SmallSupp α β ω)
+    (κ P : FCMeasure) (θ : Fin 3 → ℝ² → ℝ) (hθc : ∀ m, Continuous (θ m))
+    (hθ : ∀ m x, ‖θ m x‖ ≤ 1) (Bp K : ℝ≥0∞) (hBp1 : 1 ≤ Bp) (hPB : P.tv ≤ Bp) (hK : κ.tv ≤ K)
+    (ε : ℝ≥0∞) (hε : ∀ f : Fin 3 → ℝ² → ℂ, (∀ m, AEStronglyMeasurable (f m) volume) →
+      (∀ m, eLpNorm (f m) ⊤ volume ≤ 1) →
+      ‖form α β (FCMeasure.sigma.conv κ) (aux_locIn P θ f 0) (aux_locIn P θ f 1)
+        (aux_locIn P θ f 2)‖ₑ ≤ ε)
+    (i j k : Fin 3) (hij : i ≠ j) (hik : i ≠ k) (hjk : j ≠ k)
+    (g : Fin 3 → ℝ² → ℂ) (hgm : ∀ m, Measurable (g m))
+    (hg : ∀ m, MemLp (g m) (aux_slotExp i m) volume)
+    (hgi : eLpNorm (g i) ⊤ volume ≤ 1) (T : ℝ) (hT : 0 < T) :
+    ‖form α β (FCMeasure.sigma.conv κ) (aux_locIn P θ g 0) (aux_locIn P θ g 1)
+        (aux_locIn P θ g 2)‖ₑ ≤
+      (ε * ENNReal.ofReal (T ^ 2) + 2 * (Bp ^ 4 * K * ENNReal.ofReal (ω (1 / T ^ 2)))) *
+        (eLpNorm (g j) 2 volume * eLpNorm (g k) 2 volume) := by
+  set ν := FCMeasure.sigma.conv κ
+  have hsi : aux_slotExp i i = ⊤ := by simp [aux_slotExp]
+  have hsj : aux_slotExp i j = 2 := by simp [aux_slotExp, hij.symm]
+  have hsk : aux_slotExp i k = 2 := by simp [aux_slotExp, hik.symm]
+  have hgj : MemLp (g j) 2 volume := by have := hg j; rwa [hsj] at this
+  have hgk : MemLp (g k) 2 volume := by have := hg k; rwa [hsk] at this
+  -- truncation of an `L²` input
+  have trunc : ∀ G : ℝ² → ℂ, Measurable G → MemLp G 2 volume →
+      ∃ S B : ℝ² → ℂ, S + B = G ∧ Measurable S ∧ Measurable B ∧ MemLp S 2 volume ∧
+        MemLp B 2 volume ∧ eLpNorm S 2 volume ≤ eLpNorm G 2 volume ∧
+        eLpNorm B 2 volume ≤ eLpNorm G 2 volume ∧
+        eLpNorm S ⊤ volume ≤ ENNReal.ofReal (T * (eLpNorm G 2 volume).toReal) ∧
+        ∃ A : Set ℝ², MeasurableSet A ∧ volume A ≤ ENNReal.ofReal (1 / T ^ 2) ∧
+          ∀ x, x ∉ A → B x = 0 := by
+    intro G hGm hG
+    set c := T * (eLpNorm G 2 volume).toReal
+    have hc : 0 ≤ c := mul_nonneg hT.le ENNReal.toReal_nonneg
+    refine ⟨fun x => if ‖G x‖ ≤ c then G x else 0, fun x => if c < ‖G x‖ then G x else 0,
+      ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, {x | c < ‖G x‖}, measurableSet_lt measurable_const hGm.norm,
+      aux_loc_cheb G hG T hT, fun x hx => by
+        rw [mem_ofPred_eq, not_lt] at hx; simp [not_lt.2 hx]⟩
+    · funext x
+      by_cases h : ‖G x‖ ≤ c
+      · simp [h, not_lt.2 h]
+      · simp [h, lt_of_not_ge h]
+    · exact Measurable.ite (measurableSet_le hGm.norm measurable_const) hGm measurable_const
+    · exact Measurable.ite (measurableSet_lt measurable_const hGm.norm) hGm measurable_const
+    · exact hG.of_le (Measurable.ite (measurableSet_le hGm.norm measurable_const) hGm
+        measurable_const).aestronglyMeasurable (Eventually.of_forall fun x => by
+          split_ifs <;> simp)
+    · exact hG.of_le (Measurable.ite (measurableSet_lt measurable_const hGm.norm) hGm
+        measurable_const).aestronglyMeasurable (Eventually.of_forall fun x => by
+          split_ifs <;> simp)
+    · exact eLpNorm_mono fun x => by split_ifs <;> simp
+    · exact eLpNorm_mono fun x => by split_ifs <;> simp
+    · rw [eLpNorm_exponent_top]
+      exact eLpNormEssSup_le_of_ae_bound (Eventually.of_forall fun x => by
+        split_ifs with h
+        · exact h
+        · simpa using hc)
+  obtain ⟨Sj, Bj, hSBj, hSjm, hBjm, hSj, hBj, hSjn, hBjn, hSjt, Aj, hAj, hAjs, hAj0⟩ :=
+    trunc (g j) (hgm j) hgj
+  obtain ⟨Sk, Bk, hSBk, hSkm, hBkm, hSk, hBk, hSkn, hBkn, hSkt, Ak, hAk, hAks, hAk0⟩ :=
+    trunc (g k) (hgm k) hgk
+  set g1 := Function.update g j Sj with hg1
+  set g2 := Function.update g1 k Sk with hg2
+  set g3 := Function.update g1 k Bk with hg3
+  set g4 := Function.update g j Bj with hg4
+  have hg1L : ∀ m, MemLp (g1 m) (aux_slotExp i m) volume :=
+    aux_loc_upd_memLp i j g hg Sj (by rw [hsj]; exact hSj)
+  have hg1k : g1 k = g k := by rw [hg1, Function.update_of_ne hjk.symm]
+  -- decompositions
+  have d1 : form α β ν (aux_locIn P θ g 0) (aux_locIn P θ g 1) (aux_locIn P θ g 2) =
+      form α β ν (aux_locIn P θ g1 0) (aux_locIn P θ g1 1) (aux_locIn P θ g1 2) +
+      form α β ν (aux_locIn P θ g4 0) (aux_locIn P θ g4 1) (aux_locIn P θ g4 2) := by
+    have : g = Function.update g j (Sj + Bj) := by rw [hSBj, Function.update_eq_self]
+    conv_lhs => rw [this]
+    exact aux_loc_Phi_add α β hβ ν P θ hθc hθ i j g hg Sj Bj (by rw [hsj]; exact hSj)
+      (by rw [hsj]; exact hBj)
+  have d2 : form α β ν (aux_locIn P θ g1 0) (aux_locIn P θ g1 1) (aux_locIn P θ g1 2) =
+      form α β ν (aux_locIn P θ g2 0) (aux_locIn P θ g2 1) (aux_locIn P θ g2 2) +
+      form α β ν (aux_locIn P θ g3 0) (aux_locIn P θ g3 1) (aux_locIn P θ g3 2) := by
+    have : g1 = Function.update g1 k (Sk + Bk) := by rw [hSBk, ← hg1k, Function.update_eq_self]
+    conv_lhs => rw [this]
+    exact aux_loc_Phi_add α β hβ ν P θ hθc hθ i k g1 hg1L Sk Bk (by rw [hsk]; exact hSk)
+      (by rw [hsk]; exact hBk)
+  -- the three norms
+  set nj := eLpNorm (g j) 2 volume
+  set nk := eLpNorm (g k) 2 volume
+  have hnj : ENNReal.ofReal (T * nj.toReal) = ENNReal.ofReal T * nj := by
+    rw [ENNReal.ofReal_mul hT.le, ENNReal.ofReal_toReal hgj.2.ne]
+  have hnk : ENNReal.ofReal (T * nk.toReal) = ENNReal.ofReal T * nk := by
+    rw [ENNReal.ofReal_mul hT.le, ENNReal.ofReal_toReal hgk.2.ne]
+  have ev2i : g2 i = g i := by rw [hg2, Function.update_of_ne hik, hg1, Function.update_of_ne hij]
+  have ev2j : g2 j = Sj := by rw [hg2, Function.update_of_ne hjk, hg1, Function.update_self]
+  have ev2k : g2 k = Sk := by rw [hg2, Function.update_self]
+  have ev3i : g3 i = g i := by rw [hg3, Function.update_of_ne hik, hg1, Function.update_of_ne hij]
+  have ev3j : g3 j = Sj := by rw [hg3, Function.update_of_ne hjk, hg1, Function.update_self]
+  have ev3k : g3 k = Bk := by rw [hg3, Function.update_self]
+  have ev4i : g4 i = g i := by rw [hg4, Function.update_of_ne hij]
+  have ev4j : g4 j = Bj := by rw [hg4, Function.update_self]
+  have ev4k : g4 k = g k := by rw [hg4, Function.update_of_ne hjk.symm]
+  -- bounded part
+  have b2 : ‖form α β ν (aux_locIn P θ g2 0) (aux_locIn P θ g2 1) (aux_locIn P θ g2 2)‖ₑ ≤
+      ε * ENNReal.ofReal (T ^ 2) * (nj * nk) := by
+    set c : Fin 3 → ℝ := fun m => if m = i then 1 else if m = j then T * nj.toReal
+      else T * nk.toReal with hc
+    have hb : ∀ m, eLpNorm (g2 m) ⊤ volume ≤ ENNReal.ofReal (c m) := by
+      intro m
+      rcases aux_loc_fin3 i j k m hij hik hjk with rfl | rfl | rfl
+      · rw [ev2i]; simpa [hc] using hgi
+      · rw [ev2j]; simpa [hc, hij.symm] using hSjt
+      · rw [ev2k]; simpa [hc, hik.symm, hjk.symm] using hSkt
+    have hm : ∀ m, AEStronglyMeasurable (g2 m) volume := by
+      intro m
+      rcases aux_loc_fin3 i j k m hij hik hjk with rfl | rfl | rfl
+      · rw [ev2i]; exact (hgm _).aestronglyMeasurable
+      · rw [ev2j]; exact hSjm.aestronglyMeasurable
+      · rw [ev2k]; exact hSkm.aestronglyMeasurable
+    refine (aux_loc_scaled α β hβ ν P θ ε hε g2 hm c hb).trans (le_of_eq ?_)
+    rw [aux_ss_three i j k hij hik hjk]
+    simp only [hc, if_true, hij.symm, hik.symm, hjk.symm, if_false, ENNReal.ofReal_one, one_mul]
+    rw [hnj, hnk, ENNReal.ofReal_pow hT.le]
+    ring
+  -- large parts
+  have b3 : ‖form α β ν (aux_locIn P θ g3 0) (aux_locIn P θ g3 1) (aux_locIn P θ g3 2)‖ₑ ≤
+      Bp ^ 4 * K * ENNReal.ofReal (ω (1 / T ^ 2)) * (nj * nk) := by
+    have hg3L : ∀ m, MemLp (g3 m) (aux_slotExp i m) volume :=
+      aux_loc_upd_memLp i k g1 hg1L Bk (by rw [hsk]; exact hBk)
+    refine (aux_loc_Phi_big α β ω hω κ P θ hθc hθ Bp hBp1 hPB i k hik.symm g3
+      (by rw [ev3k]; exact hBkm) hg3L Ak _ hAk hAks (by rw [ev3k]; exact hAk0)).trans ?_
+    rw [aux_ss_three i j k hij hik hjk, ev3i, ev3j, ev3k, hsi, hsj, hsk]
+    calc Bp ^ 4 * κ.tv * ENNReal.ofReal (ω (1 / T ^ 2)) *
+          (eLpNorm (g i) ⊤ volume * eLpNorm Sj 2 volume * eLpNorm Bk 2 volume)
+        ≤ Bp ^ 4 * K * ENNReal.ofReal (ω (1 / T ^ 2)) * (1 * nj * nk) := by gcongr
+      _ = _ := by ring
+  have b4 : ‖form α β ν (aux_locIn P θ g4 0) (aux_locIn P θ g4 1) (aux_locIn P θ g4 2)‖ₑ ≤
+      Bp ^ 4 * K * ENNReal.ofReal (ω (1 / T ^ 2)) * (nj * nk) := by
+    have hg4L : ∀ m, MemLp (g4 m) (aux_slotExp i m) volume :=
+      aux_loc_upd_memLp i j g hg Bj (by rw [hsj]; exact hBj)
+    refine (aux_loc_Phi_big α β ω hω κ P θ hθc hθ Bp hBp1 hPB i j hij.symm g4
+      (by rw [ev4j]; exact hBjm) hg4L Aj _ hAj hAjs (by rw [ev4j]; exact hAj0)).trans ?_
+    rw [aux_ss_three i j k hij hik hjk, ev4i, ev4j, ev4k, hsi, hsj, hsk]
+    calc Bp ^ 4 * κ.tv * ENNReal.ofReal (ω (1 / T ^ 2)) *
+          (eLpNorm (g i) ⊤ volume * eLpNorm Bj 2 volume * eLpNorm (g k) 2 volume)
+        ≤ Bp ^ 4 * K * ENNReal.ofReal (ω (1 / T ^ 2)) * (1 * nj * nk) := by gcongr
+      _ = _ := by ring
+  rw [d1, d2]
+  calc _ ≤ ‖form α β ν (aux_locIn P θ g2 0) (aux_locIn P θ g2 1) (aux_locIn P θ g2 2)‖ₑ +
+        ‖form α β ν (aux_locIn P θ g3 0) (aux_locIn P θ g3 1) (aux_locIn P θ g3 2)‖ₑ +
+        ‖form α β ν (aux_locIn P θ g4 0) (aux_locIn P θ g4 1) (aux_locIn P θ g4 2)‖ₑ :=
+        (enorm_add_le _ _).trans (add_le_add_left (enorm_add_le _ _) _)
+    _ ≤ ε * ENNReal.ofReal (T ^ 2) * (nj * nk) +
+        Bp ^ 4 * K * ENNReal.ofReal (ω (1 / T ^ 2)) * (nj * nk) +
+        Bp ^ 4 * K * ENNReal.ofReal (ω (1 / T ^ 2)) * (nj * nk) := by gcongr
+    _ = _ := by ring
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the extended norm of a nonnegative real
+number viewed in `ℂ`. -/
+lemma aux_loc_enorm_ofReal (r : ℝ) (hr : 0 ≤ r) : ‖(r : ℂ)‖ₑ = ENNReal.ofReal r := by
+  rw [← ofReal_norm, Complex.norm_real, Real.norm_of_nonneg hr]
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): insertion of the continuous partition of
+unity `∫ ρ(x - q) χ₁(x + u - q) χ₂(x + Mu - q) dq`, which equals one when `|u| ≤ U`; the error is
+controlled by the variation of `ν` on `{|u| > U}`. -/
+lemma aux_loc_partition (α β : ℝ) (ν : FCMeasure) (i : Fin 3) (F : Fin 3 → ℝ² → ℂ)
+    (hF : ∀ m, MemLp (F m) (aux_slotExp i m) volume)
+    (θ : Fin 3 → ℝ² → ℝ) (hθc : ∀ m, Continuous (θ m)) (hθ0 : ∀ m x, 0 ≤ θ m x)
+    (hθ1 : ∀ m x, θ m x ≤ 1) (hρint : Integrable (θ 0)) (hρ : ∫ x, θ 0 x = 1)
+    (hρs : ∀ x, θ 0 x ≠ 0 → ‖x‖ < 2) (U : ℝ)
+    (hχ : ∀ m y, m ≠ 0 → ‖y‖ ≤ 2 + (1 + aux_mM α β) * |U| → θ m y = 1) :
+    ‖form α β ν (F 0) (F 1) (F 2)‖ₑ ≤
+      ν.varOn {u | U < ‖u‖} * ∏ m, eLpNorm (F m) (aux_slotExp i m) volume +
+      ∫⁻ q, ‖form α β ν (fun x => (θ 0 (x - q) : ℂ) * F 0 x) (fun x => (θ 1 (x - q) : ℂ) * F 1 x)
+        (fun x => (θ 2 (x - q) : ℂ) * F 2 x)‖ₑ := by
+  set D : ν.Z × ℝ² → ℂ := fun p => F 0 p.2 * F 1 (p.2 + ν.φ p.1) *
+    F 2 (p.2 + M α β (ν.φ p.1)) * ν.w p.1 with hD
+  set c : ℝ² → ν.Z × ℝ² → ℝ := fun q p => θ 0 (p.2 - q) * θ 1 (p.2 + ν.φ p.1 - q) *
+    θ 2 (p.2 + M α β (ν.φ p.1) - q) with hc
+  set Hc : ℝ² → ν.Z × ℝ² → ℂ := fun q p => (c q p : ℂ) * D p with hHc
+  have hDint : Integrable D (ν.m.prod volume) := lem_form_basic_integrable α β ν i F hF
+  -- the localized forms
+  have hloc : ∀ q : ℝ², form α β ν (fun x => (θ 0 (x - q) : ℂ) * F 0 x)
+      (fun x => (θ 1 (x - q) : ℂ) * F 1 x) (fun x => (θ 2 (x - q) : ℂ) * F 2 x) =
+      ∫ p, Hc q p ∂(ν.m.prod volume) := by
+    intro q
+    have hL : ∀ m, MemLp ((fun m x => (θ m (x - q) : ℂ) * F m x) m) (aux_slotExp i m) volume :=
+      fun m => (aux_loc_cut_memLp (fun x => θ m (x - q)) ((hθc m).comp (continuous_id.sub
+        continuous_const)) (fun x => by rw [Real.norm_of_nonneg (hθ0 m _)]; exact hθ1 m _)
+        (hF m)).1
+    refine (aux_loc_form_eq_prod α β ν i _ hL).trans ?_
+    congr 1; funext p
+    simp only [hHc, hc, hD]; push_cast; ring
+  -- joint integrability
+  have hρq : ∀ x : ℝ², ∫⁻ q, ENNReal.ofReal (θ 0 (x - q)) = 1 := by
+    intro x
+    rw [lintegral_sub_left_eq_self (fun y => ENNReal.ofReal (θ 0 y)) x,
+      ← ofReal_integral_eq_lintegral_ofReal hρint (Eventually.of_forall fun y => hθ0 0 y), hρ,
+      ENNReal.ofReal_one]
+  have hcle : ∀ q p, 0 ≤ c q p ∧ c q p ≤ θ 0 (p.2 - q) := by
+    intro q p
+    simp only [hc]
+    refine ⟨mul_nonneg (mul_nonneg (hθ0 _ _) (hθ0 _ _)) (hθ0 _ _), ?_⟩
+    calc θ 0 (p.2 - q) * θ 1 (p.2 + ν.φ p.1 - q) * θ 2 (p.2 + M α β (ν.φ p.1) - q)
+        ≤ θ 0 (p.2 - q) * θ 1 (p.2 + ν.φ p.1 - q) :=
+          mul_le_of_le_one_right (mul_nonneg (hθ0 _ _) (hθ0 _ _)) (hθ1 _ _)
+      _ ≤ θ 0 (p.2 - q) := mul_le_of_le_one_right (hθ0 _ _) (hθ1 _ _)
+  have hcm : Measurable (fun qp : ℝ² × (ν.Z × ℝ²) => c qp.1 qp.2) := by
+    have h2 : Measurable (fun qp : ℝ² × (ν.Z × ℝ²) => qp.2.2) := measurable_snd.comp measurable_snd
+    have hφ : Measurable (fun qp : ℝ² × (ν.Z × ℝ²) => ν.φ qp.2.1) :=
+      ν.measurable_φ.comp (measurable_fst.comp measurable_snd)
+    exact (((hθc 0).measurable.comp (h2.sub measurable_fst)).mul
+      ((hθc 1).measurable.comp ((h2.add hφ).sub measurable_fst))).mul
+      ((hθc 2).measurable.comp ((h2.add ((M α β).continuous.measurable.comp hφ)).sub
+        measurable_fst))
+  have hHm : AEStronglyMeasurable (Function.uncurry Hc) ((volume : Measure ℝ²).prod
+      (ν.m.prod volume)) :=
+    (Complex.continuous_ofReal.measurable.comp hcm).aestronglyMeasurable.mul hDint.1.comp_snd
+  have hHint : Integrable (Function.uncurry Hc) ((volume : Measure ℝ²).prod (ν.m.prod volume)) := by
+    refine ⟨hHm, ?_⟩
+    rw [HasFiniteIntegral, lintegral_prod_symm _ hHm.enorm]
+    calc ∫⁻ p, ∫⁻ q, ‖Function.uncurry Hc (q, p)‖ₑ ∂volume ∂(ν.m.prod volume)
+        ≤ ∫⁻ p, ‖D p‖ₑ ∂(ν.m.prod volume) := by
+          refine lintegral_mono fun p => ?_
+          calc ∫⁻ q, ‖Function.uncurry Hc (q, p)‖ₑ
+              ≤ ∫⁻ q, ENNReal.ofReal (θ 0 (p.2 - q)) * ‖D p‖ₑ := by
+                refine lintegral_mono fun q => ?_
+                simp only [Function.uncurry_apply_pair, hHc, enorm_mul]
+                gcongr
+                rw [aux_loc_enorm_ofReal _ (hcle q p).1]
+                exact ENNReal.ofReal_le_ofReal (hcle q p).2
+            _ = ‖D p‖ₑ := by rw [lintegral_mul_const' _ _ enorm_ne_top, hρq, one_mul]
+      _ < ⊤ := hDint.2
+  -- the averaged cutoff `S`
+  set S : ν.Z × ℝ² → ℝ := fun p => ∫ q, c q p with hS
+  have hSint : ∀ p, ∫ q, Hc q p = (S p : ℂ) * D p := by
+    intro p
+    simp only [hHc, hS]
+    rw [integral_mul_const]
+    congr 1
+    exact integral_ofReal
+  have hS01 : ∀ p, 0 ≤ S p ∧ S p ≤ 1 := by
+    intro p
+    refine ⟨integral_nonneg fun q => (hcle q p).1, ?_⟩
+    calc S p ≤ ∫ q, θ 0 (p.2 - q) :=
+          integral_mono_of_nonneg (Eventually.of_forall fun q => (hcle q p).1)
+            (hρint.comp_sub_left p.2) (Eventually.of_forall fun q => (hcle q p).2)
+      _ = 1 := by rw [integral_sub_left_eq_self (fun y => θ 0 y) volume p.2, hρ]
+  have hS1 : ∀ p : ν.Z × ℝ², ‖ν.φ p.1‖ ≤ U → S p = 1 := by
+    intro p hp
+    have hU : 0 ≤ U := (norm_nonneg _).trans hp
+    have hmM := aux_lw_mM_nonneg α β
+    have : ∀ q, c q p = θ 0 (p.2 - q) := by
+      intro q
+      by_cases h0 : θ 0 (p.2 - q) = 0
+      · simp only [hc, h0, zero_mul]
+      have hlt := hρs _ h0
+      have e1 : θ 1 (p.2 + ν.φ p.1 - q) = 1 := by
+        refine hχ 1 _ (by decide) ?_
+        rw [show p.2 + ν.φ p.1 - q = (p.2 - q) + ν.φ p.1 by abel, abs_of_nonneg hU]
+        calc ‖(p.2 - q) + ν.φ p.1‖ ≤ ‖p.2 - q‖ + ‖ν.φ p.1‖ := norm_add_le _ _
+          _ ≤ 2 + (1 + aux_mM α β) * U := by nlinarith [norm_nonneg (ν.φ p.1)]
+      have e2 : θ 2 (p.2 + M α β (ν.φ p.1) - q) = 1 := by
+        refine hχ 2 _ (by decide) ?_
+        rw [show p.2 + M α β (ν.φ p.1) - q = (p.2 - q) + M α β (ν.φ p.1) by abel,
+          abs_of_nonneg hU]
+        calc ‖(p.2 - q) + M α β (ν.φ p.1)‖ ≤ ‖p.2 - q‖ + ‖M α β (ν.φ p.1)‖ := norm_add_le _ _
+          _ = ‖p.2 - q‖ + aux_mM α β * ‖ν.φ p.1‖ := by rw [aux_lw_norm_M]
+          _ ≤ 2 + (1 + aux_mM α β) * U := by nlinarith [norm_nonneg (ν.φ p.1)]
+      simp only [hc, e1, e2, mul_one]
+    simp only [hS, this]
+    rw [integral_sub_left_eq_self (fun y => θ 0 y) volume p.2, hρ]
+  -- the error term
+  set A := ν.φ ⁻¹' {u : ℝ² | U < ‖u‖} with hA
+  have hAm : MeasurableSet A :=
+    (isOpen_lt continuous_const continuous_norm).measurableSet.preimage ν.measurable_φ
+  have herr : ‖∫ p, (D p - ∫ q, Hc q p) ∂(ν.m.prod volume)‖ₑ ≤
+      ν.varOn {u | U < ‖u‖} * ∏ m, eLpNorm (F m) (aux_slotExp i m) volume := by
+    refine (enorm_integral_le_lintegral_enorm _).trans ?_
+    have hpt : ∀ p, ‖D p - ∫ q, Hc q p‖ₑ ≤ A.indicator (fun _ => (1 : ℝ≥0∞)) p.1 * ‖D p‖ₑ := by
+      intro p
+      rw [hSint, show D p - (S p : ℂ) * D p = ((1 - S p : ℝ) : ℂ) * D p by push_cast; ring,
+        enorm_mul]
+      by_cases hpA : p.1 ∈ A
+      · rw [Set.indicator_of_mem hpA]
+        gcongr
+        rw [aux_loc_enorm_ofReal _ (by linarith [(hS01 p).2]), ← ENNReal.ofReal_one]
+        exact ENNReal.ofReal_le_ofReal (by linarith [(hS01 p).1])
+      · rw [Set.indicator_of_notMem hpA]
+        have : ‖ν.φ p.1‖ ≤ U := by
+          simp only [hA, Set.mem_preimage, mem_ofPred_eq, not_lt] at hpA; exact hpA
+        simp [hS1 p this]
+    have hFm : ∀ m, AEStronglyMeasurable (F m) volume := fun m => (hF m).1
+    have hIm : Measurable (fun p : ν.Z × ℝ² => A.indicator (fun _ => (1 : ℝ≥0∞)) p.1) :=
+      (measurable_const.indicator hAm).comp measurable_fst
+    calc ∫⁻ p, ‖D p - ∫ q, Hc q p‖ₑ ∂(ν.m.prod volume)
+        ≤ ∫⁻ p, A.indicator (fun _ => (1 : ℝ≥0∞)) p.1 * ‖D p‖ₑ ∂(ν.m.prod volume) :=
+          lintegral_mono hpt
+      _ = ∫⁻ z, ∫⁻ x, A.indicator (fun _ => (1 : ℝ≥0∞)) z * ‖D (z, x)‖ₑ ∂volume ∂ν.m :=
+          lintegral_prod _ (hIm.aemeasurable.mul hDint.1.enorm)
+      _ ≤ ∫⁻ z, A.indicator (fun z => ‖ν.w z‖ₑ) z *
+            ∏ m, eLpNorm (F m) (aux_slotExp i m) volume ∂ν.m := by
+          refine lintegral_mono fun z => ?_
+          have hconst : A.indicator (fun _ => (1 : ℝ≥0∞)) z * ‖ν.w z‖ₑ =
+              A.indicator (fun z => ‖ν.w z‖ₑ) z := by
+            by_cases hz : z ∈ A <;> simp [hz]
+          calc ∫⁻ x, A.indicator (fun _ => (1 : ℝ≥0∞)) z * ‖D (z, x)‖ₑ
+              = ∫⁻ x, A.indicator (fun z => ‖ν.w z‖ₑ) z *
+                  (‖F 0 x‖ₑ * ‖F 1 (x + ν.φ z)‖ₑ * ‖F 2 (x + M α β (ν.φ z))‖ₑ) := by
+                refine lintegral_congr fun x => ?_
+                rw [← hconst]; simp only [hD, enorm_mul]; ring
+            _ = A.indicator (fun z => ‖ν.w z‖ₑ) z *
+                  ∫⁻ x, ‖F 0 x‖ₑ * ‖F 1 (x + ν.φ z)‖ₑ * ‖F 2 (x + M α β (ν.φ z))‖ₑ := by
+                refine lintegral_const_mul' _ _ ?_
+                by_cases hz : z ∈ A <;> simp [hz]
+            _ ≤ _ := by gcongr; exact aux_fb_inner i F hFm _ _
+      _ = ν.varOn {u | U < ‖u‖} * ∏ m, eLpNorm (F m) (aux_slotExp i m) volume := by
+          rw [lintegral_mul_const' _ _ (ENNReal.prod_ne_top fun m _ => (hF m).2.ne),
+            lintegral_indicator hAm]
+          rfl
+  -- assemble
+  have hswap : ∫ q, form α β ν (fun x => (θ 0 (x - q) : ℂ) * F 0 x)
+      (fun x => (θ 1 (x - q) : ℂ) * F 1 x) (fun x => (θ 2 (x - q) : ℂ) * F 2 x) =
+      ∫ p, ∫ q, Hc q p ∂volume ∂(ν.m.prod volume) := by
+    rw [integral_congr_ae (Eventually.of_forall hloc)]
+    exact integral_integral_swap hHint
+  have hform : form α β ν (F 0) (F 1) (F 2) =
+      ∫ p, (D p - ∫ q, Hc q p) ∂(ν.m.prod volume) +
+      ∫ q, form α β ν (fun x => (θ 0 (x - q) : ℂ) * F 0 x)
+        (fun x => (θ 1 (x - q) : ℂ) * F 1 x) (fun x => (θ 2 (x - q) : ℂ) * F 2 x) := by
+    have hI2 : Integrable (fun p => ∫ q, Hc q p ∂volume) (ν.m.prod volume) :=
+      hHint.integral_prod_right
+    rw [hswap, integral_sub hDint hI2, sub_add_cancel]
+    exact aux_loc_form_eq_prod α β ν i F hF
+  rw [hform]
+  exact (enorm_add_le _ _).trans (add_le_add herr (enorm_integral_le_lintegral_enorm _))
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): each index of `Fin 3` has two distinct
+complementary indices. -/
+lemma aux_loc_others : ∀ i : Fin 3, ∃ j k : Fin 3, i ≠ j ∧ i ≠ k ∧ j ≠ k := by decide
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): `ab ≤ a² + b²` in `ℝ≥0∞`. -/
+lemma aux_loc_mul_le (a b : ℝ≥0∞) : a * b ≤ a ^ 2 + b ^ 2 := by
+  rcases le_total a b with h | h
+  · calc a * b ≤ b * b := by gcongr
+      _ = b ^ 2 := (sq b).symm
+      _ ≤ a ^ 2 + b ^ 2 := le_add_self
+  · calc a * b ≤ a * a := by gcongr
+      _ = a ^ 2 := (sq a).symm
+      _ ≤ a ^ 2 + b ^ 2 := le_self_add
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the local `L²` masses
+`q ↦ ‖f 1_B(· - q)‖₂²` are measurable and integrate to `|B| ‖f‖₂²` (bounded overlap of the
+translated boxes). -/
+lemma aux_loc_sq_int (f : ℝ² → ℂ) (hf : Measurable f) (B : Set ℝ²) (hB : MeasurableSet B) :
+    Measurable (fun q : ℝ² => eLpNorm (B.indicator (fun x => f (x + q))) 2 volume ^ 2) ∧
+    ∫⁻ q, eLpNorm (B.indicator (fun x => f (x + q))) 2 volume ^ 2 =
+      volume B * eLpNorm f 2 volume ^ 2 := by
+  have e : ∀ q : ℝ², eLpNorm (B.indicator (fun x => f (x + q))) 2 volume ^ 2 =
+      ∫⁻ x, B.indicator (fun _ => (1 : ℝ≥0∞)) x * ‖f (x + q)‖ₑ ^ 2 := by
+    intro q
+    rw [aux_s2a_eLpNorm_two_sq]
+    refine lintegral_congr fun x => ?_
+    by_cases hx : x ∈ B <;> simp [hx]
+  have hj : Measurable (fun p : ℝ² × ℝ² =>
+      B.indicator (fun _ => (1 : ℝ≥0∞)) p.2 * ‖f (p.2 + p.1)‖ₑ ^ 2) :=
+    ((measurable_const.indicator hB).comp measurable_snd).mul
+      ((hf.comp (measurable_snd.add measurable_fst)).enorm.pow_const 2)
+  refine ⟨?_, ?_⟩
+  · simp_rw [e]; exact hj.lintegral_prod_right'
+  · simp_rw [e]
+    rw [lintegral_lintegral_swap hj.aemeasurable]
+    calc ∫⁻ x, ∫⁻ q, B.indicator (fun _ => (1 : ℝ≥0∞)) x * ‖f (x + q)‖ₑ ^ 2
+        = ∫⁻ x, B.indicator (fun _ => (1 : ℝ≥0∞)) x * eLpNorm f 2 volume ^ 2 := by
+          refine lintegral_congr fun x => ?_
+          rw [lintegral_const_mul' _ _ (by by_cases hx : x ∈ B <;> simp [hx]),
+            lintegral_add_left_eq_self (fun y => ‖f y‖ₑ ^ 2) x, aux_s2a_eLpNorm_two_sq]
+      _ = volume B * eLpNorm f 2 volume ^ 2 := by
+          rw [lintegral_mul_const _ (measurable_const.indicator hB), lintegral_indicator hB]
+          simp
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the quantitative form of the lemma for
+fixed `n` and truncation height `T`: tail error, localized forms controlled by
+(ann:bounded-local-hyp) and `lem:small-support`, and summation of the local norms. -/
+lemma aux_loc_bound (α β : ℝ) (hβ : β ≠ 0) (ω : ℝ → ℝ) (hω : aux_loc_SmallSupp α β ω)
+    (κ P : FCMeasure) (hPsupp : P.varOn {u | 1 < ‖u‖} = 0)
+    (θ : Fin 3 → ℝ² → ℝ) (hθc : ∀ m, Continuous (θ m)) (hθ0 : ∀ m x, 0 ≤ θ m x)
+    (hθ1 : ∀ m x, θ m x ≤ 1) (hρint : Integrable (θ 0)) (hρ : ∫ x, θ 0 x = 1)
+    (hρs : ∀ x, θ 0 x ≠ 0 → ‖x‖ < 2) (U : ℝ)
+    (hχ : ∀ m y, m ≠ 0 → ‖y‖ ≤ 2 + (1 + aux_mM α β) * |U| → θ m y = 1)
+    (R : ℝ) (hR : ∀ m x, θ m x ≠ 0 → ‖x‖ ≤ R)
+    (Bp K : ℝ≥0∞) (hBp1 : 1 ≤ Bp) (hPB : P.tv ≤ Bp) (hK : κ.tv ≤ K)
+    (ε : ℝ≥0∞) (hε : ∀ f : Fin 3 → ℝ² → ℂ, (∀ m, AEStronglyMeasurable (f m) volume) →
+      (∀ m, eLpNorm (f m) ⊤ volume ≤ 1) →
+      ‖form α β (FCMeasure.sigma.conv κ) (aux_locIn P θ f 0) (aux_locIn P θ f 1)
+        (aux_locIn P θ f 2)‖ₑ ≤ ε)
+    (i : Fin 3) (f : Fin 3 → ℝ² → ℂ) (hf : ∀ m, AEStronglyMeasurable (f m) volume)
+    (hfi : eLpNorm (f i) ⊤ volume ≤ 1) (hfj : ∀ m, m ≠ i → eLpNorm (f m) 2 volume ≤ 1)
+    (T : ℝ) (hT : 0 < T) :
+    ‖form α β (FCMeasure.sigma.conv κ) (P.convFun (f 0)) (P.convFun (f 1))
+        (P.convFun (f 2))‖ₑ ≤
+      (FCMeasure.sigma.conv κ).varOn {u | U < ‖u‖} * Bp ^ 3 +
+      (ε * ENNReal.ofReal (T ^ 2) + 2 * (Bp ^ 4 * K * ENNReal.ofReal (ω (1 / T ^ 2)))) *
+        (2 * volume (Metric.ball (0 : ℝ²) (R + 2))) := by
+  set ν := FCMeasure.sigma.conv κ
+  set C := ε * ENNReal.ofReal (T ^ 2) + 2 * (Bp ^ 4 * K * ENNReal.ofReal (ω (1 / T ^ 2)))
+  set B := Metric.ball (0 : ℝ²) (R + 2)
+  obtain ⟨j, k, hij, hik, hjk⟩ := aux_loc_others i
+  set f' : Fin 3 → ℝ² → ℂ := fun m => (hf m).mk (f m) with hf'def
+  have hf'm : ∀ m, Measurable (f' m) := fun m => (hf m).stronglyMeasurable_mk.measurable
+  have hff' : ∀ m, f m =ᵐ[volume] f' m := fun m => (hf m).ae_eq_mk
+  have hf'n : ∀ m, eLpNorm (f' m) (aux_slotExp i m) volume ≤ 1 := by
+    intro m
+    rw [← eLpNorm_congr_ae (hff' m)]
+    by_cases hm : m = i
+    · subst hm; simpa [aux_slotExp] using hfi
+    · simpa [aux_slotExp, hm] using hfj m hm
+  have hf'L : ∀ m, MemLp (f' m) (aux_slotExp i m) volume :=
+    fun m => ⟨(hf'm m).aestronglyMeasurable, (hf'n m).trans_lt ENNReal.one_lt_top⟩
+  have hsj : aux_slotExp i j = 2 := by simp [aux_slotExp, hij.symm]
+  have hsk : aux_slotExp i k = 2 := by simp [aux_slotExp, hik.symm]
+  have hsi : aux_slotExp i i = ⊤ := by simp [aux_slotExp]
+  -- pass to measurable versions
+  have h1 : form α β ν (P.convFun (f 0)) (P.convFun (f 1)) (P.convFun (f 2)) =
+      form α β ν (P.convFun (f' 0)) (P.convFun (f' 1)) (P.convFun (f' 2)) :=
+    lem_form_basic_ae α β hβ ν (fun m => P.convFun (f m)) (fun m => P.convFun (f' m))
+      (fun m => aux_loc_conv_ae P (hff' m))
+  rw [h1]
+  set F : Fin 3 → ℝ² → ℂ := fun m => P.convFun (f' m) with hFdef
+  have hF : ∀ m, MemLp (F m) (aux_slotExp i m) volume :=
+    fun m => (aux_loc_conv_memLp P (aux_loc_slotExp_cases i m) (hf'L m)).1
+  refine (aux_loc_partition α β ν i F hF θ hθc hθ0 hθ1 hρint hρ hρs U hχ).trans ?_
+  -- the tail term
+  have hprod : ∏ m, eLpNorm (F m) (aux_slotExp i m) volume ≤ Bp ^ 3 := by
+    calc ∏ m, eLpNorm (F m) (aux_slotExp i m) volume ≤ ∏ _m : Fin 3, Bp :=
+          Finset.prod_le_prod' fun m _ =>
+            (aux_loc_conv_memLp P (aux_loc_slotExp_cases i m) (hf'L m)).2.trans
+              ((mul_le_mul' hPB (hf'n m)).trans_eq (mul_one _))
+      _ = Bp ^ 3 := by simp
+  -- the localized terms
+  set g : ℝ² → Fin 3 → ℝ² → ℂ := fun q m => B.indicator (fun x => f' m (x + q)) with hgdef
+  have htrL : ∀ m (q : ℝ²) p, MemLp (f' m) p volume → MemLp (fun x => f' m (x + q)) p volume :=
+    fun m q p h => h.comp_measurePreserving (measurePreserving_add_right volume q)
+  have hloc : ∀ q : ℝ², ‖form α β ν (fun x => (θ 0 (x - q) : ℂ) * F 0 x)
+      (fun x => (θ 1 (x - q) : ℂ) * F 1 x) (fun x => (θ 2 (x - q) : ℂ) * F 2 x)‖ₑ ≤
+      C * (eLpNorm (g q j) 2 volume ^ 2 + eLpNorm (g q k) 2 volume ^ 2) := by
+    intro q
+    have hpt : ∀ m x, (θ m (x + q - q) : ℂ) * F m (x + q) = aux_locIn P θ (g q) m x := by
+      intro m x
+      simp only [add_sub_cancel_right, hFdef, aux_locIn, hgdef]
+      by_cases h0 : θ m x = 0
+      · simp [h0]
+      · rw [← aux_loc_conv_translate, aux_loc_conv_restrict P hPsupp _ R x (hR m x h0)]
+    have e : form α β ν (fun x => (θ 0 (x - q) : ℂ) * F 0 x)
+        (fun x => (θ 1 (x - q) : ℂ) * F 1 x) (fun x => (θ 2 (x - q) : ℂ) * F 2 x) =
+        form α β ν (aux_locIn P θ (g q) 0) (aux_locIn P θ (g q) 1) (aux_locIn P θ (g q) 2) := by
+      rw [← lem_form_basic_translate α β ν (fun m x => (θ m (x - q) : ℂ) * F m x) q]
+      congr 1 <;> funext x <;> exact hpt _ x
+    rw [e]
+    have hgm : ∀ m, Measurable (g q m) := fun m =>
+      ((hf'm m).comp (measurable_add_const q)).indicator measurableSet_ball
+    have hgL : ∀ m, MemLp (g q m) (aux_slotExp i m) volume := fun m =>
+      (htrL m q _ (hf'L m)).indicator measurableSet_ball
+    have hgi : eLpNorm (g q i) ⊤ volume ≤ 1 := by
+      have := eLpNorm_comp_measurePreserving (p := ⊤) (hf'L i).1
+        (measurePreserving_add_right volume q)
+      refine (eLpNorm_indicator_le _).trans (le_trans (le_of_eq this) ?_)
+      simpa [hsi] using hf'n i
+    refine (aux_loc_core α β hβ ω hω κ P θ hθc (fun m x => by
+      rw [Real.norm_of_nonneg (hθ0 m x)]; exact hθ1 m x) Bp K hBp1 hPB hK ε hε i j k hij hik hjk
+      (g q) hgm hgL hgi T hT).trans ?_
+    gcongr
+    exact aux_loc_mul_le _ _
+  have hsqj := aux_loc_sq_int (f' j) (hf'm j) B measurableSet_ball
+  have hsqk := aux_loc_sq_int (f' k) (hf'm k) B measurableSet_ball
+  have hnj : eLpNorm (f' j) 2 volume ^ 2 ≤ 1 :=
+    pow_le_one₀ bot_le (by simpa [hsj] using hf'n j)
+  have hnk : eLpNorm (f' k) 2 volume ^ 2 ≤ 1 :=
+    pow_le_one₀ bot_le (by simpa [hsk] using hf'n k)
+  refine add_le_add (mul_le_mul' le_rfl hprod) ?_
+  · calc ∫⁻ q, ‖form α β ν (fun x => (θ 0 (x - q) : ℂ) * F 0 x)
+          (fun x => (θ 1 (x - q) : ℂ) * F 1 x) (fun x => (θ 2 (x - q) : ℂ) * F 2 x)‖ₑ
+        ≤ ∫⁻ q, C * (eLpNorm (g q j) 2 volume ^ 2 + eLpNorm (g q k) 2 volume ^ 2) :=
+          lintegral_mono hloc
+      _ = C * (volume B * eLpNorm (f' j) 2 volume ^ 2 + volume B * eLpNorm (f' k) 2 volume ^ 2) := by
+          have mj : Measurable (fun q => eLpNorm (g q j) 2 volume ^ 2) := hsqj.1
+          have mk : Measurable (fun q => eLpNorm (g q k) 2 volume ^ 2) := hsqk.1
+          have ij : ∫⁻ q, eLpNorm (g q j) 2 volume ^ 2 =
+              volume B * eLpNorm (f' j) 2 volume ^ 2 := hsqj.2
+          have ik : ∫⁻ q, eLpNorm (g q k) 2 volume ^ 2 =
+              volume B * eLpNorm (f' k) 2 volume ^ 2 := hsqk.2
+          rw [lintegral_const_mul (f := fun q => eLpNorm (g q j) 2 volume ^ 2 +
+            eLpNorm (g q k) 2 volume ^ 2) _ (mj.add mk), lintegral_add_left mj, ij, ik]
+      _ ≤ C * (volume B * 1 + volume B * 1) := by gcongr
+      _ = C * (2 * volume B) := by ring
+
+/-- Auxiliary for `ann:localize` (`Auto.ann_localize`): the smooth cutoffs: a normalized bump
+`ρ` (integral one, supported in `B(0,2)`) and a bump `χ` equal to one on `B(0, r)`, with
+`0 ≤ ρ, χ ≤ 1` and supports in `B(0, r + 1)`. -/
+lemma aux_loc_cutoffs (r : ℝ) (hr : 2 ≤ r) : ∃ θ : Fin 3 → ℝ² → ℝ,
+    (∀ m, ContDiff ℝ (⊤ : ℕ∞) (θ m) ∧ HasCompactSupport (θ m)) ∧
+    (∀ m x, 0 ≤ θ m x) ∧ (∀ m x, θ m x ≤ 1) ∧ Integrable (θ 0) ∧ ∫ x, θ 0 x = 1 ∧
+    (∀ x, θ 0 x ≠ 0 → ‖x‖ < 2) ∧ (∀ m y, m ≠ 0 → ‖y‖ ≤ r → θ m y = 1) ∧
+    (∀ m x, θ m x ≠ 0 → ‖x‖ ≤ r + 1) := by
+  let b0 : ContDiffBump (0 : ℝ²) := ⟨1, 2, one_pos, one_lt_two⟩
+  let b1 : ContDiffBump (0 : ℝ²) := ⟨r, r + 1, by linarith, by linarith⟩
+  let ρ : ℝ² → ℝ := b0.normed volume
+  let χ : ℝ² → ℝ := b1
+  have hρ1 : ∀ x, ρ x ≤ 1 := by
+    intro x
+    refine (b0.normed_le_div_measure_closedBall_rIn volume x).trans ?_
+    have hv : (volume : Measure ℝ²).real (Metric.closedBall 0 b0.rIn) = π := by
+      simp [Measure.real, b0, EuclideanSpace.volume_closedBall_fin_two, pi_nonneg]
+    rw [hv, div_le_one pi_pos]
+    linarith [pi_gt_three]
+  have hρs : ∀ x, ρ x ≠ 0 → ‖x‖ < 2 := by
+    intro x hx
+    have : x ∈ Function.support ρ := hx
+    rw [b0.support_normed_eq] at this
+    simpa using this
+  have hχs : ∀ x, χ x ≠ 0 → ‖x‖ ≤ r + 1 := by
+    intro x hx
+    have : x ∈ Function.support χ := hx
+    rw [b1.support_eq] at this
+    exact (by simpa using this : ‖x‖ < r + 1).le
+  refine ⟨![ρ, χ, χ], ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · intro m; fin_cases m
+    · exact ⟨b0.contDiff_normed, b0.hasCompactSupport_normed⟩
+    · exact ⟨b1.contDiff, b1.hasCompactSupport⟩
+    · exact ⟨b1.contDiff, b1.hasCompactSupport⟩
+  · intro m x; fin_cases m
+    · exact b0.nonneg_normed x
+    · exact b1.nonneg
+    · exact b1.nonneg
+  · intro m x; fin_cases m
+    · exact hρ1 x
+    · exact b1.le_one
+    · exact b1.le_one
+  · exact (b0.contDiff_normed (n := 0)).continuous.integrable_of_hasCompactSupport
+      b0.hasCompactSupport_normed
+  · exact b0.integral_normed
+  · exact hρs
+  · intro m y hm hy; fin_cases m
+    · exact absurd rfl hm
+    · exact b1.one_of_mem_closedBall (by simpa using hy)
+    · exact b1.one_of_mem_closedBall (by simpa using hy)
+  · intro m x hx; fin_cases m
+    · exact (hρs x hx).le.trans (by linarith)
+    · exact hχs x hx
+    · exact hχs x hx
+
 /-- **Lemma `ann:localize`** (From bounded local inputs to endpoint operator norms).
 Let $\mu_n=\sigma*\kappa_n$, where $\sup_n\|\kappa_n\|_{\mathrm{TV}}<\infty$, and suppose that for
 some fixed $U<\infty$, $$|\mu_n|(\{u:|u|>U\})\longrightarrow0.$$
@@ -61,7 +1204,82 @@ theorem ann_localize (α β : ℝ) (hβ : β ≠ 0) (κ : ℕ → FCMeasure) (h�
         (_ : eLpNorm (f i) ⊤ volume ≤ 1) (_ : ∀ j, j ≠ i → eLpNorm (f j) 2 volume ≤ 1),
         ‖form α β (FCMeasure.sigma.conv (κ n))
           ((P n).convFun (f 0)) ((P n).convFun (f 1)) ((P n).convFun (f 2))‖ₑ) atTop (𝓝 0) := by
-  sorry
+  obtain ⟨ω, -, -, hωt, hω⟩ := lem_small_support α β hβ
+  set K := ⨆ n, (κ n).tv with hKdef
+  set Bp := max 1 (⨆ n, (P n).tv) with hBpdef
+  have hBp1 : 1 ≤ Bp := le_max_left _ _
+  have hBpt : Bp ≠ ⊤ := (max_lt ENNReal.one_lt_top hPtv).ne
+  have hKt : K ≠ ⊤ := hκ.ne
+  have hPB : ∀ n, (P n).tv ≤ Bp := fun n => (le_iSup (fun n => (P n).tv) n).trans (le_max_right _ _)
+  have hK : ∀ n, (κ n).tv ≤ K := fun n => le_iSup (fun n => (κ n).tv) n
+  set r := 2 + (1 + aux_mM α β) * |U| with hr
+  have hr2 : 2 ≤ r := by
+    have := aux_lw_mM_nonneg α β
+    have : 0 ≤ (1 + aux_mM α β) * |U| := by positivity
+    linarith
+  obtain ⟨θ, hθs, hθ0, hθ1, hρint, hρ, hρs, hχ, hR⟩ := aux_loc_cutoffs r hr2
+  have hθc : ∀ m, Continuous (θ m) := fun m => (hθs m).1.continuous
+  set ε : ℕ → ℝ≥0∞ := fun n => ⨆ (f : Fin 3 → ℝ² → ℂ)
+    (_ : ∀ j, AEStronglyMeasurable (f j) volume) (_ : ∀ j, eLpNorm (f j) ⊤ volume ≤ 1),
+    ‖form α β (FCMeasure.sigma.conv (κ n)) (fun x => (θ 0 x : ℂ) * (P n).convFun (f 0) x)
+      (fun x => (θ 1 x : ℂ) * (P n).convFun (f 1) x)
+      (fun x => (θ 2 x : ℂ) * (P n).convFun (f 2) x)‖ₑ with hεdef
+  have hεt : Tendsto ε atTop (𝓝 0) := hloc θ hθs
+  have hε : ∀ n (f : Fin 3 → ℝ² → ℂ), (∀ m, AEStronglyMeasurable (f m) volume) →
+      (∀ m, eLpNorm (f m) ⊤ volume ≤ 1) →
+      ‖form α β (FCMeasure.sigma.conv (κ n)) (aux_locIn (P n) θ f 0) (aux_locIn (P n) θ f 1)
+        (aux_locIn (P n) θ f 2)‖ₑ ≤ ε n :=
+    fun n f h1 h2 => le_iSup_of_le f (le_iSup_of_le h1 (le_iSup_of_le h2 le_rfl))
+  set VB := 2 * volume (Metric.ball (0 : ℝ²) (r + 1 + 2)) with hVB
+  have hVBt : VB ≠ ⊤ := ENNReal.mul_ne_top (by simp) measure_ball_lt_top.ne
+  have hbound : ∀ n (T : ℝ), 0 < T →
+      (⨆ (f : Fin 3 → ℝ² → ℂ) (_ : ∀ j, AEStronglyMeasurable (f j) volume)
+        (_ : eLpNorm (f i) ⊤ volume ≤ 1) (_ : ∀ j, j ≠ i → eLpNorm (f j) 2 volume ≤ 1),
+        ‖form α β (FCMeasure.sigma.conv (κ n))
+          ((P n).convFun (f 0)) ((P n).convFun (f 1)) ((P n).convFun (f 2))‖ₑ) ≤
+      (FCMeasure.sigma.conv (κ n)).varOn {u | U < ‖u‖} * Bp ^ 3 +
+      ε n * ENNReal.ofReal (T ^ 2) * VB +
+      ENNReal.ofReal (ω (1 / T ^ 2)) * (2 * Bp ^ 4 * K * VB) := by
+    intro n T hT
+    refine iSup_le fun f => iSup_le fun hf => iSup_le fun hfi => iSup_le fun hfj => ?_
+    refine (aux_loc_bound α β hβ ω hω (κ n) (P n) (hPsupp n) θ hθc hθ0 hθ1 hρint hρ hρs U
+      hχ (r + 1) hR Bp K hBp1 (hPB n) (hK n) (ε n) (hε n) i f hf hfi hfj T hT).trans
+      (le_of_eq ?_)
+    rw [← hVB]; ring
+  rw [ENNReal.tendsto_nhds_zero]
+  intro δ hδ
+  have hδ3 : 0 < δ / 3 := ENNReal.div_pos hδ.ne' (by simp)
+  -- choose the truncation height
+  have hωe : Tendsto (fun s => ENNReal.ofReal (ω s) * (2 * Bp ^ 4 * K * VB)) (𝓝[>] 0)
+      (𝓝 0) := by
+    have h0 : Tendsto (fun s => ENNReal.ofReal (ω s)) (𝓝[>] 0) (𝓝 0) := by
+      have := (ENNReal.continuous_ofReal.tendsto 0).comp hωt
+      rwa [ENNReal.ofReal_zero] at this
+    have hc : 2 * Bp ^ 4 * K * VB ≠ ⊤ :=
+      ENNReal.mul_ne_top (ENNReal.mul_ne_top (ENNReal.mul_ne_top (by simp)
+        (ENNReal.pow_ne_top hBpt)) hKt) hVBt
+    have := ENNReal.Tendsto.mul_const h0 (Or.inr hc)
+    rwa [zero_mul] at this
+  obtain ⟨s, hs, hspos⟩ := ((ENNReal.tendsto_nhds_zero.1 hωe (δ / 3) hδ3).and
+    self_mem_nhdsWithin).exists
+  have hspos' : 0 < s := hspos
+  set T := (Real.sqrt s)⁻¹ with hT
+  have hTpos : 0 < T := inv_pos.2 (Real.sqrt_pos.2 hspos')
+  have hTs : 1 / T ^ 2 = s := by rw [hT, inv_pow, one_div, inv_inv, Real.sq_sqrt hspos'.le]
+  have h1 : Tendsto (fun n => (FCMeasure.sigma.conv (κ n)).varOn {u | U < ‖u‖} * Bp ^ 3) atTop
+      (𝓝 0) := by
+    have := ENNReal.Tendsto.mul_const (b := Bp ^ 3) hU (Or.inr (ENNReal.pow_ne_top hBpt))
+    rwa [zero_mul] at this
+  have h2 : Tendsto (fun n => ε n * ENNReal.ofReal (T ^ 2) * VB) atTop (𝓝 0) := by
+    have := ENNReal.Tendsto.mul_const (b := VB) (ENNReal.Tendsto.mul_const
+      (b := ENNReal.ofReal (T ^ 2)) hεt (Or.inr ENNReal.ofReal_ne_top)) (Or.inr hVBt)
+    rwa [zero_mul, zero_mul] at this
+  filter_upwards [ENNReal.tendsto_nhds_zero.1 h1 (δ / 3) hδ3,
+    ENNReal.tendsto_nhds_zero.1 h2 (δ / 3) hδ3] with n hn1 hn2
+  refine (hbound n T hTpos).trans ?_
+  rw [hTs]
+  calc _ ≤ δ / 3 + δ / 3 + δ / 3 := by gcongr
+    _ = δ := ENNReal.add_thirds δ
 
 /-! ### Global cancellation on one annulus (`ann:global`) -/
 
@@ -82,6 +1300,809 @@ def aux_IsAnnularModulus (α β : ℝ) (ψ : ℝ² → ℂ) (C₀ : ℝ) (a : �
         (f 0) (f 1) (f 2)‖ₑ ≤
       ENNReal.ofReal (a R) * ∏ j : Fin 3, eLpNorm (f j) (aux_slotExp i j) volume
 
+open scoped SchwartzMap
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): the dilation `h_R` of an integrable function is
+integrable. -/
+lemma aux_glob_scaleR_int {h : ℝ² → ℂ} (hh : Integrable h) {R : ℝ} (hR : R ≠ 0) :
+    Integrable (scaleR R h) := by
+  unfold scaleR
+  exact (hh.comp_smul hR).const_mul _
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): `∫ R² F(R x) dx = ∫ F` (`R > 0`). -/
+lemma aux_glob_int_comp_smul (F : ℝ² → ℝ) {R : ℝ} (hR : 0 < R) :
+    ∫ x, (R ^ 2 : ℝ) * F (R • x) = ∫ x, F x := by
+  rw [integral_const_mul, Measure.integral_comp_smul, finrank_euclideanSpace_fin,
+    abs_of_pos (by positivity), smul_eq_mul, ← mul_assoc, mul_inv_cancel₀ (by positivity),
+    one_mul]
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): `‖h_R‖₁ = ‖h‖₁` for `R > 0`. -/
+lemma aux_glob_scaleR_norm (h : ℝ² → ℂ) {R : ℝ} (hR : 0 < R) :
+    ∫ x, ‖scaleR R h x‖ = ∫ x, ‖h x‖ := by
+  rw [← aux_glob_int_comp_smul (fun x => ‖h x‖) hR]
+  congr 1; funext x
+  simp [scaleR, norm_mul]
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): the presentation of `ofDensity k` for
+integrable `k`. -/
+lemma aux_glob_ofDensity_w {k : ℝ² → ℂ} (hk : Integrable k) :
+    (FCMeasure.ofDensity k).w = k := by
+  simp [FCMeasure.ofDensity, hk]
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): total variation of `ofDensity k`. -/
+lemma aux_glob_ofDensity_tv {k : ℝ² → ℂ} (hk : Integrable k) :
+    (FCMeasure.ofDensity k).tv = ENNReal.ofReal (∫ x, ‖k x‖) := by
+  unfold FCMeasure.tv
+  rw [aux_glob_ofDensity_w hk, ofReal_integral_norm_eq_lintegral_enorm hk]
+  rfl
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): the convolution with `ofDensity k`. -/
+lemma aux_glob_ofDensity_conv {k : ℝ² → ℂ} (hk : Integrable k) (f : ℝ² → ℂ) (x : ℝ²) :
+    (FCMeasure.ofDensity k).convFun f x = ∫ y, f (x - y) * k y := by
+  simp only [FCMeasure.convFun, FCMeasure.integral, aux_glob_ofDensity_w hk]
+  rfl
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): `‖σ * κ‖_TV ≤ ‖κ‖_TV` for the presentations. -/
+lemma aux_glob_tv_sigma_conv (κ : FCMeasure) : (FCMeasure.sigma.conv κ).tv ≤ κ.tv := by
+  unfold FCMeasure.tv
+  show ∫⁻ z : Ang × κ.Z, ‖(1 : ℂ) * κ.w z.2‖ₑ ∂(σ.prod κ.m) ≤ _
+  simp only [one_mul]
+  rw [lintegral_prod (fun z : Ang × κ.Z => ‖κ.w z.2‖ₑ)
+    (κ.integrable_w.1.enorm.comp_quasiMeasurePreserving Measure.quasiMeasurePreserving_snd)]
+  simp
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): for a smooth `ψ` supported in an annulus,
+`ψ` has compact support, `ψ̌` is integrable and `∫ ψ̌ = ψ(0) = 0`. -/
+lemma aux_glob_psi (ψ : ℝ² → ℂ) (hψ : ContDiff ℝ (⊤ : ℕ∞) ψ)
+    (hann : ∃ r₁ r₂ : ℝ, 0 < r₁ ∧ tsupport ψ ⊆ {b | r₁ ≤ ‖b‖ ∧ ‖b‖ ≤ r₂}) :
+    HasCompactSupport ψ ∧ Integrable (𝓕⁻ ψ) ∧ ∫ x, 𝓕⁻ ψ x = 0 := by
+  obtain ⟨r₁, r₂, hr₁, hsub⟩ := hann
+  have hc : HasCompactSupport ψ :=
+    (isCompact_closedBall (0 : ℝ²) r₂).of_isClosed_subset (isClosed_tsupport ψ)
+      (fun x hx => by simpa using (hsub hx).2)
+  set gS : 𝓢(ℝ², ℂ) := hc.toSchwartzMap hψ
+  have hgS : (gS : ℝ² → ℂ) = ψ := rfl
+  have hinv : 𝓕⁻ ψ = ((𝓕⁻ gS : 𝓢(ℝ², ℂ)) : ℝ² → ℂ) := by
+    rw [SchwartzMap.fourierInv_coe]; rfl
+  have hint : Integrable (𝓕⁻ ψ) := by rw [hinv]; exact (𝓕⁻ gS).integrable
+  have hff : 𝓕 (𝓕⁻ ψ) = ψ := by
+    rw [← hgS]
+    exact gS.continuous.fourier_fourierInv_eq gS.integrable (by
+      rw [← SchwartzMap.fourier_coe]; exact (𝓕 gS).integrable)
+  refine ⟨hc, hint, ?_⟩
+  have h0 : ψ 0 = 0 := image_eq_zero_of_notMem_tsupport (fun h => by
+    have := (hsub h).1; simp at this; linarith)
+  have := congrFun hff 0
+  rw [h0, Real.fourier_eq] at this
+  simpa using this
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): the mass of an integrable function outside
+`B(0,R)` tends to zero. -/
+lemma aux_glob_tail_tendsto {h : ℝ² → ℂ} (hh : Integrable h) :
+    Tendsto (fun R : ℝ => ∫ y, Set.indicator {y : ℝ² | R < ‖y‖} (fun y => ‖h y‖) y) atTop
+      (𝓝 0) := by
+  have hl := tendsto_integral_filter_of_dominated_convergence (μ := (volume : Measure ℝ²))
+    (l := (atTop : Filter ℝ))
+    (F := fun R : ℝ => Set.indicator {y : ℝ² | R < ‖y‖} (fun y => ‖h y‖))
+    (f := fun _ => (0 : ℝ)) (fun y => ‖h y‖) ?_ ?_ hh.norm ?_
+  · simpa using hl
+  · exact Eventually.of_forall fun R => hh.norm.1.indicator
+      (measurableSet_lt measurable_const measurable_norm)
+  · exact Eventually.of_forall fun R => Eventually.of_forall fun y => by
+      rw [Set.indicator]; split_ifs <;> simp
+  · refine Eventually.of_forall fun y => tendsto_const_nhds.congr' ?_
+    filter_upwards [eventually_ge_atTop ‖y‖] with R hR
+    rw [Set.indicator_of_notMem (by simpa using hR)]
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): the variation of `σ * h_R` outside `B(0,2)`
+tends to zero as `R → ∞`. -/
+lemma aux_glob_var_tendsto {h : ℝ² → ℂ} (hh : Integrable h) :
+    Tendsto (fun R : ℝ => (FCMeasure.sigma.conv (FCMeasure.ofDensity (scaleR R h))).varOn
+      {u | 2 < ‖u‖}) atTop (𝓝 0) := by
+  have hb : ∀ R : ℝ, 0 < R → (FCMeasure.sigma.conv (FCMeasure.ofDensity (scaleR R h))).varOn
+      {u | 2 < ‖u‖} ≤
+      ENNReal.ofReal (∫ y, Set.indicator {y : ℝ² | R < ‖y‖} (fun y => ‖h y‖) y) := by
+    intro R hR
+    set k := scaleR R h with hkdef
+    have hk : Integrable k := aux_glob_scaleR_int hh hR.ne'
+    have hm : MeasurableSet {y : ℝ² | 1 < ‖y‖} := measurableSet_lt measurable_const measurable_norm
+    unfold FCMeasure.varOn
+    show ∫⁻ z in (fun p : Ang × ℝ² => u p.1 + p.2) ⁻¹' {u | 2 < ‖u‖},
+        ‖(1 : ℂ) * (FCMeasure.ofDensity k).w z.2‖ₑ ∂(σ.prod volume) ≤ _
+    rw [aux_glob_ofDensity_w hk]
+    calc ∫⁻ z in (fun p : Ang × ℝ² => u p.1 + p.2) ⁻¹' {u | 2 < ‖u‖},
+          ‖(1 : ℂ) * k z.2‖ₑ ∂(σ.prod volume)
+        ≤ ∫⁻ z, {y : ℝ² | 1 < ‖y‖}.indicator (fun y => ‖k y‖ₑ) z.2 ∂(σ.prod volume) := by
+          have hA : MeasurableSet ((fun p : Ang × ℝ² => u p.1 + p.2) ⁻¹' {u | 2 < ‖u‖}) :=
+            (measurableSet_lt measurable_const measurable_norm).preimage
+              ((aux_lw_u_meas.comp measurable_fst).add measurable_snd)
+          rw [← lintegral_indicator hA]
+          refine lintegral_mono fun z => ?_
+          by_cases hz : 2 < ‖u z.1 + z.2‖
+          · have : 1 < ‖z.2‖ := by
+              have h1 := norm_add_le (u z.1) z.2
+              rw [aux_cd_norm_u] at h1; linarith
+            rw [Set.indicator_of_mem (show z ∈ _ from hz),
+              Set.indicator_of_mem (show z.2 ∈ {y : ℝ² | 1 < ‖y‖} from this), one_mul]
+          · rw [Set.indicator_of_notMem (show z ∉ _ from hz)]; exact zero_le
+      _ = ∫⁻ y, {y : ℝ² | 1 < ‖y‖}.indicator (fun y => ‖k y‖ₑ) y := by
+          rw [lintegral_prod (fun z : Ang × ℝ² => {y : ℝ² | 1 < ‖y‖}.indicator
+            (fun y => ‖k y‖ₑ) z.2) ((hk.1.enorm.indicator hm).comp_quasiMeasurePreserving
+              Measure.quasiMeasurePreserving_snd)]
+          simp
+      _ = ENNReal.ofReal (∫ y, Set.indicator {y : ℝ² | R < ‖y‖} (fun y => ‖h y‖) y) := by
+          have e1 : ∀ y : ℝ², {y : ℝ² | 1 < ‖y‖}.indicator (fun y => ‖k y‖ₑ) y =
+              ENNReal.ofReal ({y : ℝ² | 1 < ‖y‖}.indicator (fun y => ‖k y‖) y) := by
+            intro y; by_cases hy : y ∈ {y : ℝ² | 1 < ‖y‖} <;> simp [hy, ofReal_norm]
+          simp_rw [e1]
+          rw [← ofReal_integral_eq_lintegral_ofReal (hk.norm.indicator hm)
+            (Eventually.of_forall fun y => by
+              simp only [Pi.zero_apply]; exact Set.indicator_nonneg (fun _ _ => norm_nonneg _) _)]
+          congr 1
+          conv_rhs => rw [← aux_glob_int_comp_smul _ hR]
+          congr 1; funext y
+          have hn : ‖R • y‖ = R * ‖y‖ := by rw [norm_smul, Real.norm_of_nonneg hR.le]
+          by_cases hy : 1 < ‖y‖
+          · have : R < ‖R • y‖ := by rw [hn]; nlinarith
+            rw [Set.indicator_of_mem (show y ∈ {y : ℝ² | 1 < ‖y‖} from hy),
+              Set.indicator_of_mem (show R • y ∈ {y : ℝ² | R < ‖y‖} from this)]
+            simp [hkdef, scaleR, norm_mul]
+          · have : ¬ R < ‖R • y‖ := by rw [hn]; push Not at hy ⊢; nlinarith
+            rw [Set.indicator_of_notMem (show y ∉ {y : ℝ² | 1 < ‖y‖} from hy),
+              Set.indicator_of_notMem (show R • y ∉ {y : ℝ² | R < ‖y‖} from this), mul_zero]
+  have hlim : Tendsto (fun R : ℝ => ENNReal.ofReal
+      (∫ y, Set.indicator {y : ℝ² | R < ‖y‖} (fun y => ‖h y‖) y)) atTop (𝓝 0) := by
+    have := (ENNReal.continuous_ofReal.tendsto 0).comp (aux_glob_tail_tendsto hh)
+    rwa [ENNReal.ofReal_zero] at this
+  refine tendsto_of_tendsto_of_tendsto_of_le_of_le' tendsto_const_nhds hlim
+    (Eventually.of_forall fun _ => zero_le) ?_
+  filter_upwards [eventually_gt_atTop 0] with R hR
+  exact hb R hR
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): `L¹` modulus of translation of a Lipschitz
+function supported in `B̄(0,ρ)`: `∫ |g(u+v) - g(u)| du ≤ 2 L |B̄(0,ρ)| |v|`. -/
+lemma aux_glob_transl (g : ℝ² → ℂ) (Lg : ℝ≥0) (hg : LipschitzWith Lg g) (ρ : ℝ)
+    (hs : ∀ x, ρ < ‖x‖ → g x = 0) (v : ℝ²) :
+    ∫ u, ‖g (u + v) - g u‖ ≤
+      Lg * ‖v‖ * (2 * (volume : Measure ℝ²).real (Metric.closedBall 0 ρ)) := by
+  set B := Metric.closedBall (0 : ℝ²) ρ
+  have hgi : Integrable g := by
+    refine hg.continuous.integrable_of_hasCompactSupport ?_
+    refine HasCompactSupport.intro (isCompact_closedBall (0 : ℝ²) ρ) fun x hx => hs x ?_
+    simpa [B] using hx
+  have hpt : ∀ u, ‖g (u + v) - g u‖ ≤ Lg * ‖v‖ * (B.indicator 1 u + B.indicator 1 (u + v)) := by
+    intro u
+    have hl : ‖g (u + v) - g u‖ ≤ Lg * ‖v‖ := by
+      have := hg.dist_le_mul (u + v) u
+      simpa [dist_eq_norm] using this
+    by_cases hu : u ∈ B
+    · refine hl.trans (le_mul_of_one_le_right (by positivity) ?_)
+      rw [Set.indicator_of_mem hu]
+      have : 0 ≤ B.indicator (1 : ℝ² → ℝ) (u + v) := Set.indicator_nonneg (fun _ _ => zero_le_one) _
+      simp; linarith
+    · by_cases huv : u + v ∈ B
+      · refine hl.trans (le_mul_of_one_le_right (by positivity) ?_)
+        rw [Set.indicator_of_mem huv, Set.indicator_of_notMem hu]; simp
+      · have h1 : g u = 0 := hs u (by simpa [B] using hu)
+        have h2 : g (u + v) = 0 := hs _ (by simpa [B] using huv)
+        rw [h1, h2, sub_self, norm_zero]
+        exact mul_nonneg (by positivity) (add_nonneg (Set.indicator_nonneg (fun _ _ => zero_le_one) _)
+          (Set.indicator_nonneg (fun _ _ => zero_le_one) _))
+  have hBm : MeasurableSet B := measurableSet_closedBall
+  have hBi : Integrable (B.indicator (1 : ℝ² → ℝ)) :=
+    (integrableOn_const (C := (1 : ℝ)) measure_closedBall_lt_top.ne).integrable_indicator hBm
+  have hBi' : Integrable (fun u => B.indicator (1 : ℝ² → ℝ) (u + v)) :=
+    hBi.comp_add_right v
+  calc ∫ u, ‖g (u + v) - g u‖
+      ≤ ∫ u, Lg * ‖v‖ * (B.indicator 1 u + B.indicator 1 (u + v)) :=
+        integral_mono (((hgi.comp_add_right v).sub hgi).norm)
+          ((hBi.add hBi').const_mul _) hpt
+    _ = Lg * ‖v‖ * (2 * (volume : Measure ℝ²).real B) := by
+        rw [integral_const_mul, integral_add hBi hBi',
+          integral_add_right_eq_self (fun u => B.indicator (1 : ℝ² → ℝ) u) v,
+          integral_indicator_one hBm]
+        ring
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): for `|f| ≤ 1` a.e. and integrable `k`, the
+convolution `k * f` is bounded by `‖k‖₁` and its increments are controlled by the `L¹` modulus of
+translation of `k`. -/
+lemma aux_glob_conv_bdd_lip {k : ℝ² → ℂ} (hk : Integrable k) {f : ℝ² → ℂ}
+    (hf : AEStronglyMeasurable f volume) (hf1 : ∀ᵐ x ∂(volume : Measure ℝ²), ‖f x‖ ≤ 1)
+    (x y : ℝ²) :
+    ‖(FCMeasure.ofDensity k).convFun f x‖ ≤ ∫ z, ‖k z‖ ∧
+    ‖(FCMeasure.ofDensity k).convFun f x - (FCMeasure.ofDensity k).convFun f y‖ ≤
+      ∫ u, ‖k (u + (x - y)) - k u‖ := by
+  have hmp : ∀ a : ℝ², MeasurePreserving (fun w : ℝ² => a - w) volume volume := fun a =>
+    (volume : Measure ℝ²).measurePreserving_sub_left a
+  have hrw : ∀ a : ℝ², (FCMeasure.ofDensity k).convFun f a = ∫ w, f w * k (a - w) := by
+    intro a
+    rw [aux_glob_ofDensity_conv hk]
+    have := integral_sub_left_eq_self (fun w => f w * k (a - w)) volume a
+    simp only [sub_sub_cancel] at this
+    exact this
+  have hint : ∀ a : ℝ², Integrable (fun w => f w * k (a - w)) := fun a =>
+    ((hk.comp_sub_left a).bdd_mul hf hf1)
+  refine ⟨?_, ?_⟩
+  · rw [aux_glob_ofDensity_conv hk]
+    refine (norm_integral_le_of_norm_le hk.norm ?_).trans le_rfl
+    filter_upwards [(hmp x).quasiMeasurePreserving.ae hf1] with z hz
+    rw [norm_mul]
+    exact mul_le_of_le_one_left (norm_nonneg _) hz
+  · rw [hrw x, hrw y, ← integral_sub (hint x) (hint y)]
+    have hb : Integrable (fun w => ‖k (x - w) - k (y - w)‖) :=
+      ((hk.comp_sub_left x).sub (hk.comp_sub_left y)).norm
+    calc ‖∫ w, (f w * k (x - w) - f w * k (y - w))‖
+        ≤ ∫ w, ‖k (x - w) - k (y - w)‖ := by
+          refine norm_integral_le_of_norm_le hb ?_
+          filter_upwards [hf1] with w hw
+          rw [← mul_sub, norm_mul]
+          exact mul_le_of_le_one_left (norm_nonneg _) hw
+      _ = ∫ u, ‖k (u + (x - y)) - k u‖ := by
+          rw [← integral_sub_left_eq_self (fun u => ‖k (u + (x - y)) - k u‖) volume y]
+          congr 1; funext w
+          congr 3; abel
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): the `L¹` translation modulus of a dilation,
+`∫ |g_R(u+v) - g_R(u)| du ≤ 2 L |B̄(0,ρ)| R |v|`. -/
+lemma aux_glob_transl_scale (g : ℝ² → ℂ) (Lg : ℝ≥0) (hg : LipschitzWith Lg g) (ρ : ℝ)
+    (hs : ∀ x, ρ < ‖x‖ → g x = 0) {R : ℝ} (hR : 0 < R) (v : ℝ²) :
+    ∫ u, ‖scaleR R g (u + v) - scaleR R g u‖ ≤
+      R * (Lg * (2 * (volume : Measure ℝ²).real (Metric.closedBall 0 ρ))) * ‖v‖ := by
+  have e : ∀ u, ‖scaleR R g (u + v) - scaleR R g u‖ =
+      (R ^ 2 : ℝ) * (fun z => ‖g (z + R • v) - g z‖) (R • u) := by
+    intro u
+    simp only [scaleR, smul_add, ← mul_sub, norm_mul, Complex.norm_real, Real.norm_eq_abs,
+      abs_of_pos (pow_pos hR 2)]
+  simp_rw [e]
+  rw [aux_glob_int_comp_smul (fun z => ‖g (z + R • v) - g z‖) hR]
+  refine (aux_glob_transl g Lg hg ρ hs (R • v)).trans (le_of_eq ?_)
+  rw [norm_smul, Real.norm_of_nonneg hR.le]; ring
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): uniform bound, Lipschitz constant and support
+radius for three smooth compactly supported cutoffs. -/
+lemma aux_glob_cutoff_consts (χ : Fin 3 → ℝ² → ℝ)
+    (hχ : ∀ j, ContDiff ℝ (⊤ : ℕ∞) (χ j) ∧ HasCompactSupport (χ j)) :
+    ∃ C L r : ℝ, 0 ≤ C ∧ 0 ≤ L ∧ ∀ j, (∀ x, ‖χ j x‖ ≤ C) ∧
+      (∀ x y, ‖χ j x - χ j y‖ ≤ L * ‖x - y‖) ∧ (∀ x, χ j x ≠ 0 → ‖x‖ ≤ r) := by
+  have h : ∀ j, ∃ C L r : ℝ, (∀ x, ‖χ j x‖ ≤ C) ∧
+      (∀ x y, ‖χ j x - χ j y‖ ≤ L * ‖x - y‖) ∧ (∀ x, χ j x ≠ 0 → ‖x‖ ≤ r) := by
+    intro j
+    obtain ⟨C, hC⟩ := (hχ j).1.continuous.bounded_above_of_compact_support (hχ j).2
+    obtain ⟨K, hK⟩ := ContDiff.lipschitzWith_of_hasCompactSupport (hχ j).2 (hχ j).1
+      (by simp)
+    obtain ⟨r, hr⟩ := (hχ j).2.isCompact.isBounded.subset_closedBall 0
+    refine ⟨C, K, r, hC, fun x y => by simpa [dist_eq_norm] using hK.dist_le_mul x y,
+      fun x hx => by simpa using hr (subset_tsupport _ hx)⟩
+  choose C L r hj using h
+  refine ⟨|C 0| + |C 1| + |C 2|, |L 0| + |L 1| + |L 2|, |r 0| + |r 1| + |r 2|,
+    by positivity, by positivity, fun j => ⟨fun x => ?_, fun x y => ?_, fun x hx => ?_⟩⟩
+  · refine ((hj j).1 x).trans ?_
+    fin_cases j <;> simp <;> linarith [le_abs_self (C 0), le_abs_self (C 1), le_abs_self (C 2),
+      abs_nonneg (C 0), abs_nonneg (C 1), abs_nonneg (C 2)]
+  · refine ((hj j).2.1 x y).trans (mul_le_mul_of_nonneg_right ?_ (norm_nonneg _))
+    fin_cases j <;> simp <;> linarith [le_abs_self (L 0), le_abs_self (L 1), le_abs_self (L 2),
+      abs_nonneg (L 0), abs_nonneg (L 1), abs_nonneg (L 2)]
+  · refine ((hj j).2.2 x hx).trans ?_
+    fin_cases j <;> simp <;> linarith [le_abs_self (r 0), le_abs_self (r 1), le_abs_self (r 2),
+      abs_nonneg (r 0), abs_nonneg (r 1), abs_nonneg (r 2)]
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): hypothesis (ann:bounded-local-hyp) of
+`ann:localize` for `μ_n = σ * Ψ_{R_n}` and `P_n = g_{R_n} *`, derived from `ann:local`
+(`Auto.ann_local`): the localized inputs are bounded, supported in a fixed ball, and
+`O(R_n)`-Lipschitz. -/
+lemma aux_glob_hloc (α β : ℝ) (hβ : β ≠ 0) (Ψ : ℝ² → ℂ) (hΨ : Integrable Ψ)
+    (hΨ0 : ∫ x, Ψ x = 0) (g : ℝ² → ℂ) (Lg : ℝ≥0) (hg : LipschitzWith Lg g) (ρ : ℝ)
+    (hs : ∀ x, ρ < ‖x‖ → g x = 0) (hgi : Integrable g) (Rn : ℕ → ℝ)
+    (hRn : Tendsto Rn atTop atTop) (hR1 : ∀ n, 1 ≤ Rn n) (χ : Fin 3 → ℝ² → ℝ)
+    (hχ : ∀ j, ContDiff ℝ (⊤ : ℕ∞) (χ j) ∧ HasCompactSupport (χ j)) :
+    Tendsto (fun n => ⨆ (f : Fin 3 → ℝ² → ℂ) (_ : ∀ j, AEStronglyMeasurable (f j) volume)
+          (_ : ∀ j, eLpNorm (f j) ⊤ volume ≤ 1),
+          ‖form α β (FCMeasure.sigma.conv (FCMeasure.ofDensity (scaleR (Rn n) Ψ)))
+            (fun x => (χ 0 x : ℂ) * (FCMeasure.ofDensity (scaleR (Rn n) g)).convFun (f 0) x)
+            (fun x => (χ 1 x : ℂ) * (FCMeasure.ofDensity (scaleR (Rn n) g)).convFun (f 1) x)
+            (fun x => (χ 2 x : ℂ) * (FCMeasure.ofDensity (scaleR (Rn n) g)).convFun (f 2) x)‖ₑ)
+      atTop (𝓝 0) := by
+  obtain ⟨Cχ, Lχ, r, hCχ, hLχ, hχb⟩ := aux_glob_cutoff_consts χ hχ
+  set G1 := ∫ z, ‖g z‖ with hG1
+  have hG1n : 0 ≤ G1 := integral_nonneg fun _ => norm_nonneg _
+  set V := Lg * (2 * (volume : Measure ℝ²).real (Metric.closedBall 0 ρ)) with hV
+  have hVn : 0 ≤ V := by positivity
+  set c : ℝ := 1 + Cχ * G1 with hc
+  have hc1 : 1 ≤ c := by have : 0 ≤ Cχ * G1 := by positivity
+                         linarith
+  have hc0 : 0 < c := by linarith
+  set Q := Metric.closedBall (0 : ℝ²) r
+  set Clip := Cχ * V + G1 * Lχ
+  have hloc := ann_local α β hβ Ψ hΨ hΨ0 Q Metric.isBounded_closedBall Clip
+  have hS := hloc.comp hRn
+  have hlim : Tendsto (fun n => ENNReal.ofReal c ^ 3 * (⨆ (f : Fin 3 → ℝ² → ℂ)
+        (_ : ∀ j x, ‖f j x‖ ≤ Q.indicator (fun _ => (1 : ℝ)) x)
+        (_ : ∀ j x y, ‖f j x - f j y‖ ≤ Clip * Rn n * ‖x - y‖),
+        ‖form α β (FCMeasure.sigma.conv (FCMeasure.ofDensity (scaleR (Rn n) Ψ)))
+          (f 0) (f 1) (f 2)‖ₑ)) atTop (𝓝 0) := by
+    have := ENNReal.Tendsto.const_mul (a := ENNReal.ofReal c ^ 3) hS
+      (Or.inr (ENNReal.pow_ne_top ENNReal.ofReal_ne_top))
+    rwa [mul_zero] at this
+  refine tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds hlim
+    (fun _ => zero_le) fun n => ?_
+  refine iSup_le fun f => iSup_le fun hf => iSup_le fun hf1 => ?_
+  set R := Rn n
+  have hR : 0 < R := lt_of_lt_of_le one_pos (hR1 n)
+  set k := scaleR R g
+  have hk : Integrable k := aux_glob_scaleR_int hgi hR.ne'
+  have hkn : ∫ z, ‖k z‖ = G1 := aux_glob_scaleR_norm g hR
+  set h : Fin 3 → ℝ² → ℂ := fun j x =>
+    (c⁻¹ : ℂ) * ((χ j x : ℂ) * (FCMeasure.ofDensity k).convFun (f j) x) with hh
+  have hfae : ∀ j, ∀ᵐ x ∂(volume : Measure ℝ²), ‖f j x‖ ≤ 1 := by
+    intro j
+    filter_upwards [ae_le_eLpNormEssSup (μ := volume) (f := f j)] with x hx
+    have h1 : eLpNormEssSup (f j) volume ≤ 1 := by simpa [eLpNorm_exponent_top] using hf1 j
+    have := hx.trans h1
+    rw [← ofReal_norm] at this
+    exact (ENNReal.ofReal_le_one).1 this
+  have hbd : ∀ j x, ‖(χ j x : ℂ) * (FCMeasure.ofDensity k).convFun (f j) x‖ ≤ Cχ * G1 := by
+    intro j x
+    rw [norm_mul, Complex.norm_real]
+    exact mul_le_mul ((hχb j).1 x) (hkn ▸ (aux_glob_conv_bdd_lip hk (hf j) (hfae j) x x).1)
+      (norm_nonneg _) hCχ
+  have hH1 : ∀ j x, ‖h j x‖ ≤ Q.indicator (fun _ => (1 : ℝ)) x := by
+    intro j x
+    by_cases h0 : χ j x = 0
+    · simp only [hh, h0, Complex.ofReal_zero, zero_mul, mul_zero, norm_zero]
+      exact Set.indicator_nonneg (fun _ _ => zero_le_one) _
+    · rw [Set.indicator_of_mem (show x ∈ Q by simpa [Q] using (hχb j).2.2 x h0)]
+      simp only [hh, norm_mul, norm_inv, Complex.norm_real, Real.norm_of_nonneg hc0.le]
+      rw [inv_mul_le_one₀ hc0]
+      have := hbd j x
+      rw [norm_mul, Complex.norm_real] at this
+      linarith
+  have hH2 : ∀ j x y, ‖h j x - h j y‖ ≤ Clip * R * ‖x - y‖ := by
+    intro j x y
+    have hl := (aux_glob_conv_bdd_lip hk (hf j) (hfae j) x y).2
+    have ht := aux_glob_transl_scale g Lg hg ρ hs hR (x - y)
+    set Px := (FCMeasure.ofDensity k).convFun (f j) x
+    set Py := (FCMeasure.ofDensity k).convFun (f j) y
+    have hPy : ‖Py‖ ≤ G1 := hkn ▸ (aux_glob_conv_bdd_lip hk (hf j) (hfae j) y y).1
+    have e : h j x - h j y = (c⁻¹ : ℂ) * ((χ j x : ℂ) * (Px - Py) + ((χ j x - χ j y : ℝ) : ℂ) * Py) := by
+      simp only [hh]; push_cast; ring
+    rw [e, norm_mul, norm_inv, Complex.norm_real, Real.norm_of_nonneg hc0.le]
+    have hmain : ‖(χ j x : ℂ) * (Px - Py) + ((χ j x - χ j y : ℝ) : ℂ) * Py‖ ≤
+        Clip * R * ‖x - y‖ := by
+      refine (norm_add_le _ _).trans ?_
+      rw [norm_mul, norm_mul, Complex.norm_real, Complex.norm_real]
+      have h1 : ‖χ j x‖ * ‖Px - Py‖ ≤ Cχ * (R * V * ‖x - y‖) :=
+        mul_le_mul ((hχb j).1 x) (hl.trans ht) (norm_nonneg _) hCχ
+      have h2 : ‖χ j x - χ j y‖ * ‖Py‖ ≤ (Lχ * ‖x - y‖) * G1 :=
+        mul_le_mul ((hχb j).2.1 x y) hPy (norm_nonneg _) (by positivity)
+      have h3 : G1 * Lχ * ‖x - y‖ ≤ G1 * Lχ * ‖x - y‖ * R :=
+        le_mul_of_one_le_right (by positivity) (hR1 n)
+      simp only [Clip]
+      nlinarith [norm_nonneg (x - y)]
+    calc c⁻¹ * ‖(χ j x : ℂ) * (Px - Py) + ((χ j x - χ j y : ℝ) : ℂ) * Py‖
+        ≤ 1 * (Clip * R * ‖x - y‖) :=
+          mul_le_mul (inv_le_one_of_one_le₀ hc1) hmain (norm_nonneg _) zero_le_one
+      _ = Clip * R * ‖x - y‖ := one_mul _
+  have heq : ∀ j, (fun x => (χ j x : ℂ) * (FCMeasure.ofDensity k).convFun (f j) x) =
+      fun x => (c : ℂ) * h j x := by
+    intro j; funext x
+    have : (c : ℂ) ≠ 0 := by exact_mod_cast hc0.ne'
+    simp only [hh]; rw [mul_inv_cancel_left₀ this]
+  show ‖form α β (FCMeasure.sigma.conv (FCMeasure.ofDensity (scaleR R Ψ)))
+      (fun x => (χ 0 x : ℂ) * (FCMeasure.ofDensity k).convFun (f 0) x)
+      (fun x => (χ 1 x : ℂ) * (FCMeasure.ofDensity k).convFun (f 1) x)
+      (fun x => (χ 2 x : ℂ) * (FCMeasure.ofDensity k).convFun (f 2) x)‖ₑ ≤ _
+  rw [heq 0, heq 1, heq 2, aux_fb_form_smul α β _ (fun _ => (c : ℂ)) h, enorm_mul]
+  have hcc : ‖(c : ℂ) * c * c‖ₑ = ENNReal.ofReal c ^ 3 := by
+    rw [← ofReal_norm, norm_mul, norm_mul, Complex.norm_real, Real.norm_of_nonneg hc0.le,
+      ← ENNReal.ofReal_pow hc0.le]; ring_nf
+  show ‖(c : ℂ) * c * c‖ₑ * _ ≤ _
+  rw [hcc]
+  gcongr
+  exact le_iSup_of_le h (le_iSup_of_le hH1 (le_iSup_of_le hH2 le_rfl))
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): `(h_R)^(ξ) = ĥ(ξ/R)` for `R > 0`. -/
+lemma aux_glob_fourier_scaleR (h : ℝ² → ℂ) {R : ℝ} (hR : 0 < R) (ξ : ℝ²) :
+    𝓕 (scaleR R h) ξ = 𝓕 h (R⁻¹ • ξ) := by
+  rw [aux_s2a_fourier_e, aux_s2a_fourier_e]
+  have := Measure.integral_comp_smul (μ := (volume : Measure ℝ²))
+    (fun w => e (-⟪R⁻¹ • w, ξ⟫_ℝ) * h w) R
+  simp only [finrank_euclideanSpace_fin] at this
+  have e1 : ∀ v : ℝ², e (-⟪R⁻¹ • (R • v), ξ⟫_ℝ) = e (-⟪v, ξ⟫_ℝ) := by
+    intro v; rw [smul_smul, inv_mul_cancel₀ hR.ne', one_smul]
+  simp only [e1] at this
+  have e2 : ∀ w : ℝ², ⟪R⁻¹ • w, ξ⟫_ℝ = ⟪w, R⁻¹ • ξ⟫_ℝ := by
+    intro w; rw [real_inner_smul_left, real_inner_smul_right]
+  simp only [e2] at this
+  calc ∫ v, e (-⟪v, ξ⟫_ℝ) * scaleR R h v
+      = ((R ^ 2 : ℝ) : ℂ) * ∫ v, e (-⟪v, ξ⟫_ℝ) * h (R • v) := by
+        rw [← integral_const_mul]; congr 1; funext v; simp only [scaleR]; ring
+    _ = ∫ w, e (-⟪w, R⁻¹ • ξ⟫_ℝ) * h w := by
+        rw [this, abs_of_pos (by positivity), Complex.real_smul, ← mul_assoc]
+        push_cast
+        rw [mul_inv_cancel₀ (by exact_mod_cast (pow_pos hR 2).ne'), one_mul]
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): a Schwartz function `p` with `p̂ = 1` on
+`B(0, 2C₀)`. -/
+lemma aux_glob_p (C₀ : ℝ) (hC₀ : 0 < C₀) :
+    ∃ p : 𝓢(ℝ², ℂ), ∀ ξ : ℝ², ‖ξ‖ < 2 * C₀ → 𝓕 (⇑p) ξ = 1 := by
+  let b : ContDiffBump (0 : ℝ²) := ⟨2 * C₀, 3 * C₀, by linarith, by linarith⟩
+  have hb : ContDiff ℝ (⊤ : ℕ∞) (fun x => (b x : ℂ)) := Complex.ofRealCLM.contDiff.comp b.contDiff
+  have hbc : HasCompactSupport (fun x => (b x : ℂ)) :=
+    b.hasCompactSupport.comp_left Complex.ofReal_zero
+  set bS : 𝓢(ℝ², ℂ) := hbc.toSchwartzMap hb
+  refine ⟨𝓕⁻ bS, fun ξ hξ => ?_⟩
+  rw [← SchwartzMap.fourier_coe, FourierTransform.fourier_fourierInv_eq]
+  show (b ξ : ℂ) = 1
+  rw [b.one_of_mem_closedBall (by simpa using hξ.le)]; simp
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): the dilation `p_R` of a Schwartz function is a
+Schwartz function. -/
+lemma aux_glob_pR (p : 𝓢(ℝ², ℂ)) {R : ℝ} (hR : 0 < R) :
+    ∃ q : 𝓢(ℝ², ℂ), (⇑q : ℝ² → ℂ) = scaleR R ⇑p := by
+  let eR : ℝ² ≃L[ℝ] ℝ² := (LinearEquiv.smulOfNeZero ℝ ℝ² R hR.ne').toContinuousLinearEquiv
+  refine ⟨((R ^ 2 : ℝ) : ℂ) • SchwartzMap.compCLMOfContinuousLinearEquiv ℂ eR p, ?_⟩
+  funext x
+  simp [scaleR, eR]
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): reproduction of an input with Fourier support in
+`B̄(0, C₀R)` by `p_R` (Lemma `ext:reproduction` at scale `R`), in the presentation used for
+convolutions, for any scalar multiple of the input. -/
+lemma aux_glob_repro (p : 𝓢(ℝ², ℂ)) (C₀ : ℝ) (hp : ∀ ξ : ℝ², ‖ξ‖ < 2 * C₀ → 𝓕 (⇑p) ξ = 1)
+    (hC₀ : 0 < C₀) {R : ℝ} (hR : 0 < R) (f : ℝ² → ℂ)
+    (hf : (MemLp f ⊤ volume ∧ HasFourierSupportIn (Metric.closedBall 0 (C₀ * R)) f) ∨
+      ∃ hf : MemLp f 2 volume,
+        HasL2FourierSupportIn (Metric.closedBall 0 (C₀ * R)) (hf.toLp f)) (c : ℂ) :
+    (fun x => c * f x) =ᵐ[volume]
+      (FCMeasure.ofDensity (scaleR R ⇑p)).convFun (fun x => c * f x) := by
+  obtain ⟨q, hq⟩ := aux_glob_pR p hR
+  have hqi : Integrable (scaleR R ⇑p) := hq ▸ q.integrable
+  have hq1 : ∀ᶠ ξ in 𝓝ˢ (Metric.closedBall (0 : ℝ²) (C₀ * R)), 𝓕 (⇑q) ξ = 1 := by
+    have hball : Metric.ball (0 : ℝ²) (2 * C₀ * R) ∈ 𝓝ˢ (Metric.closedBall (0 : ℝ²) (C₀ * R)) :=
+      Metric.isOpen_ball.mem_nhdsSet.2 (Metric.closedBall_subset_ball (by nlinarith))
+    filter_upwards [hball] with ξ hξ
+    rw [hq, aux_glob_fourier_scaleR _ hR]
+    refine hp _ ?_
+    rw [norm_smul, Real.norm_of_nonneg (inv_nonneg.2 hR.le), inv_mul_lt_iff₀ hR]
+    simpa [mul_comm, mul_assoc] using hξ
+  have hK : IsCompact (Metric.closedBall (0 : ℝ²) (C₀ * R)) := isCompact_closedBall _ _
+  have hrep : (fun x => ∫ y, q y * f (x - y)) =ᵐ[volume] f := by
+    rcases hf with ⟨h1, h2⟩ | ⟨h1, h2⟩
+    · exact ext_reproduction_bounded hK q hq1 h1 h2
+    · exact ext_reproduction_L2 hK q hq1 h1 h2
+  filter_upwards [hrep] with x hx
+  rw [aux_glob_ofDensity_conv hqi, ← hx, ← integral_const_mul, hq]
+  congr 1; funext y; ring
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): telescoping identity
+`Λ(B+D) = Λ(B) + Λ(D₀,A₁,A₂) + Λ(B₀,D₁,A₂) + Λ(B₀,B₁,D₂)` for `A = B + D` a.e. -/
+lemma aux_glob_tele (α β : ℝ) (hβ : β ≠ 0) (ν : FCMeasure) (i : Fin 3)
+    (A B D : Fin 3 → ℝ² → ℂ)
+    (hB : ∀ j, MemLp (B j) (aux_slotExp i j) volume)
+    (hD : ∀ j, MemLp (D j) (aux_slotExp i j) volume) (h : ∀ j, A j =ᵐ[volume] B j + D j) :
+    form α β ν (A 0) (A 1) (A 2) = form α β ν (B 0) (B 1) (B 2) +
+      form α β ν (D 0) (A 1) (A 2) + form α β ν (B 0) (D 1) (A 2) +
+      form α β ν (B 0) (B 1) (D 2) := by
+  set A' : Fin 3 → ℝ² → ℂ := fun j => B j + D j
+  have hA' : ∀ j, MemLp (A' j) (aux_slotExp i j) volume := fun j => (hB j).add (hD j)
+  have e1 : form α β ν (A 0) (A 1) (A 2) = form α β ν (A' 0) (A' 1) (A' 2) :=
+    lem_form_basic_ae α β hβ ν A A' h
+  have e2 : form α β ν (D 0) (A 1) (A 2) = form α β ν (D 0) (A' 1) (A' 2) :=
+    lem_form_basic_ae α β hβ ν ![D 0, A 1, A 2] ![D 0, A' 1, A' 2] (by
+      intro j; fin_cases j
+      · exact EventuallyEq.rfl
+      · exact h 1
+      · exact h 2)
+  have e3 : form α β ν (B 0) (D 1) (A 2) = form α β ν (B 0) (D 1) (A' 2) :=
+    lem_form_basic_ae α β hβ ν ![B 0, D 1, A 2] ![B 0, D 1, A' 2] (by
+      intro j; fin_cases j
+      · exact EventuallyEq.rfl
+      · exact EventuallyEq.rfl
+      · exact h 2)
+  have m1 : ∀ j, MemLp ((![D 0, A' 1, A' 2] : Fin 3 → ℝ² → ℂ) j) (aux_slotExp i j) volume := by
+    intro j; fin_cases j
+    · exact hD 0
+    · exact hA' 1
+    · exact hA' 2
+  have m2 : ∀ j, MemLp ((![B 0, D 1, A' 2] : Fin 3 → ℝ² → ℂ) j) (aux_slotExp i j) volume := by
+    intro j; fin_cases j
+    · exact hB 0
+    · exact hD 1
+    · exact hA' 2
+  have m3 : ∀ j, MemLp ((![B 0, B 1, D 2] : Fin 3 → ℝ² → ℂ) j) (aux_slotExp i j) volume := by
+    intro j; fin_cases j
+    · exact hB 0
+    · exact hB 1
+    · exact hD 2
+  have p0 : form α β ν (A' 0) (A' 1) (A' 2) = _ := aux_loc_form_eq_prod α β ν i A' hA'
+  have pB : form α β ν (B 0) (B 1) (B 2) = _ := aux_loc_form_eq_prod α β ν i B hB
+  have p1 : form α β ν (D 0) (A' 1) (A' 2) = _ := aux_loc_form_eq_prod α β ν i _ m1
+  have p2 : form α β ν (B 0) (D 1) (A' 2) = _ := aux_loc_form_eq_prod α β ν i _ m2
+  have p3 : form α β ν (B 0) (B 1) (D 2) = _ := aux_loc_form_eq_prod α β ν i _ m3
+  have iB := lem_form_basic_integrable α β ν i B hB
+  have i1 := lem_form_basic_integrable α β ν i _ m1
+  have i2 := lem_form_basic_integrable α β ν i _ m2
+  have i3 := lem_form_basic_integrable α β ν i _ m3
+  simp only [Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
+    Matrix.head_cons, Matrix.tail_cons] at p1 p2 p3 i1 i2 i3
+  rw [e1, e2, e3, p0, pB, p1, p2, p3]
+  rw [← integral_add iB i1, ← integral_add (by exact iB.add i1) i2,
+    ← integral_add (by exact (iB.add i1).add i2) i3]
+  refine integral_congr_ae (Eventually.of_forall fun q => ?_)
+  simp only [A', Pi.add_apply]
+  ring
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): the admissible inputs at scale `R` for the
+bounded slot `i` (Fourier supports in `B̄(0, C₀R)`). -/
+def aux_glob_Adm (C₀ R : ℝ) (i : Fin 3) (f : Fin 3 → ℝ² → ℂ) : Prop :=
+  (MemLp (f i) ⊤ volume ∧ HasFourierSupportIn (Metric.closedBall 0 (C₀ * R)) (f i)) ∧
+  ∀ j, j ≠ i → ∃ hf : MemLp (f j) 2 volume,
+    HasL2FourierSupportIn (Metric.closedBall 0 (C₀ * R)) (hf.toLp (f j))
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): the restricted endpoint norm of
+`Λ_{K_R}` on admissible inputs (normalized by scalar factors `c_j`). -/
+def aux_glob_N (α β : ℝ) (ψ : ℝ² → ℂ) (C₀ R : ℝ) (i : Fin 3) : ℝ≥0∞ :=
+  ⨆ (f : Fin 3 → ℝ² → ℂ) (_ : aux_glob_Adm C₀ R i f) (c : Fin 3 → ℂ)
+    (_ : ∀ j, ‖c j‖ₑ * eLpNorm (f j) (aux_slotExp i j) volume ≤ 1),
+    ‖form α β (FCMeasure.sigma.conv (FCMeasure.ofDensity (scaleR R (𝓕⁻ ψ))))
+      (fun x => c 0 * f 0 x) (fun x => c 1 * f 1 x) (fun x => c 2 * f 2 x)‖ₑ
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): admissible inputs lie in the endpoint
+classes. -/
+lemma aux_glob_Adm_memLp {C₀ R : ℝ} {i : Fin 3} {f : Fin 3 → ℝ² → ℂ} (h : aux_glob_Adm C₀ R i f) :
+    ∀ j, MemLp (f j) (aux_slotExp i j) volume := by
+  intro j
+  by_cases hj : j = i
+  · subst hj; simpa [aux_slotExp] using h.1.1
+  · obtain ⟨hf, -⟩ := h.2 j hj
+    simpa [aux_slotExp, hj] using hf
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): `‖c f‖_p = |c| ‖f‖_p`. -/
+lemma aux_glob_eLpNorm_cmul (c : ℂ) (f : ℝ² → ℂ) (p : ℝ≥0∞) :
+    eLpNorm (fun x => c * f x) p volume = ‖c‖ₑ * eLpNorm f p volume := by
+  rw [show (fun x => c * f x) = c • f from rfl]
+  exact eLpNorm_const_smul _ _ _ _
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): total variation of `K_R`. -/
+lemma aux_glob_tvK {Ψ : ℝ² → ℂ} (hΨ : Integrable Ψ) {R : ℝ} (hR : 0 < R) :
+    (FCMeasure.ofDensity (scaleR R Ψ)).tv = ENNReal.ofReal (∫ x, ‖Ψ x‖) ∧
+    (FCMeasure.sigma.conv (FCMeasure.ofDensity (scaleR R Ψ))).tv ≤
+      ENNReal.ofReal (∫ x, ‖Ψ x‖) := by
+  have h : (FCMeasure.ofDensity (scaleR R Ψ)).tv = ENNReal.ofReal (∫ x, ‖Ψ x‖) := by
+    rw [aux_glob_ofDensity_tv (aux_glob_scaleR_int hΨ hR.ne'), aux_glob_scaleR_norm Ψ hR]
+  exact ⟨h, (aux_glob_tv_sigma_conv _).trans h.le⟩
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): the restricted endpoint norm is at most
+`‖ψ̌‖₁`. -/
+lemma aux_glob_N_le (α β : ℝ) (ψ : ℝ² → ℂ) (hΨ : Integrable (𝓕⁻ ψ)) (C₀ : ℝ) {R : ℝ}
+    (hR : 0 < R) (i : Fin 3) :
+    aux_glob_N α β ψ C₀ R i ≤ ENNReal.ofReal (∫ x, ‖𝓕⁻ ψ x‖) := by
+  refine iSup_le fun f => iSup_le fun hf => iSup_le fun c => iSup_le fun hc => ?_
+  have hL := aux_glob_Adm_memLp hf
+  refine (lem_form_basic_bound α β _ i (fun j x => c j * f j x)
+    (fun j => ((hL j).const_mul (c j)).1)).trans ?_
+  calc _ ≤ ENNReal.ofReal (∫ x, ‖𝓕⁻ ψ x‖) * 1 := by
+        gcongr
+        · exact (aux_glob_tvK hΨ hR).2
+        · refine Finset.prod_le_one' fun j _ => ?_
+          rw [aux_glob_eLpNorm_cmul]; exact hc j
+    _ = _ := mul_one _
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): replacing the reproducing kernel `p_R` by the
+compactly supported approximation `g_R` in all three slots costs at most a multiple of
+`‖p - g‖₁` (Young's inequality and `lem:form-basic`). -/
+lemma aux_glob_replace (α β : ℝ) (hβ : β ≠ 0) (ψ : ℝ² → ℂ) (hΨ : Integrable (𝓕⁻ ψ))
+    (p : 𝓢(ℝ², ℂ)) (C₀ : ℝ) (hC₀ : 0 < C₀) (hp : ∀ ξ : ℝ², ‖ξ‖ < 2 * C₀ → 𝓕 (⇑p) ξ = 1)
+    (g : ℝ² → ℂ) (hgi : Integrable g) (η : ℝ) (hη : ∫ x, ‖p x - g x‖ ≤ η)
+    (hg1 : ∫ x, ‖g x‖ ≤ (∫ x, ‖p x‖) + 1) {R : ℝ} (hR : 0 < R) (i : Fin 3)
+    (f : Fin 3 → ℝ² → ℂ) (hf : aux_glob_Adm C₀ R i f) (c : Fin 3 → ℂ)
+    (hc : ∀ j, ‖c j‖ₑ * eLpNorm (f j) (aux_slotExp i j) volume ≤ 1) :
+    ‖form α β (FCMeasure.sigma.conv (FCMeasure.ofDensity (scaleR R (𝓕⁻ ψ))))
+      (fun x => c 0 * f 0 x) (fun x => c 1 * f 1 x) (fun x => c 2 * f 2 x)‖ₑ ≤
+    (⨆ (F : Fin 3 → ℝ² → ℂ) (_ : ∀ j, AEStronglyMeasurable (F j) volume)
+        (_ : eLpNorm (F i) ⊤ volume ≤ 1) (_ : ∀ j, j ≠ i → eLpNorm (F j) 2 volume ≤ 1),
+        ‖form α β (FCMeasure.sigma.conv (FCMeasure.ofDensity (scaleR R (𝓕⁻ ψ))))
+          ((FCMeasure.ofDensity (scaleR R g)).convFun (F 0))
+          ((FCMeasure.ofDensity (scaleR R g)).convFun (F 1))
+          ((FCMeasure.ofDensity (scaleR R g)).convFun (F 2))‖ₑ) +
+      ENNReal.ofReal η * (3 * ENNReal.ofReal (∫ x, ‖𝓕⁻ ψ x‖) *
+        ENNReal.ofReal ((∫ x, ‖p x‖) + 1) ^ 2) := by
+  set K := FCMeasure.sigma.conv (FCMeasure.ofDensity (scaleR R (𝓕⁻ ψ)))
+  set T0 := ENNReal.ofReal (∫ x, ‖𝓕⁻ ψ x‖)
+  set Mb := ENNReal.ofReal ((∫ x, ‖p x‖) + 1)
+  have hPp : 0 ≤ ∫ x, ‖p x‖ := integral_nonneg fun _ => norm_nonneg _
+  have hMb1 : 1 ≤ Mb := by rw [← ENNReal.ofReal_one]; exact ENNReal.ofReal_le_ofReal (by linarith)
+  have hKtv : K.tv ≤ T0 := (aux_glob_tvK hΨ hR).2
+  set F : Fin 3 → ℝ² → ℂ := fun j x => c j * f j x with hFdef
+  have hL := aux_glob_Adm_memLp hf
+  have hFL : ∀ j, MemLp (F j) (aux_slotExp i j) volume := fun j => (hL j).const_mul (c j)
+  have hFn : ∀ j, eLpNorm (F j) (aux_slotExp i j) volume ≤ 1 := fun j => by
+    rw [hFdef, aux_glob_eLpNorm_cmul]; exact hc j
+  have hpi : Integrable (⇑p) := p.integrable
+  set kp := scaleR R ⇑p
+  set kg := scaleR R g
+  set kd := scaleR R (fun x => p x - g x)
+  have hkp : Integrable kp := aux_glob_scaleR_int hpi hR.ne'
+  have hkg : Integrable kg := aux_glob_scaleR_int hgi hR.ne'
+  have hkd : Integrable kd := aux_glob_scaleR_int (hpi.sub hgi) hR.ne'
+  have hsplit : ∀ y, kp y = kg y + kd y := fun y => by simp only [kp, kg, kd, scaleR]; ring
+  set B : Fin 3 → ℝ² → ℂ := fun j => (FCMeasure.ofDensity kg).convFun (F j) with hBdef
+  set D : Fin 3 → ℝ² → ℂ := fun j => (FCMeasure.ofDensity kd).convFun (F j) with hDdef
+  have hBL : ∀ j, MemLp (B j) (aux_slotExp i j) volume ∧ eLpNorm (B j) (aux_slotExp i j) volume ≤ Mb :=
+    fun j => by
+      have h := aux_loc_conv_memLp (FCMeasure.ofDensity kg) (aux_loc_slotExp_cases i j) (hFL j)
+      refine ⟨h.1, h.2.trans ?_⟩
+      rw [aux_glob_ofDensity_tv hkg, aux_glob_scaleR_norm g hR]
+      calc ENNReal.ofReal (∫ x, ‖g x‖) * eLpNorm (F j) (aux_slotExp i j) volume
+          ≤ ENNReal.ofReal ((∫ x, ‖p x‖) + 1) * 1 := by gcongr; exact hFn j
+        _ = Mb := mul_one _
+  have hDL : ∀ j, MemLp (D j) (aux_slotExp i j) volume ∧
+      eLpNorm (D j) (aux_slotExp i j) volume ≤ ENNReal.ofReal η := fun j => by
+    have h := aux_loc_conv_memLp (FCMeasure.ofDensity kd) (aux_loc_slotExp_cases i j) (hFL j)
+    refine ⟨h.1, h.2.trans ?_⟩
+    rw [aux_glob_ofDensity_tv hkd, aux_glob_scaleR_norm _ hR]
+    calc ENNReal.ofReal (∫ x, ‖p x - g x‖) * eLpNorm (F j) (aux_slotExp i j) volume
+        ≤ ENNReal.ofReal η * 1 := by gcongr; exact hFn j
+      _ = ENNReal.ofReal η := mul_one _
+  -- reproduction and splitting
+  have hAe : ∀ j, F j =ᵐ[volume] B j + D j := by
+    intro j
+    have hadm : (MemLp (f j) ⊤ volume ∧ HasFourierSupportIn (Metric.closedBall 0 (C₀ * R)) (f j)) ∨
+        ∃ hf : MemLp (f j) 2 volume,
+          HasL2FourierSupportIn (Metric.closedBall 0 (C₀ * R)) (hf.toLp (f j)) := by
+      by_cases hj : j = i
+      · subst hj; exact Or.inl hf.1
+      · exact Or.inr (hf.2 j hj)
+    have hrep := aux_glob_repro p C₀ hp hC₀ hR (f j) hadm (c j)
+    have h1 := aux_loc_conv_int (FCMeasure.ofDensity kg) (aux_loc_slotExp_cases i j) (hFL j)
+    have h2 := aux_loc_conv_int (FCMeasure.ofDensity kd) (aux_loc_slotExp_cases i j) (hFL j)
+    filter_upwards [hrep, h1, h2] with x hx hx1 hx2
+    rw [aux_glob_ofDensity_w hkg] at hx1
+    rw [aux_glob_ofDensity_w hkd] at hx2
+    change F j x = _ at hx
+    rw [hx]
+    show _ = (FCMeasure.ofDensity kg).convFun (F j) x + (FCMeasure.ofDensity kd).convFun (F j) x
+    have hx1' : Integrable (fun y => F j (x - y) * kg y) := hx1
+    have hx2' : Integrable (fun y => F j (x - y) * kd y) := hx2
+    rw [aux_glob_ofDensity_conv hkp, aux_glob_ofDensity_conv hkg, aux_glob_ofDensity_conv hkd,
+      ← integral_add hx1' hx2']
+    congr 1; funext y; rw [hsplit]; simp only [hFdef]; ring
+  have htele := aux_glob_tele α β hβ K i F B D (fun j => (hBL j).1) (fun j => (hDL j).1) hAe
+  have hmain : ‖form α β K (B 0) (B 1) (B 2)‖ₑ ≤
+      ⨆ (F : Fin 3 → ℝ² → ℂ) (_ : ∀ j, AEStronglyMeasurable (F j) volume)
+        (_ : eLpNorm (F i) ⊤ volume ≤ 1) (_ : ∀ j, j ≠ i → eLpNorm (F j) 2 volume ≤ 1),
+        ‖form α β K ((FCMeasure.ofDensity kg).convFun (F 0))
+          ((FCMeasure.ofDensity kg).convFun (F 1))
+          ((FCMeasure.ofDensity kg).convFun (F 2))‖ₑ :=
+    le_iSup_of_le F (le_iSup_of_le (fun j => (hFL j).1) (le_iSup_of_le
+      (by simpa [aux_slotExp] using hFn i) (le_iSup_of_le
+        (fun j hj => by simpa [aux_slotExp, hj] using hFn j) le_rfl)))
+  -- bounds for the three error terms
+  have hbd : ∀ (T : Fin 3 → ℝ² → ℂ) (b : Fin 3 → ℝ≥0∞),
+      (∀ j, AEStronglyMeasurable (T j) volume) →
+      (∀ j, eLpNorm (T j) (aux_slotExp i j) volume ≤ b j) →
+      ‖form α β K (T 0) (T 1) (T 2)‖ₑ ≤ T0 * (b 0 * b 1 * b 2) := by
+    intro T b hT hb
+    refine (lem_form_basic_bound α β K i T hT).trans ?_
+    rw [Fin.prod_univ_three]
+    gcongr
+    · exact hb 0
+    · exact hb 1
+    · exact hb 2
+  have hF' : ∀ j, eLpNorm (F j) (aux_slotExp i j) volume ≤ Mb := fun j => (hFn j).trans hMb1
+  have t1 := hbd ![D 0, F 1, F 2] ![ENNReal.ofReal η, Mb, Mb]
+    (by intro j; fin_cases j <;> simp [(hDL 0).1.1, (hFL 1).1, (hFL 2).1])
+    (by intro j; fin_cases j <;> simp [(hDL 0).2, hF' 1, hF' 2])
+  have t2 := hbd ![B 0, D 1, F 2] ![Mb, ENNReal.ofReal η, Mb]
+    (by intro j; fin_cases j <;> simp [(hBL 0).1.1, (hDL 1).1.1, (hFL 2).1])
+    (by intro j; fin_cases j <;> simp [(hBL 0).2, (hDL 1).2, hF' 2])
+  have t3 := hbd ![B 0, B 1, D 2] ![Mb, Mb, ENNReal.ofReal η]
+    (by intro j; fin_cases j <;> simp [(hBL 0).1.1, (hBL 1).1.1, (hDL 2).1.1])
+    (by intro j; fin_cases j <;> simp [(hBL 0).2, (hBL 1).2, (hDL 2).2])
+  simp only [Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two, Matrix.head_cons,
+    Matrix.tail_cons] at t1 t2 t3
+  show ‖form α β K (F 0) (F 1) (F 2)‖ₑ ≤ _
+  rw [htele]
+  calc _ ≤ ‖form α β K (B 0) (B 1) (B 2)‖ₑ + ‖form α β K (D 0) (F 1) (F 2)‖ₑ +
+        ‖form α β K (B 0) (D 1) (F 2)‖ₑ + ‖form α β K (B 0) (B 1) (D 2)‖ₑ :=
+        (enorm_add_le _ _).trans (add_le_add_left ((enorm_add_le _ _).trans
+          (add_le_add_left (enorm_add_le _ _) _)) _)
+    _ ≤ ‖form α β K (B 0) (B 1) (B 2)‖ₑ + T0 * (ENNReal.ofReal η * Mb * Mb) +
+        T0 * (Mb * ENNReal.ofReal η * Mb) + T0 * (Mb * Mb * ENNReal.ofReal η) := by gcongr
+    _ = ‖form α β K (B 0) (B 1) (B 2)‖ₑ + ENNReal.ofReal η * (3 * T0 * Mb ^ 2) := by ring
+    _ ≤ _ := add_le_add_left hmain _
+
+/-- Auxiliary for `ann:global` (`Auto.ann_global`): the restricted endpoint norms tend to zero,
+via `ann:localize` (`Auto.ann_localize`) along arbitrary sequences `R_n → ∞`, with hypothesis
+(ann:bounded-local-hyp) supplied by `ann:local` and the reproducing kernel replaced by a compactly
+supported approximation. -/
+lemma aux_glob_N_tendsto (α β : ℝ) (hβ : β ≠ 0) (ψ : ℝ² → ℂ) (hΨ : Integrable (𝓕⁻ ψ))
+    (hΨ0 : ∫ x, 𝓕⁻ ψ x = 0) (C₀ : ℝ) (hC₀ : 0 < C₀) (i : Fin 3) :
+    Tendsto (fun R => aux_glob_N α β ψ C₀ R i) atTop (𝓝 0) := by
+  set Ψ := 𝓕⁻ ψ with hΨdef
+  set T0 := ∫ x, ‖Ψ x‖
+  obtain ⟨p, hp⟩ := aux_glob_p C₀ hC₀
+  set Pp := ∫ x, ‖p x‖
+  have hpi : Integrable (⇑p) := p.integrable
+  rw [ENNReal.tendsto_nhds_zero]
+  intro δ hδ
+  have hδ2 : 0 < δ / 2 := ENNReal.div_pos hδ.ne' (by simp)
+  set Mc := 3 * ENNReal.ofReal T0 * ENNReal.ofReal (Pp + 1) ^ 2 with hMcdef
+  have hMc : Mc ≠ ⊤ := by
+    rw [hMcdef]
+    exact ENNReal.mul_ne_top (ENNReal.mul_ne_top (by simp) ENNReal.ofReal_ne_top)
+      (ENNReal.pow_ne_top ENNReal.ofReal_ne_top)
+  have hηt : Tendsto (fun η : ℝ => ENNReal.ofReal η * Mc) (𝓝[>] 0) (𝓝 0) := by
+    have h0 : Tendsto (fun η : ℝ => ENNReal.ofReal η) (𝓝[>] 0) (𝓝 0) := by
+      have := (ENNReal.continuous_ofReal.tendsto 0).mono_left (nhdsWithin_le_nhds (s := Ioi 0))
+      rwa [ENNReal.ofReal_zero] at this
+    have := ENNReal.Tendsto.mul_const (b := Mc) h0 (Or.inr hMc)
+    rwa [zero_mul] at this
+  obtain ⟨η, ⟨hηδ, hη1⟩, hηpos⟩ := (((ENNReal.tendsto_nhds_zero.1 hηt) (δ / 2) hδ2).and
+    (nhdsWithin_le_nhds (eventually_lt_nhds one_pos))).and self_mem_nhdsWithin |>.exists
+  have hηpos' : (0 : ℝ) < η := hηpos
+  -- the compactly supported approximation `g` of `p`
+  obtain ⟨g, hgc, hgs, hpg⟩ := ext_approximation_dense (Or.inl rfl)
+    (memLp_one_iff_integrable.2 hpi) hηpos'
+  have hgi : Integrable g := hgs.continuous.integrable_of_hasCompactSupport hgc
+  have hpgη : ∫ x, ‖p x - g x‖ ≤ η := by
+    have h1 : ENNReal.ofReal (∫ x, ‖p x - g x‖) = eLpNorm (⇑p - g) 1 volume := by
+      rw [eLpNorm_one_eq_lintegral_enorm, ← ofReal_integral_norm_eq_lintegral_enorm (hpi.sub hgi)]
+      rfl
+    have := h1 ▸ hpg
+    exact (ENNReal.ofReal_le_ofReal_iff hηpos'.le).1 this
+  have hg1 : ∫ x, ‖g x‖ ≤ Pp + 1 := by
+    calc ∫ x, ‖g x‖ ≤ ∫ x, (‖p x‖ + ‖p x - g x‖) :=
+          integral_mono hgi.norm (hpi.norm.add (hpi.sub hgi).norm) fun x => by
+            have := norm_sub_le (p x) (p x - g x)
+            simp only [sub_sub_cancel] at this; linarith
+      _ = Pp + ∫ x, ‖p x - g x‖ := integral_add hpi.norm (hpi.sub hgi).norm
+      _ ≤ Pp + 1 := by linarith
+  obtain ⟨Lg, hLg⟩ := ContDiff.lipschitzWith_of_hasCompactSupport hgc hgs (by simp)
+  obtain ⟨ρ, hρ⟩ := hgc.isCompact.isBounded.subset_closedBall 0
+  have hs : ∀ x, ρ < ‖x‖ → g x = 0 := fun x hx => image_eq_zero_of_notMem_tsupport fun h => by
+    have := hρ h; simp at this; linarith
+  -- contradiction along a sequence
+  by_contra hcon
+  rw [not_eventually] at hcon
+  have hseq : ∀ n : ℕ, ∃ R : ℝ, (n : ℝ) + |ρ| + 1 ≤ R ∧ δ < aux_glob_N α β ψ C₀ R i := by
+    intro n
+    obtain ⟨R, h1, h2⟩ := (frequently_atTop.1 hcon) ((n : ℝ) + |ρ| + 1)
+    exact ⟨R, h1, not_le.1 h2⟩
+  choose Rn hRn hNR using hseq
+  have hR1 : ∀ n, 1 ≤ Rn n := fun n => by
+    have := hRn n; have : (0 : ℝ) ≤ n := Nat.cast_nonneg n; linarith [abs_nonneg ρ]
+  have hRpos : ∀ n, 0 < Rn n := fun n => lt_of_lt_of_le one_pos (hR1 n)
+  have hRtop : Tendsto Rn atTop atTop := tendsto_atTop_mono (fun n => by
+    have := hRn n; linarith [abs_nonneg ρ]) tendsto_natCast_atTop_atTop
+  have hκ : ⨆ n, (FCMeasure.ofDensity (scaleR (Rn n) Ψ)).tv < ⊤ :=
+    lt_of_le_of_lt (iSup_le fun n => (aux_glob_tvK hΨ (hRpos n)).1.le) ENNReal.ofReal_lt_top
+  have hPtv : ⨆ n, (FCMeasure.ofDensity (scaleR (Rn n) g)).tv < ⊤ :=
+    lt_of_le_of_lt (iSup_le fun n => (aux_glob_tvK hgi (hRpos n)).1.le) ENNReal.ofReal_lt_top
+  have hPsupp : ∀ n, (FCMeasure.ofDensity (scaleR (Rn n) g)).varOn {u | 1 < ‖u‖} = 0 := by
+    intro n
+    unfold FCMeasure.varOn
+    rw [aux_glob_ofDensity_w (aux_glob_scaleR_int hgi (hRpos n).ne')]
+    refine le_antisymm (le_trans (setLIntegral_mono measurable_const fun z hz => ?_)
+      (le_of_eq lintegral_zero)) zero_le
+    change ℝ² at z
+    have hz' : 1 < ‖z‖ := hz
+    have : ρ < ‖Rn n • z‖ := by
+      rw [norm_smul, Real.norm_of_nonneg (hRpos n).le]
+      have := hRn n
+      nlinarith [le_abs_self ρ, abs_nonneg ρ, (Nat.cast_nonneg n : (0 : ℝ) ≤ n)]
+    simp [scaleR, hs _ this]
+  have hE := ann_localize α β hβ (fun n => FCMeasure.ofDensity (scaleR (Rn n) Ψ)) hκ 2
+    ((aux_glob_var_tendsto hΨ).comp hRtop) (fun n => FCMeasure.ofDensity (scaleR (Rn n) g))
+    hPsupp hPtv (fun χ hχ => aux_glob_hloc α β hβ Ψ hΨ hΨ0 g Lg hLg ρ hs hgi Rn hRtop hR1 χ hχ) i
+  obtain ⟨n, hn⟩ := ((ENNReal.tendsto_nhds_zero.1 hE) (δ / 2) hδ2).exists
+  have hrep : aux_glob_N α β ψ C₀ (Rn n) i ≤ δ / 2 + δ / 2 := by
+    refine iSup_le fun f => iSup_le fun hf => iSup_le fun c => iSup_le fun hc => ?_
+    refine (aux_glob_replace α β hβ ψ hΨ p C₀ hC₀ hp g hgi η hpgη hg1 (hRpos n) i f hf c
+      hc).trans ?_
+    exact add_le_add hn hηδ
+  rw [ENNReal.add_halves] at hrep
+  exact absurd (hNR n) (not_lt.2 hrep)
+
 /-- **Corollary `ann:global`** (Global cancellation on one annulus).
 Let $\psi\in C_c^\infty(\mathbb R^2)$ be supported in a compact annulus disjoint from the origin.
 Put $$K_R=\sigma*\bigl(R^2\check\psi(R\,\cdot)\bigr).$$
@@ -97,6 +2118,83 @@ theorem ann_global (α β : ℝ) (hβ : β ≠ 0) (ψ : ℝ² → ℂ) (hψ : Co
     (hann : ∃ r₁ r₂ : ℝ, 0 < r₁ ∧ tsupport ψ ⊆ {b | r₁ ≤ ‖b‖ ∧ ‖b‖ ≤ r₂})
     (C₀ : ℝ) (hC₀ : 0 < C₀) :
     ∃ a : ℝ → ℝ, aux_IsAnnularModulus α β ψ C₀ a := by
-  sorry
+  obtain ⟨-, hΨ, hΨ0⟩ := aux_glob_psi ψ hψ hann
+  set T0 := ∫ x, ‖𝓕⁻ ψ x‖ with hT0
+  have hT0n : 0 ≤ T0 := integral_nonneg fun _ => norm_nonneg _
+  set NN : ℝ → ℝ≥0∞ := fun R => ⨆ i : Fin 3, aux_glob_N α β ψ C₀ R i with hNN
+  have hNNle : ∀ R, 0 < R → NN R ≤ ENNReal.ofReal T0 := fun R hR =>
+    iSup_le fun i => aux_glob_N_le α β ψ hΨ C₀ hR i
+  have hNNt : Tendsto NN atTop (𝓝 0) := by
+    rw [ENNReal.tendsto_nhds_zero]
+    intro δ hδ
+    have h := fun i => (ENNReal.tendsto_nhds_zero.1
+      (aux_glob_N_tendsto α β hβ ψ hΨ hΨ0 C₀ hC₀ i)) δ hδ
+    filter_upwards [Filter.eventually_all.2 h] with R hR
+    exact iSup_le hR
+  refine ⟨fun R => if 0 < R then (NN R).toReal else 0, ?_, fun R => ?_, ?_⟩
+  · have : Tendsto (fun R => (NN R).toReal) atTop (𝓝 0) := by
+      have h := (ENNReal.tendsto_toReal ENNReal.zero_ne_top).comp hNNt
+      rw [ENNReal.toReal_zero] at h
+      exact h
+    refine this.congr' ?_
+    filter_upwards [eventually_gt_atTop 0] with R hR
+    simp [hR]
+  · by_cases hR : 0 < R
+    · simp only [hR, if_true]
+      exact ⟨ENNReal.toReal_nonneg, (ENNReal.toReal_mono ENNReal.ofReal_ne_top
+        (hNNle R hR)).trans (by rw [ENNReal.toReal_ofReal hT0n])⟩
+    · simp only [hR, if_false]; exact ⟨le_rfl, hT0n⟩
+  · intro R hR i f hfi hfs hfj
+    simp only [hR, if_true]
+    have hfin : NN R ≠ ⊤ := ne_top_of_le_ne_top ENNReal.ofReal_ne_top (hNNle R hR)
+    rw [ENNReal.ofReal_toReal hfin]
+    have hadm : aux_glob_Adm C₀ R i f := ⟨⟨hfi, hfs⟩, hfj⟩
+    have hL := aux_glob_Adm_memLp hadm
+    set n : Fin 3 → ℝ≥0∞ := fun j => eLpNorm (f j) (aux_slotExp i j) volume with hn
+    have hnt : ∀ j, n j ≠ ⊤ := fun j => (hL j).2.ne
+    by_cases hz : ∀ j, n j ≠ 0
+    · set c : Fin 3 → ℂ := fun j => (((n j).toReal)⁻¹ : ℂ)
+      have hpos : ∀ j, 0 < (n j).toReal := fun j => ENNReal.toReal_pos (hz j) (hnt j)
+      have hc : ∀ j, ‖c j‖ₑ * n j = 1 := by
+        intro j
+        rw [← ofReal_norm, norm_inv, Complex.norm_real, Real.norm_of_nonneg (hpos j).le]
+        calc ENNReal.ofReal ((n j).toReal)⁻¹ * n j
+            = ENNReal.ofReal ((n j).toReal)⁻¹ * ENNReal.ofReal (n j).toReal := by
+              congr 1; exact (ENNReal.ofReal_toReal (hnt j)).symm
+          _ = 1 := by
+              rw [← ENNReal.ofReal_mul (inv_nonneg.2 (hpos j).le), inv_mul_cancel₀ (hpos j).ne',
+                ENNReal.ofReal_one]
+      have hcf : ‖form α β (FCMeasure.sigma.conv (FCMeasure.ofDensity (scaleR R (𝓕⁻ ψ))))
+          (fun x => c 0 * f 0 x) (fun x => c 1 * f 1 x) (fun x => c 2 * f 2 x)‖ₑ ≤ NN R :=
+        le_iSup_of_le i (le_iSup_of_le f (le_iSup_of_le hadm (le_iSup_of_le c
+          (le_iSup_of_le (fun j => (hc j).le) le_rfl))))
+      have heq : ∀ j, f j = fun x => (((n j).toReal : ℝ) : ℂ) * (c j * f j x) := by
+        intro j; funext x
+        have : (((n j).toReal : ℝ) : ℂ) ≠ 0 := by exact_mod_cast (hpos j).ne'
+        rw [← mul_assoc, mul_inv_cancel₀ this, one_mul]
+      have hform : form α β (FCMeasure.sigma.conv (FCMeasure.ofDensity (scaleR R (𝓕⁻ ψ))))
+          (f 0) (f 1) (f 2) = (((n 0).toReal : ℝ) : ℂ) * (((n 1).toReal : ℝ) : ℂ) *
+            (((n 2).toReal : ℝ) : ℂ) *
+          form α β (FCMeasure.sigma.conv (FCMeasure.ofDensity (scaleR R (𝓕⁻ ψ))))
+            (fun x => c 0 * f 0 x) (fun x => c 1 * f 1 x) (fun x => c 2 * f 2 x) := by
+        conv_lhs => rw [heq 0, heq 1, heq 2]
+        exact aux_fb_form_smul α β _ (fun j => (((n j).toReal : ℝ) : ℂ))
+          (fun j x => c j * f j x)
+      rw [hform, enorm_mul, mul_comm]
+      gcongr
+      rw [Fin.prod_univ_three, enorm_mul, enorm_mul]
+      have e : ∀ j, ‖(((n j).toReal : ℝ) : ℂ)‖ₑ = n j := fun j => by
+        rw [aux_loc_enorm_ofReal _ (hpos j).le, ENNReal.ofReal_toReal (hnt j)]
+      rw [e 0, e 1, e 2]
+    · push Not at hz
+      obtain ⟨j, hj⟩ := hz
+      have h0 : f j =ᵐ[volume] 0 := (eLpNorm_eq_zero_iff (hL j).1
+        (by rcases aux_loc_slotExp_cases i j with h | h <;> simp [h])).1 hj
+      rw [lem_form_basic_ae α β hβ _ f (Function.update f j 0) (fun l => by
+        by_cases hl : l = j
+        · subst hl; simpa using h0
+        · simp [Function.update_of_ne hl])]
+      rw [aux_loc_form_zero α β _ _ j (fun x => by simp)]
+      simp
 
 end Auto

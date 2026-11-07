@@ -20,12 +20,256 @@ namespace Auto
 
 /-! ### Continuity under small changes of scale (`den:continuity`) -/
 
+/-- Dilation commutes with differences of presentations (auxiliary for `den_continuity`,
+`den_select_scales`). -/
+theorem aux_den_dil_sub (ν μ : FCMeasure) (s : ℝ) :
+    (ν.sub μ).dil s = (ν.dil s).sub (μ.dil s) := by
+  simp only [FCMeasure.dil, FCMeasure.sub, FCMeasure.add, FCMeasure.smul]
+  congr 1
+  funext z
+  cases z <;> rfl
+
+/-- Composition of dilations (auxiliary for `den_select_scales`). -/
+theorem aux_den_dil_dil (ν : FCMeasure) (a b : ℝ) : (ν.dil a).dil b = ν.dil (b * a) := by
+  simp only [FCMeasure.dil, smul_smul]
+
+/-- Admissible endpoint inputs are endpoint `MemLp` inputs (auxiliary for `den_continuity`). -/
+theorem aux_den_adm_memLp (i : Fin 3) (f : Fin 3 → ℝ² → ℂ)
+    (hf : ∀ j, AEStronglyMeasurable (f j) volume) (hi : eLpNorm (f i) ⊤ volume ≤ 1)
+    (hj : ∀ j, j ≠ i → eLpNorm (f j) 2 volume ≤ 1) (j : Fin 3) :
+    MemLp (f j) (aux_slotExp i j) volume := by
+  unfold aux_slotExp
+  split_ifs with h
+  · subst h; exact ⟨hf j, hi.trans_lt ENNReal.one_lt_top⟩
+  · exact ⟨hf j, (hj j h).trans_lt ENNReal.one_lt_top⟩
+
+/-- Admissible inputs give values of the form bounded by the endpoint norm (auxiliary for
+`den_continuity`, `den_main`). -/
+theorem aux_den_form_le_endNorm (α β : ℝ) (ν : FCMeasure) (i : Fin 3) (f : Fin 3 → ℝ² → ℂ)
+    (hf : ∀ j, AEStronglyMeasurable (f j) volume) (hi : eLpNorm (f i) ⊤ volume ≤ 1)
+    (hj : ∀ j, j ≠ i → eLpNorm (f j) 2 volume ≤ 1) :
+    ‖form α β ν (f 0) (f 1) (f 2)‖ₑ ≤ endNorm α β ν i :=
+  le_iSup_of_le f (le_iSup_of_le hf (le_iSup_of_le hi (le_iSup_of_le hj le_rfl)))
+
+/-- The inner integral $G_f(v)=\int f_0(x)f_1(x+v)f_2(x+Mv)\,dx$ of the counting form
+(auxiliary for `den_continuity`). -/
+def aux_den_G (α β : ℝ) (f : Fin 3 → ℝ² → ℂ) (v : ℝ²) : ℂ :=
+  ∫ x, f 0 x * f 1 (x + v) * f 2 (x + M α β v)
+
+/-- `G_f` is a.e. strongly measurable (auxiliary for `den_continuity`). -/
+theorem aux_den_G_aesm (α β : ℝ) (f : Fin 3 → ℝ² → ℂ)
+    (hf : ∀ j, AEStronglyMeasurable (f j) volume) :
+    AEStronglyMeasurable (aux_den_G α β f) volume := by
+  have a0 := (hf 0).comp_quasiMeasurePreserving
+    (Measure.quasiMeasurePreserving_snd (μ := (volume : Measure ℝ²)) (ν := (volume : Measure ℝ²)))
+  have a1 := (hf 1).comp_quasiMeasurePreserving
+    (aux_fb_qmp (volume : Measure ℝ²) id measurable_id)
+  have a2 := (hf 2).comp_quasiMeasurePreserving (aux_fb_qmp (volume : Measure ℝ²)
+    (fun z => M α β z) (M α β).continuous.measurable)
+  exact ((a0.mul a1).mul a2).integral_prod_right'
+
+/-- `|G_f| ≤ 1` for admissible inputs (auxiliary for `den_continuity`). -/
+theorem aux_den_G_le (α β : ℝ) (i : Fin 3) (f : Fin 3 → ℝ² → ℂ)
+    (hf : ∀ j, AEStronglyMeasurable (f j) volume) (hi : eLpNorm (f i) ⊤ volume ≤ 1)
+    (hj : ∀ j, j ≠ i → eLpNorm (f j) 2 volume ≤ 1) (v : ℝ²) :
+    ‖aux_den_G α β f v‖ ≤ 1 := by
+  have h1 := aux_fb_inner i f hf v (M α β v)
+  have h2 : ∏ j : Fin 3, eLpNorm (f j) (aux_slotExp i j) volume ≤ 1 := by
+    refine Finset.prod_le_one' fun j _ => ?_
+    unfold aux_slotExp; split_ifs with h
+    · subst h; exact hi
+    · exact hj j h
+  have h3 : ‖aux_den_G α β f v‖ₑ ≤ 1 := by
+    refine (enorm_integral_le_lintegral_enorm _).trans ?_
+    refine le_trans (le_of_eq ?_) (h1.trans h2)
+    congr 1; funext x; simp [enorm_mul]
+  rw [← ofReal_norm] at h3
+  exact (ENNReal.ofReal_le_one).1 h3
+
+/-- The shear $(\theta,y)\mapsto(\theta,y+a(\theta))$ preserves $\sigma\otimes dx$
+(auxiliary for `den_continuity`). -/
+theorem aux_den_shear (a : Ang → ℝ²) (ha : Measurable a) :
+    MeasurePreserving (fun q : Ang × ℝ² => (q.1, q.2 + a q.1))
+      (σ.prod (volume : Measure ℝ²)) (σ.prod volume) := by
+  refine (MeasurePreserving.id σ).skew_product (g := fun θ x => x + a θ)
+    (measurable_snd.add (ha.comp measurable_fst)) (Eventually.of_forall fun θ => ?_)
+  exact (measurePreserving_add_right volume _).map_eq
+
+/-- The density $\sigma*\rho$ of the convolution of $\sigma$ with an `L¹` density $\rho$:
+integrability, and the identity $\int\int G(u_\theta+y)\rho(y)\,dy\,d\sigma(\theta)
+=\int G(v)(\sigma*\rho)(v)\,dv$ for bounded measurable $G$ (auxiliary for `den_continuity`). -/
+theorem aux_den_conv_density (G : ℝ² → ℂ) (hG : AEStronglyMeasurable G volume) (C : ℝ)
+    (hGC : ∀ v, ‖G v‖ ≤ C) (ρ : ℝ² → ℂ) (hρ : Integrable ρ) :
+    Integrable (FCMeasure.sigma.convFun ρ) ∧
+    ∫ q, G (u q.1 + q.2) * ρ q.2 ∂(σ.prod (volume : Measure ℝ²)) =
+      ∫ v, G v * FCMeasure.sigma.convFun ρ v := by
+  have hu := aux_lw_u_meas
+  have hΦ := aux_den_shear u hu
+  have hΨ := aux_den_shear (fun θ => -u θ) hu.neg
+  -- `(θ, v) ↦ ρ (v - u θ)` is integrable
+  have hρ2 : Integrable (fun q : Ang × ℝ² => ρ q.2) (σ.prod volume) := by
+    simpa using (integrable_const (1 : ℂ)).mul_prod hρ
+  have hρs : Integrable (fun q : Ang × ℝ² => ρ (q.2 - u q.1)) (σ.prod volume) := by
+    have := (hΨ.integrable_comp hρ2.1).2 hρ2
+    simpa [Function.comp_def, sub_eq_add_neg] using this
+  have hGs : AEStronglyMeasurable (fun q : Ang × ℝ² => G q.2) (σ.prod volume) :=
+    hG.comp_quasiMeasurePreserving Measure.quasiMeasurePreserving_snd
+  have hH' : Integrable (fun q : Ang × ℝ² => G q.2 * ρ (q.2 - u q.1)) (σ.prod volume) :=
+    hρs.bdd_mul hGs (Eventually.of_forall fun q => hGC q.2)
+  have hconv : ∀ v, FCMeasure.sigma.convFun ρ v = ∫ θ, ρ (v - u θ) ∂σ := by
+    intro v
+    simp only [FCMeasure.convFun, FCMeasure.integral, FCMeasure.sigma, mul_one]
+    rfl
+  refine ⟨?_, ?_⟩
+  · have := hρs.integral_prod_right
+    exact this.congr (Eventually.of_forall fun v => (hconv v).symm)
+  · have key := integral_map (μ := σ.prod (volume : Measure ℝ²)) hΦ.measurable.aemeasurable
+      (f := fun q : Ang × ℝ² => G q.2 * ρ (q.2 - u q.1)) (by rw [hΦ.map_eq]; exact hH'.1)
+    rw [hΦ.map_eq] at key
+    have e1 : ∀ q : Ang × ℝ², G (u q.1 + q.2) * ρ q.2 =
+        G (q.2 + u q.1) * ρ (q.2 + u q.1 - u q.1) := fun q => by
+      rw [add_sub_cancel_right, add_comm]
+    simp_rw [e1]
+    rw [← key, integral_prod_symm _ hH']
+    congr 1; funext v
+    rw [hconv, ← integral_const_mul]
+
+/-- The form of a dilate of $\sigma*\rho$ through the density $k=\sigma*\rho$:
+$\Lambda_{(\sigma*\rho)_r}(f)=\int G_f(rv)k(v)\,dv$ (auxiliary for `den_continuity`). -/
+theorem aux_den_form_conv_dil (α β : ℝ) (ρ : ℝ² → ℂ) (hρ : Integrable ρ) (i : Fin 3)
+    (f : Fin 3 → ℝ² → ℂ) (hf : ∀ j, AEStronglyMeasurable (f j) volume)
+    (hi : eLpNorm (f i) ⊤ volume ≤ 1) (hj : ∀ j, j ≠ i → eLpNorm (f j) 2 volume ≤ 1)
+    (r : ℝ) (hr : r ≠ 0) :
+    form α β ((FCMeasure.sigma.conv (FCMeasure.ofDensity ρ)).dil r) (f 0) (f 1) (f 2) =
+      ∫ v, aux_den_G α β f (r • v) * FCMeasure.sigma.convFun ρ v := by
+  have hG : AEStronglyMeasurable (fun v => aux_den_G α β f (r • v)) volume :=
+    (aux_den_G_aesm α β f hf).comp_quasiMeasurePreserving
+      (Measure.quasiMeasurePreserving_smul volume hr)
+  rw [← (aux_den_conv_density _ hG 1 (fun v => aux_den_G_le α β i f hf hi hj _) ρ hρ).2]
+  have hw : (FCMeasure.ofDensity ρ).w = ρ := by simp [FCMeasure.ofDensity, hρ]
+  unfold form
+  simp only [FCMeasure.dil, FCMeasure.conv, FCMeasure.sigma, hw, one_mul]
+  rfl
+
+/-- The middle term in the proof of `den:continuity`:
+$|\Lambda_{(\sigma*\rho)_r}(f)-\Lambda_{\sigma*\rho}(f)|\le\|k_r-k\|_1$ with $k=\sigma*\rho$ and
+$k_r(u)=r^{-2}k(u/r)$ (auxiliary for `den_continuity`). -/
+theorem aux_den_mid (α β : ℝ) (ρ : ℝ² → ℂ) (hρ : Integrable ρ) (i : Fin 3)
+    (f : Fin 3 → ℝ² → ℂ) (hf : ∀ j, AEStronglyMeasurable (f j) volume)
+    (hi : eLpNorm (f i) ⊤ volume ≤ 1) (hj : ∀ j, j ≠ i → eLpNorm (f j) 2 volume ≤ 1)
+    (r : ℝ) (hr : 0 < r) :
+    ‖form α β ((FCMeasure.sigma.conv (FCMeasure.ofDensity ρ)).dil r) (f 0) (f 1) (f 2) -
+        form α β ((FCMeasure.sigma.conv (FCMeasure.ofDensity ρ)).dil 1) (f 0) (f 1) (f 2)‖ₑ ≤
+      eLpNorm (fun x => (((r ^ 2)⁻¹ : ℝ) : ℂ) * FCMeasure.sigma.convFun ρ (r⁻¹ • x) -
+        FCMeasure.sigma.convFun ρ x) 1 volume := by
+  set k := FCMeasure.sigma.convFun ρ with hk
+  set G := aux_den_G α β f with hGdef
+  have hki : Integrable k := (aux_den_conv_density _ (aux_den_G_aesm α β f hf) 1
+    (fun v => aux_den_G_le α β i f hf hi hj _) ρ hρ).1
+  have hGm := aux_den_G_aesm α β f hf
+  have hGb : ∀ v, ‖G v‖ ≤ 1 := fun v => aux_den_G_le α β i f hf hi hj v
+  rw [aux_den_form_conv_dil α β ρ hρ i f hf hi hj r hr.ne',
+    aux_den_form_conv_dil α β ρ hρ i f hf hi hj 1 one_ne_zero]
+  simp only [one_smul]
+  have hcv : ∫ v, G (r • v) * k v =
+      ∫ v, G v * ((((r ^ 2)⁻¹ : ℝ) : ℂ) * k (r⁻¹ • v)) := by
+    have h := Measure.integral_comp_smul (μ := (volume : Measure ℝ²))
+      (fun v => G v * k (r⁻¹ • v)) r
+    simp only [smul_smul, inv_mul_cancel₀ hr.ne', one_smul, finrank_euclideanSpace_fin] at h
+    rw [h]
+    simp_rw [← mul_assoc, mul_comm (G _) _, mul_assoc]
+    rw [integral_const_mul, abs_of_pos (by positivity), Complex.real_smul]
+    simp_rw [mul_comm (k _) (G _)]
+  have hDi : Integrable (fun x => (((r ^ 2)⁻¹ : ℝ) : ℂ) * k (r⁻¹ • x)) :=
+    (hki.comp_smul (inv_ne_zero hr.ne')).const_mul _
+  rw [hcv, ← integral_sub (hDi.bdd_mul hGm (Eventually.of_forall hGb))
+    (hki.bdd_mul hGm (Eventually.of_forall hGb)), eLpNorm_one_eq_lintegral_enorm]
+  refine (enorm_integral_le_lintegral_enorm _).trans (lintegral_mono fun v => ?_)
+  rw [← mul_sub, enorm_mul]
+  have : ‖G v‖ₑ ≤ 1 := by
+    rw [← ofReal_norm]; exact ENNReal.ofReal_le_one.2 (hGb v)
+  calc ‖G v‖ₑ * _ ≤ 1 * _ := by gcongr
+    _ = _ := one_mul _
+
+/-- `ν_1 = ν` (auxiliary for `den_continuity`). -/
+theorem aux_den_dil_one (ν : FCMeasure) : ν.dil 1 = ν := by
+  cases ν; simp [FCMeasure.dil]
+
+/-- The three-term estimate in the proof of `den:continuity`:
+$\|\Lambda_{\sigma_r-\sigma}\|_i\le2\|\Lambda_{k-\sigma}\|_i+\|k_r-k\|_1$ for $k=\sigma*\rho$
+(auxiliary for `den_continuity`). -/
+theorem aux_den_cont_bound (α β : ℝ) (ρ : ℝ² → ℂ) (hρ : Integrable ρ) (i : Fin 3)
+    (r : ℝ) (hr : 0 < r) :
+    endNorm α β ((FCMeasure.sigma.dil r).sub FCMeasure.sigma) i ≤
+      2 * endNorm α β ((FCMeasure.sigma.conv (FCMeasure.ofDensity ρ)).sub FCMeasure.sigma) i +
+      eLpNorm (fun x => (((r ^ 2)⁻¹ : ℝ) : ℂ) * FCMeasure.sigma.convFun ρ (r⁻¹ • x) -
+        FCMeasure.sigma.convFun ρ x) 1 volume := by
+  set K := FCMeasure.sigma.conv (FCMeasure.ofDensity ρ) with hK
+  set σ' := FCMeasure.sigma
+  refine iSup_le fun f => iSup_le fun hf => iSup_le fun hi => iSup_le fun hj => ?_
+  have hm := aux_den_adm_memLp i f hf hi hj
+  have hmid := aux_den_mid α β ρ hρ i f hf hi hj r hr
+  rw [aux_den_dil_one] at hmid
+  have hA := aux_den_form_le_endNorm α β ((K.sub σ').dil r) i f hf hi hj
+  rw [lem_form_basic_scaling α β _ i r hr, aux_den_dil_sub,
+    aux_appr_form_sub α β _ _ i f hm] at hA
+  have hB := aux_den_form_le_endNorm α β (K.sub σ') i f hf hi hj
+  rw [aux_appr_form_sub α β _ _ i f hm] at hB
+  rw [aux_appr_form_sub α β _ _ i f hm]
+  have e : form α β (σ'.dil r) (f 0) (f 1) (f 2) - form α β σ' (f 0) (f 1) (f 2) =
+      -(form α β (K.dil r) (f 0) (f 1) (f 2) - form α β (σ'.dil r) (f 0) (f 1) (f 2)) +
+      (form α β (K.dil r) (f 0) (f 1) (f 2) - form α β K (f 0) (f 1) (f 2)) +
+      (form α β K (f 0) (f 1) (f 2) - form α β σ' (f 0) (f 1) (f 2)) := by ring
+  rw [e]
+  refine (enorm_add_le _ _).trans ?_
+  refine (add_le_add (enorm_add_le _ _) hB).trans ?_
+  rw [enorm_neg, two_mul]
+  calc _ ≤ endNorm α β (K.sub σ') i + _ + endNorm α β (K.sub σ') i :=
+        add_le_add (add_le_add hA hmid) le_rfl
+    _ = _ := by ring
+
+/-- The unit square $[0,1]^2$ (auxiliary for `den_continuity`). -/
+def aux_den_unitSq : Set ℝ² := (WithLp.ofLp (p := 2) (V := Fin 2 → ℝ)) ⁻¹' (Set.Icc 0 1)
+
+/-- A probability density on the plane: the indicator of the unit square (auxiliary for
+`den_continuity`, `den_main`). -/
+theorem aux_den_rho0 :
+    (∀ x, 0 ≤ aux_den_unitSq.indicator (1 : ℝ² → ℝ) x) ∧
+      Integrable (aux_den_unitSq.indicator (1 : ℝ² → ℝ)) ∧
+      ∫ x, aux_den_unitSq.indicator (1 : ℝ² → ℝ) x = 1 := by
+  have hm : MeasurableSet aux_den_unitSq :=
+    (PiLp.volume_preserving_ofLp (ι := Fin 2)).measurable measurableSet_Icc
+  have hv : volume aux_den_unitSq = 1 := by
+    rw [aux_den_unitSq, (PiLp.volume_preserving_ofLp (ι := Fin 2)).measure_preimage
+      measurableSet_Icc.nullMeasurableSet, Real.volume_Icc_pi]
+    simp
+  refine ⟨fun x => Set.indicator_nonneg (fun _ _ => zero_le_one) x, ?_, ?_⟩
+  · exact (integrable_indicator_iff hm).2 (integrableOn_const (by rw [hv]; simp))
+  · rw [integral_indicator_one hm, measureReal_def, hv]; simp
+
 /-- **Lemma `den:continuity`**. For every endpoint placement $i$,
 $\lim_{r\to1}\|\Lambda_{\sigma_r-\sigma}\|_i=0$. -/
 theorem den_continuity (α β : ℝ) (hβ : β ≠ 0) (i : Fin 3) :
     Tendsto (fun r : ℝ => endNorm α β ((FCMeasure.sigma.dil r).sub FCMeasure.sigma) i)
       (𝓝 1) (𝓝 0) := by
-  sorry
+  obtain ⟨h0, hi, h1⟩ := aux_den_rho0
+  set ρ0 := aux_den_unitSq.indicator (1 : ℝ² → ℝ)
+  have hT := tail_smoothing α β hβ ρ0 h0 hi h1 i
+  simp only [aux_appr_endNorm_dil] at hT
+  refine ENNReal.tendsto_nhds_zero.2 fun ε hε => ?_
+  have hε3 : 0 < ε / 3 := ENNReal.div_pos hε.ne' (by simp)
+  obtain ⟨t, ht, ht0⟩ := ((ENNReal.tendsto_nhds_zero.1 hT (ε / 3) hε3).and
+    self_mem_nhdsWithin).exists
+  set ρc : ℝ² → ℂ := fun x => (((t ^ 2)⁻¹ * ρ0 (t⁻¹ • x) : ℝ) : ℂ) with hρc
+  have hρi : Integrable ρc := (aux_appr_rho_integral ρ0 hi t ht0).1.ofReal
+  have hki := (aux_den_conv_density (fun _ => 0) aestronglyMeasurable_const 0 (by simp) ρc hρi).1
+  have hD := ext_approximation_dilation hki
+  filter_upwards [ENNReal.tendsto_nhds_zero.1 hD (ε / 3) hε3, Ioi_mem_nhds one_pos] with r hr hr0
+  refine (aux_den_cont_bound α β ρc hρi i r hr0).trans ?_
+  calc _ ≤ 2 * (ε / 3) + ε / 3 := by gcongr
+    _ = ε := by
+      rw [← add_one_mul, show (2 : ℝ≥0∞) + 1 = 3 by norm_num]
+      exact ENNReal.mul_div_cancel (by simp) (by simp)
 
 /-! ### Density and triangle counts (`den:definitions`) -/
 
@@ -522,6 +766,25 @@ theorem den_weighted_lower (α β : ℝ) (δ : ℝ) (hδ0 : 0 < δ) (hδ1 : δ �
 
 /-! ### Selecting scales with close subsums (`den:select-scales`) -/
 
+/-- A sequence of scales in an unbounded set `S ⊆ (0,∞)` growing so fast that
+$(k+1)\lambda_k<\eta\lambda_{k+1}$ (auxiliary for `den_select_scales`). -/
+theorem aux_den_fast_seq (S : Set ℝ) (hSu : ¬ BddAbove S) (η : ℝ) (hη : 0 < η) :
+    ∃ μ : ℕ → ℝ, (∀ k, μ k ∈ S) ∧ StrictMono μ ∧ ∀ k : ℕ, ((k : ℝ) + 1) * μ k < η * μ (k + 1) := by
+  have hnx : ∀ b : ℝ, ∃ x ∈ S, b < x := fun b => by
+    by_contra h; push Not at h; exact hSu ⟨b, fun x hx => h x hx⟩
+  choose nx hnxS hnxlt using hnx
+  let μ : ℕ → ℝ := fun k => Nat.rec (nx 0) (fun k m => nx (max m (((k : ℝ) + 1) * m / η))) k
+  have hsucc : ∀ k, μ (k + 1) = nx (max (μ k) (((k : ℝ) + 1) * μ k / η)) := fun k => rfl
+  have hmem : ∀ k, μ k ∈ S := by
+    intro k; cases k with
+    | zero => exact hnxS 0
+    | succ k => rw [hsucc]; exact hnxS _
+  refine ⟨μ, hmem, strictMono_nat_of_lt_succ fun k => ?_, fun k => ?_⟩
+  · rw [hsucc]; exact (le_max_left _ _).trans_lt (hnxlt _)
+  · have h := (le_max_right _ _).trans_lt (hnxlt (max (μ k) (((k : ℝ) + 1) * μ k / η)))
+    rw [← hsucc, div_lt_iff₀ hη] at h
+    linarith
+
 /-- **Lemma `den:select-scales`**. Let $\mathcal S\subset(0,\infty)$ be unbounded. Given $n\ge1$
 and $\tau>0$, one can choose $\lambda_1<\cdots<\lambda_n$ in $\mathcal S$ such that, for every
 nonempty $J\subset[n]$ and $k=\max J$, $\|\Lambda_{\sigma_{s_J}-\sigma_{\lambda_k}}\|<\tau$. -/
@@ -531,9 +794,253 @@ theorem den_select_scales (α β : ℝ) (hβ : β ≠ 0) (S : Set ℝ) (hS : S �
       ∀ (J : Finset (Fin n)) (hJ : J.Nonempty),
         formNorm α β ((FCMeasure.sigma.dil (∑ j ∈ J, lam j)).sub
           (FCMeasure.sigma.dil (lam (J.max' hJ)))) < ENNReal.ofReal τ := by
-  sorry
+  clear hn
+  have hc := den_continuity α β hβ 2
+  have hev : ∀ᶠ r in 𝓝 (1 : ℝ),
+      endNorm α β ((FCMeasure.sigma.dil r).sub FCMeasure.sigma) 2 < ENNReal.ofReal τ :=
+    hc (gt_mem_nhds (by simpa using hτ))
+  obtain ⟨η, hη, hηP⟩ := Metric.eventually_nhds_iff.1 hev
+  obtain ⟨μ, hμS, hμm, hμg⟩ := aux_den_fast_seq S hSu η hη
+  have hμ0 : ∀ k, 0 < μ k := fun k => hS (hμS k)
+  refine ⟨fun k => μ k, fun a b hab => hμm hab, fun k => hμS k, fun J hJ => ?_⟩
+  set k := J.max' hJ with hk
+  set sJ := ∑ j ∈ J, μ j with hsJ
+  have hkJ : k ∈ J := J.max'_mem hJ
+  have hsplit : sJ = μ k + ∑ j ∈ J.erase k, μ j := by
+    rw [hsJ, ← Finset.add_sum_erase J _ hkJ]
+  have hrest0 : 0 ≤ ∑ j ∈ J.erase k, μ j :=
+    Finset.sum_nonneg fun j _ => (hμ0 j).le
+  have hrest : ∑ j ∈ J.erase k, μ j < η * μ k := by
+    rcases Nat.eq_zero_or_pos (k : ℕ) with h0 | hpos
+    · have he : J.erase k = ∅ := by
+        rw [Finset.eq_empty_iff_forall_notMem]
+        intro j hj
+        have hjk : j < k := lt_of_le_of_ne (J.le_max' j (Finset.mem_of_mem_erase hj))
+          (Finset.ne_of_mem_erase hj)
+        have : (j : ℕ) < k := hjk
+        omega
+      rw [he, Finset.sum_empty]; exact mul_pos hη (hμ0 _)
+    · obtain ⟨m, hm⟩ : ∃ m, (k : ℕ) = m + 1 := ⟨(k : ℕ) - 1, by omega⟩
+      have hle : ∀ j ∈ J.erase k, μ j ≤ μ m := by
+        intro j hj
+        have hjk : j < k := lt_of_le_of_ne (J.le_max' j (Finset.mem_of_mem_erase hj))
+          (Finset.ne_of_mem_erase hj)
+        have : (j : ℕ) ≤ m := by have : (j : ℕ) < k := hjk; omega
+        exact hμm.monotone this
+      have hcard : (J.erase k).card ≤ m + 1 := by
+        rw [← hm, ← Fin.card_Iio k]
+        refine Finset.card_le_card fun j hj => ?_
+        rw [Finset.mem_Iio]
+        exact lt_of_le_of_ne (J.le_max' j (Finset.mem_of_mem_erase hj)) (Finset.ne_of_mem_erase hj)
+      calc ∑ j ∈ J.erase k, μ j ≤ ∑ j ∈ J.erase k, μ m := Finset.sum_le_sum hle
+        _ = (J.erase k).card * μ m := by rw [Finset.sum_const, nsmul_eq_mul]
+        _ ≤ ((m : ℝ) + 1) * μ m := by
+            gcongr
+            · exact (hμ0 m).le
+            · exact_mod_cast hcard
+        _ < η * μ (m + 1) := hμg m
+        _ = η * μ k := by rw [hm]
+  set r := sJ / μ k with hr
+  have hμk := hμ0 k
+  have hrsJ : μ k * r = sJ := by rw [hr]; field_simp
+  have hdist : dist r 1 < η := by
+    rw [Real.dist_eq, abs_lt]
+    constructor
+    · rw [hr, lt_sub_iff_add_lt, lt_div_iff₀ hμk]; nlinarith
+    · rw [hr, sub_lt_iff_lt_add, div_lt_iff₀ hμk]; nlinarith
+  have heq : (FCMeasure.sigma.dil sJ).sub (FCMeasure.sigma.dil (μ k)) =
+      ((FCMeasure.sigma.dil r).sub FCMeasure.sigma).dil (μ k) := by
+    rw [aux_den_dil_sub, aux_den_dil_dil, hrsJ]
+  change endNorm α β ((FCMeasure.sigma.dil sJ).sub (FCMeasure.sigma.dil (μ k))) 2 < _
+  rw [heq, lem_form_basic_scaling α β _ 2 _ hμk]
+  exact hηP hdist
 
 /-! ### All sufficiently large planar triangles (`den:main`) -/
+
+/-- The triangle count of an indicator is the counting form of the dilated circle measure:
+$D_s(\mathbf 1_A)=\Lambda_{\sigma_s}(\mathbf 1_A,\mathbf 1_A,\mathbf 1_A)$
+(auxiliary for `den_main`). -/
+theorem aux_den_tc_form (α β : ℝ) (A : Set ℝ²) (s : ℝ) :
+    ((triangleCount α β s (A.indicator 1) : ℝ) : ℂ) =
+      form α β (FCMeasure.sigma.dil s) (A.indicator fun _ => (1 : ℂ))
+        (A.indicator fun _ => (1 : ℂ)) (A.indicator fun _ => (1 : ℂ)) := by
+  have hpt : ∀ a : ℝ², ((A.indicator (1 : ℝ² → ℝ) a : ℝ) : ℂ) =
+      A.indicator (fun _ => (1 : ℂ)) a := by
+    intro a; by_cases h : a ∈ A <;> simp [h]
+  unfold triangleCount form
+  rw [← integral_complex_ofReal]
+  refine integral_congr_ae (Eventually.of_forall fun θ => ?_)
+  simp only [FCMeasure.dil, FCMeasure.sigma, mul_one, map_smul]
+  rw [← integral_complex_ofReal]
+  refine integral_congr_ae (Eventually.of_forall fun x => ?_)
+  simp only [Complex.ofReal_mul, hpt]
+
+/-- For an indicator of a set of finite measure,
+$|\Lambda_\nu(\mathbf 1_A,\mathbf 1_A,\mathbf 1_A)|\le\|\Lambda_\nu\||A|$
+(homogeneity of the endpoint norm; auxiliary for `den_main`). -/
+theorem aux_den_form_ind_le (α β : ℝ) (ν : FCMeasure) (A : Set ℝ²) (hA : MeasurableSet A)
+    (hAf : volume A ≠ ∞) :
+    ‖form α β ν (A.indicator fun _ => (1 : ℂ)) (A.indicator fun _ => (1 : ℂ))
+        (A.indicator fun _ => (1 : ℂ))‖ₑ ≤ formNorm α β ν * volume A := by
+  set g : ℝ² → ℂ := A.indicator fun _ => (1 : ℂ) with hg
+  have hgm : AEStronglyMeasurable g volume :=
+    (aestronglyMeasurable_const.indicator hA)
+  have h2 : eLpNorm g 2 volume = volume A ^ (1 / (2 : ℝ)) := by
+    rw [hg, eLpNorm_indicator_const hA (by norm_num) (by norm_num)]; simp
+  have hinf : eLpNorm g ⊤ volume ≤ 1 := by
+    refine (eLpNorm_indicator_const_le (μ := volume) (s := A) (c := (1 : ℂ)) ⊤).trans ?_
+    simp
+  by_cases h0 : volume A = 0
+  · have hb := lem_form_basic_bound α β ν 2 (fun _ => g) (fun _ => hgm)
+    have : eLpNorm g (aux_slotExp 2 0) volume = 0 := by
+      simp [aux_slotExp, h2, h0]
+    rw [Fin.prod_univ_three, this, zero_mul, zero_mul, mul_zero] at hb
+    exact hb.trans (by simp)
+  · set a : ℝ := (volume A).toReal with ha
+    have hapos : 0 < a := ENNReal.toReal_pos h0 hAf
+    set c : ℂ := (((Real.sqrt a)⁻¹ : ℝ) : ℂ) with hc
+    set cj : Fin 3 → ℂ := ![c, c, 1] with hcj
+    have hsm := aux_fb_form_smul α β ν cj (fun _ => g)
+    simp only [hcj, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
+      Matrix.head_cons, Matrix.tail_cons, one_mul, mul_one] at hsm
+    have hcn : ‖c‖ₑ = ENNReal.ofReal (Real.sqrt a)⁻¹ := by
+      rw [hc, ← ofReal_norm, Complex.norm_real, Real.norm_eq_abs, abs_of_pos (by positivity)]
+    have hcg : eLpNorm (fun x => c * g x) 2 volume = 1 := by
+      rw [show (fun x => c * g x) = c • g from rfl, eLpNorm_const_smul, h2, hcn]
+      rw [← ENNReal.ofReal_toReal hAf, ← ha, ENNReal.ofReal_rpow_of_nonneg hapos.le (by norm_num),
+        ← ENNReal.ofReal_mul (by positivity), ← Real.sqrt_eq_rpow, inv_mul_cancel₀ (by positivity),
+        ENNReal.ofReal_one]
+    have hle := aux_den_form_le_endNorm α β ν 2 ![fun x => c * g x, fun x => c * g x, g]
+      (fun j => by fin_cases j <;> simp <;> first | exact hgm | exact hgm.const_mul c)
+      (by simpa using hinf)
+      (fun j hj => by fin_cases j <;> simp_all)
+    simp only [Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
+      Matrix.head_cons, Matrix.tail_cons] at hle
+    rw [hsm, enorm_mul] at hle
+    have hcc : ‖c * c‖ₑ * volume A = 1 := by
+      rw [enorm_mul, hcn, ← ENNReal.ofReal_mul (by positivity), ← ENNReal.ofReal_toReal hAf, ← ha,
+        ← ENNReal.ofReal_mul (by positivity), ← mul_inv, Real.mul_self_sqrt hapos.le,
+        inv_mul_cancel₀ hapos.ne', ENNReal.ofReal_one]
+    calc ‖form α β ν g g g‖ₑ = ‖c * c‖ₑ * volume A * ‖form α β ν g g g‖ₑ := by
+          rw [hcc, one_mul]
+      _ = ‖c * c‖ₑ * ‖form α β ν g g g‖ₑ * volume A := by ring
+      _ ≤ formNorm α β ν * volume A := by gcongr; exact hle
+
+/-- A scale that is not missed by $E$ gives a translate of a rotation of $s\{0,e_1,Me_1\}$
+inside $E$ (auxiliary for `den_main`). -/
+theorem aux_den_copy_of_not_missed (α β : ℝ) (E : Set ℝ²) (s : ℝ) (hs : ¬ IsMissed α β E s) :
+    ∃ (x : ℝ²) (t : ℝ), ∀ p ∈ ({0, e1, M α β e1} : Set ℝ²), x + rot t (s • p) ∈ E := by
+  unfold IsMissed at hs
+  push Not at hs
+  obtain ⟨x, θ, h1, h2, h3⟩ := hs
+  obtain ⟨t, rfl⟩ := QuotientAddGroup.mk_surjective θ
+  have hu : u (t : Ang) = rot t e1 := by
+    rw [aux_rot_e1]; rfl
+  have hcomm : ∀ v, rot t (M α β v) = M α β (rot t v) := by
+    intro v
+    have h := (aux_simil_comp (Real.cos t) (Real.sin t) α β).trans
+      ((congrArg₂ simil (by ring) (by ring)).trans
+        (aux_simil_comp α β (Real.cos t) (Real.sin t)).symm)
+    exact congrArg (fun T : ℝ² →L[ℝ] ℝ² => T v) h
+  refine ⟨x, t, ?_⟩
+  intro p hp
+  rcases hp with rfl | rfl | rfl
+  · simpa using h1
+  · rw [map_smul, ← hu]; exact h2
+  · rw [map_smul, hcomm, ← hu]; exact h3
+
+/-- The core of the proof of `den:main`: the set of missed scales is bounded
+(auxiliary for `den_main`). -/
+theorem aux_den_missed_bdd (α β : ℝ) (hβ : β ≠ 0) (E : Set ℝ²) (hE : NullMeasurableSet E volume)
+    (hd : 0 < upperBanachDensity E) :
+    BddAbove {s : ℝ | 0 < s ∧ IsMissed α β E s} := by
+  by_contra hSu
+  set Sm := {s : ℝ | 0 < s ∧ IsMissed α β E s} with hSm
+  -- the density parameter
+  obtain ⟨r, hr0, hrpos, hrlt⟩ := ENNReal.lt_iff_exists_real_btwn.1 hd
+  set δ := min r 1 with hδ
+  have hδ0 : 0 < δ := lt_min (ENNReal.ofReal_pos.1 hrpos) one_pos
+  have hδ1 : δ ≤ 1 := min_le_right _ _
+  have hδd : ENNReal.ofReal δ < upperBanachDensity E :=
+    lt_of_le_of_lt (ENNReal.ofReal_le_ofReal (min_le_left _ _)) hrlt
+  obtain ⟨H, hH⟩ := cj_dhj3 (δ := δ / 4) (by positivity) (by linarith)
+  set n := max H 1 with hn
+  have hnH := hH n (le_max_left _ _)
+  set τ := δ / (4 * 4 ^ n) with hτ
+  have hτ0 : 0 < τ := by positivity
+  obtain ⟨lam, -, hlamS, hclose⟩ := den_select_scales α β hβ Sm (fun s hs => hs.1) hSu n
+    (le_max_right _ _) τ hτ0
+  have hlam0 : ∀ j, 0 < lam j := fun j => (hlamS j).1
+  set S0 := max 1 ‖M α β‖ * ∑ j, lam j with hS0def
+  have hS0 : 0 ≤ S0 := mul_nonneg (le_max_of_le_left zero_le_one)
+    (Finset.sum_nonneg fun j _ => (hlam0 j).le)
+  -- a dense square
+  obtain ⟨z, L, hLL, hL, hdens⟩ := den_dense_squares_exists E δ hδ0 hδd (5 * S0)
+  set Q := squareAt z L with hQ
+  have hQm : MeasurableSet Q := aux_measurableSet_squareAt z L
+  have hQv : volume Q = ENNReal.ofReal (L ^ 2) := aux_volume_squareAt z L hL.le
+  obtain ⟨A, hAm, hAsub, hAv⟩ := den_dense_squares_borel E hE Q hQm
+  have hAQ : A ⊆ Q := hAsub.trans inter_subset_right
+  have hAE : A ⊆ E := hAsub.trans inter_subset_left
+  have hAδ : ENNReal.ofReal δ * volume Q ≤ volume A := hAv ▸ hdens
+  have hQ' : volume (squareAt (z - (WithLp.toLp 2 fun _ => max 1 ‖M α β‖ * ∑ j, lam j : ℝ²))
+      (L + 2 * (max 1 ‖M α β‖ * ∑ j, lam j))) ≤ 2 * volume (squareAt z L) := by
+    rw [aux_volume_squareAt _ _ (by positivity), hQv,
+      show (2 : ℝ≥0∞) * ENNReal.ofReal (L ^ 2) = ENNReal.ofReal (2 * L ^ 2) by
+        rw [ENNReal.ofReal_mul (by norm_num)]; simp]
+    exact ENNReal.ofReal_le_ofReal (by nlinarith)
+  have hlow := den_weighted_lower α β δ hδ0 hδ1 n hnH lam hlam0 z L hL A hAm hAQ hAδ hQ'
+  -- the upper bound for each subsum
+  have hAf : volume A ≠ ∞ := ne_top_of_le_ne_top (by rw [hQv]; exact ENNReal.ofReal_ne_top)
+    (measure_mono hAQ)
+  have hQr : (volume Q).toReal = L ^ 2 := by rw [hQv, ENNReal.toReal_ofReal (by positivity)]
+  have hAQr : (volume A).toReal ≤ L ^ 2 := by
+    rw [← hQr]; exact ENNReal.toReal_mono (by rw [hQv]; exact ENNReal.ofReal_ne_top)
+      (measure_mono hAQ)
+  have hup : ∀ J : Finset (Fin n), J.Nonempty →
+      triangleCount α β (subsum lam J) (A.indicator 1) ≤ τ * L ^ 2 := by
+    intro J hJ
+    set g : ℝ² → ℂ := A.indicator fun _ => (1 : ℂ) with hg
+    have hgm : ∀ j, MemLp ((fun _ : Fin 3 => g) j) (aux_slotExp 2 j) volume := by
+      intro j
+      exact memLp_indicator_const _ hAm (1 : ℂ) (Or.inr hAf)
+    have hc := hclose J hJ
+    have hmiss := den_dense_squares_missed α β E A hAE _ (hlamS (J.max' hJ)).2
+    have hb := aux_den_form_ind_le α β ((FCMeasure.sigma.dil (∑ j ∈ J, lam j)).sub
+      (FCMeasure.sigma.dil (lam (J.max' hJ)))) A hAm hAf
+    have hsub := aux_appr_form_sub α β (FCMeasure.sigma.dil (∑ j ∈ J, lam j))
+      (FCMeasure.sigma.dil (lam (J.max' hJ))) 2 (fun _ => g) hgm
+    rw [hsub, ← aux_den_tc_form, ← aux_den_tc_form, hmiss, Complex.ofReal_zero, sub_zero] at hb
+    have hb' := hb.trans (mul_le_mul_left hc.le _)
+    have hfin : ENNReal.ofReal τ * volume A ≠ ∞ := ENNReal.mul_ne_top ENNReal.ofReal_ne_top hAf
+    have hD := ENNReal.toReal_mono hfin hb'
+    rw [ENNReal.toReal_mul, ENNReal.toReal_ofReal hτ0.le, ← ofReal_norm,
+      ENNReal.toReal_ofReal (norm_nonneg _), Complex.norm_real, Real.norm_eq_abs] at hD
+    calc triangleCount α β (subsum lam J) (A.indicator 1) ≤ |triangleCount α β
+          (∑ j ∈ J, lam j) (A.indicator 1)| := le_abs_self _
+      _ ≤ τ * (volume A).toReal := hD
+      _ ≤ τ * L ^ 2 := mul_le_mul_of_nonneg_left hAQr hτ0.le
+  have hsum : ∑ J ∈ Finset.univ.filter (fun J : Finset (Fin n) => J.Nonempty),
+      (3 : ℝ) ^ (n - J.card) * triangleCount α β (subsum lam J) (A.indicator 1) ≤
+      (4 : ℝ) ^ n * (τ * L ^ 2) := by
+    calc _ ≤ ∑ J ∈ Finset.univ.filter (fun J : Finset (Fin n) => J.Nonempty),
+          (3 : ℝ) ^ (n - J.card) * (τ * L ^ 2) :=
+          Finset.sum_le_sum fun J hJ => mul_le_mul_of_nonneg_left
+            (hup J (Finset.mem_filter.1 hJ).2) (by positivity)
+      _ ≤ ∑ J : Finset (Fin n), (3 : ℝ) ^ (n - J.card) * (τ * L ^ 2) :=
+          Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _)
+            (fun _ _ _ => by positivity)
+      _ = (4 : ℝ) ^ n * (τ * L ^ 2) := by
+          rw [← Finset.sum_mul]
+          congr 1
+          have := Fin.sum_pow_mul_eq_add_pow (n := n) (1 : ℝ) 3
+          simp only [one_pow, one_mul] at this
+          rw [this]; norm_num
+  rw [hQr] at hlow
+  have h4 : (4 : ℝ) ^ n * (τ * L ^ 2) = δ / 4 * L ^ 2 := by
+    rw [hτ]; field_simp
+  have hL2 : 0 < L ^ 2 := by positivity
+  nlinarith [hlow.trans (hsum.trans h4.le)]
 
 /-- **Theorem `den:main`** (normalized triangle). If $E\subset\R^2$ is Lebesgue measurable with
 $d^*(E)>0$, then every sufficiently large scale of $\{0,e_1,Me_1\}$ has a translate of a rotation
@@ -542,7 +1049,18 @@ theorem den_main (α β : ℝ) (hβ : β ≠ 0) (E : Set ℝ²) (hE : NullMeasur
     (hd : 0 < upperBanachDensity E) :
     ∃ lam₀ : ℝ, 0 < lam₀ ∧ ∀ lam : ℝ, lam₀ ≤ lam →
       ∃ (x : ℝ²) (t : ℝ), ∀ p ∈ ({0, e1, M α β e1} : Set ℝ²), x + rot t (lam • p) ∈ E := by
-  sorry
+  obtain ⟨b, hb⟩ := aux_den_missed_bdd α β hβ E hE hd
+  refine ⟨max 1 (b + 1), lt_max_of_lt_left one_pos, fun lam hlam => ?_⟩
+  refine aux_den_copy_of_not_missed α β E lam fun hm => ?_
+  have h1 := hb ⟨lt_of_lt_of_le one_pos ((le_max_left _ _).trans hlam), hm⟩
+  linarith [(le_max_right 1 (b + 1)).trans hlam]
+
+/-- Composition of rotations, $R_aR_b=R_{a+b}$ (auxiliary for `den_main_general`). -/
+theorem aux_den_rot_rot (a b : ℝ) (v : ℝ²) : rot a (rot b v) = rot (a + b) v := by
+  have h := aux_simil_comp (Real.cos a) (Real.sin a) (Real.cos b) (Real.sin b)
+  rw [← Real.cos_add, show Real.cos a * Real.sin b + Real.sin a * Real.cos b = Real.sin (a + b) by
+    rw [Real.sin_add]; ring] at h
+  exact congrArg (fun T : ℝ² →L[ℝ] ℝ² => T v) h
 
 /-- **Theorem `den:main`** (general triangle). Consequently the same conclusion holds for any
 prescribed noncollinear planar triangle. -/
@@ -550,6 +1068,17 @@ theorem den_main_general (a b c : ℝ²) (hΔ : ¬ Collinear ℝ ({a, b, c} : Se
     (hE : NullMeasurableSet E volume) (hd : 0 < upperBanachDensity E) :
     ∃ lam₀ : ℝ, 0 < lam₀ ∧ ∀ lam : ℝ, lam₀ ≤ lam →
       ∃ (x : ℝ²) (t : ℝ), ∀ p ∈ ({a, b, c} : Set ℝ²), x + rot t (lam • p) ∈ E := by
-  sorry
+  obtain ⟨z₀, s, t₀, α, β, hs, hβ, hset⟩ := lem_geometry_normalization a b c hΔ
+  obtain ⟨lam₀, hlam₀, hmain⟩ := den_main α β hβ E hE hd
+  refine ⟨lam₀ / s, div_pos hlam₀ hs, fun lam hlam => ?_⟩
+  have hls : lam₀ ≤ lam * s := by rwa [div_le_iff₀ hs] at hlam
+  obtain ⟨x, t, hx⟩ := hmain (lam * s) hls
+  refine ⟨x - rot (t - t₀) (lam • z₀), t - t₀, fun p hp => ?_⟩
+  rw [hset] at hp
+  obtain ⟨q, hq, rfl⟩ := hp
+  have := hx q hq
+  convert this using 1
+  simp only [smul_add, map_add, smul_smul, map_smul, aux_den_rot_rot, sub_add_cancel]
+  abel
 
 end Auto

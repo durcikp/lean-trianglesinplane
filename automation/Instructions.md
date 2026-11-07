@@ -142,4 +142,8 @@ These override conflicting instructions above (recorded 2026-11-06T12:53-08:00).
 ## Continuation notes
 
 - Stage 1 (all statements) complete; full `lake build` passed shortly before 2026-11-06T12:53-08:00 (sorry warnings only).
-- Stage 2 (proofs) in progress, in Status.md order, starting with Section `ext:section`.
+- Stage 2 (proofs) COMPLETE (2026-11-06T17:01:57-08:00): every in-scope result is proved; no `sorry`/`admit`/axiom in `Auto/`. Full
+  `lake build` succeeds (no "declaration uses sorry"). `#print axioms` on all 155 public theorems: 153 use exactly
+  [propext, Classical.choice, Quot.sound], 2 (`cj_bookkeeping_comp`, `cj_bookkeeping_concat`) a subset. Theorem A
+  (`intro_density`) and Theorem B (`intro_smoothing`) depend only on [propext, Classical.choice, Quot.sound].
+- Out of scope / not formalized: Section `sec:inverse` (`inv:smooth`, `inv:consequence`), as recorded in ErrorReport.md.

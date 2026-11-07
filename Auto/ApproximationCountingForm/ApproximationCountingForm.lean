@@ -32,6 +32,182 @@ namespace Auto
 
 /-! ### Exhaustion by smooth low frequencies (`tail:exhaustion`) -/
 
+/-- Auxiliary for `tail:exhaustion` and `tail:convolved-tail`: the form depends on a presentation
+`FCMeasure` only through the pushforward; two presentations related by a measure-preserving
+equivalence of parameter spaces compatible with `φ` and `w` give the same form. -/
+theorem aux_appr_form_congr (α β : ℝ) (ν ν' : FCMeasure) (e : ν.Z ≃ᵐ ν'.Z)
+    (he : MeasurePreserving e ν.m ν'.m) (hφ : ∀ z, ν'.φ (e z) = ν.φ z)
+    (hw : ∀ z, ν'.w (e z) = ν.w z) (f₀ f₁ f₂ : ℝ² → ℂ) :
+    form α β ν f₀ f₁ f₂ = form α β ν' f₀ f₁ f₂ := by
+  unfold form
+  rw [← he.integral_comp']
+  simp only [hφ, hw]
+
+/-- Auxiliary for `tail:exhaustion`, `tail:convolved-tail`: associativity of convolution at the
+level of the form, $\Lambda_{(\nu*\kappa)*\lambda}=\Lambda_{\nu*(\kappa*\lambda)}$. -/
+theorem aux_appr_form_assoc (α β : ℝ) (ν κ l : FCMeasure) (f₀ f₁ f₂ : ℝ² → ℂ) :
+    form α β ((ν.conv κ).conv l) f₀ f₁ f₂ = form α β (ν.conv (κ.conv l)) f₀ f₁ f₂ :=
+  aux_appr_form_congr α β _ _ MeasurableEquiv.prodAssoc
+    (measurePreserving_prodAssoc ν.m κ.m l.m)
+    (fun z => by simp [FCMeasure.conv, add_assoc]; rfl) (fun z => by simp [FCMeasure.conv, mul_assoc]; rfl) _ _ _
+
+/-- Auxiliary for `tail:exhaustion`, `tail:convolved-tail` (`Auto.tail_exhaustion`,
+`Auto.tail_convolved_tail`): the identity of `lem:convolution-translate`,
+$\Lambda_{\nu*\kappa}(f)=\int\Lambda_\nu(f_0,f_1(\cdot+w),f_2(\cdot+Mw))\,d\kappa(w)$, together with
+integrability of the integrand, under the sole assumption that the integrand defining
+$\Lambda_{\nu*\kappa}$ is absolutely integrable. -/
+theorem aux_appr_conv_translate_int (α β : ℝ) (ν κ : FCMeasure) (f : Fin 3 → ℝ² → ℂ)
+    (hI : Integrable (fun p : (ν.conv κ).Z × ℝ² => f 0 p.2 * f 1 (p.2 + (ν.conv κ).φ p.1) *
+      f 2 (p.2 + M α β ((ν.conv κ).φ p.1)) * (ν.conv κ).w p.1) ((ν.conv κ).m.prod volume)) :
+    Integrable (fun z => form α β ν (f 0) (fun x => f 1 (x + κ.φ z))
+      (fun x => f 2 (x + M α β (κ.φ z))) * κ.w z) κ.m ∧
+    form α β (ν.conv κ) (f 0) (f 1) (f 2) =
+      κ.integral (fun w => form α β ν (f 0) (fun x => f 1 (x + w))
+        (fun x => f 2 (x + M α β w))) := by
+  have hI1 := hI.integral_prod_left
+  have hI' : Integrable (fun z : ν.Z × κ.Z =>
+      (∫ x, f 0 x * f 1 (x + (ν.φ z.1 + κ.φ z.2)) * f 2 (x + M α β (ν.φ z.1 + κ.φ z.2))) *
+        (ν.w z.1 * κ.w z.2)) (ν.m.prod κ.m) := by
+    refine hI1.congr (Eventually.of_forall fun z => ?_)
+    exact integral_mul_const (ν.w z.1 * κ.w z.2)
+      (fun x => f 0 x * f 1 (x + (ν.φ z.1 + κ.φ z.2)) * f 2 (x + M α β (ν.φ z.1 + κ.φ z.2)))
+  have key : ∀ z₂ : κ.Z, (∫ z₁, (∫ x, f 0 x * f 1 (x + (ν.φ z₁ + κ.φ z₂)) *
+      f 2 (x + M α β (ν.φ z₁ + κ.φ z₂))) * (ν.w z₁ * κ.w z₂) ∂ν.m) =
+      form α β ν (f 0) (fun x => f 1 (x + κ.φ z₂)) (fun x => f 2 (x + M α β (κ.φ z₂))) *
+        κ.w z₂ := by
+    intro z₂
+    unfold form
+    rw [← integral_mul_const]
+    congr 1; funext z₁
+    simp only [map_add, add_assoc]
+    ring
+  refine ⟨hI'.integral_prod_right.congr (Eventually.of_forall key), ?_⟩
+  conv_lhs => unfold form
+  unfold FCMeasure.integral
+  change ∫ z : ν.Z × κ.Z,
+      (∫ x, f 0 x * f 1 (x + (ν.φ z.1 + κ.φ z.2)) * f 2 (x + M α β (ν.φ z.1 + κ.φ z.2))) *
+        (ν.w z.1 * κ.w z.2) ∂(ν.m.prod κ.m) = _
+  rw [integral_prod_symm _ hI']
+  exact integral_congr_ae (Eventually.of_forall key)
+
+/-- Auxiliary for `tail:exhaustion`, `tail:convolved-tail`: the identity of
+`lem:convolution-translate` for $\Lambda_{(\sigma*\kappa)*\lambda}$ and `L²` inputs (absolute
+convergence from `lem:triple-l2`). -/
+theorem aux_appr_conv_translate_l2 (α β : ℝ) (hβ : β ≠ 0) (κ l : FCMeasure)
+    (f : Fin 3 → ℝ² → ℂ) (hf : ∀ j, MemLp (f j) 2 volume) :
+    Integrable (fun z => form α β (FCMeasure.sigma.conv κ) (f 0) (fun x => f 1 (x + l.φ z))
+      (fun x => f 2 (x + M α β (l.φ z))) * l.w z) l.m ∧
+    form α β ((FCMeasure.sigma.conv κ).conv l) (f 0) (f 1) (f 2) =
+      l.integral (fun w => form α β (FCMeasure.sigma.conv κ) (f 0) (fun x => f 1 (x + w))
+        (fun x => f 2 (x + M α β w))) := by
+  refine aux_appr_conv_translate_int α β _ l f ?_
+  obtain ⟨C, -, hC⟩ := lem_triple_l2 α β hβ
+  have h := (hC (κ.conv l) f hf).1
+  set σ' := FCMeasure.sigma
+  let E : ((σ'.Z × κ.Z) × l.Z) × ℝ² ≃ᵐ (σ'.Z × (κ.Z × l.Z)) × ℝ² :=
+    MeasurableEquiv.prodCongr MeasurableEquiv.prodAssoc (MeasurableEquiv.refl _)
+  have hE : MeasurePreserving E (((σ'.m.prod κ.m).prod l.m).prod volume)
+      ((σ'.m.prod (κ.m.prod l.m)).prod volume) :=
+    (measurePreserving_prodAssoc σ'.m κ.m l.m).prod (MeasurePreserving.id volume)
+  have := (hE.integrable_comp_emb E.measurableEmbedding).2 h
+  refine this.congr (Eventually.of_forall fun p => ?_)
+  rcases p with ⟨⟨⟨a, b⟩, c⟩, x⟩
+  change f 0 x * f 1 (x + (σ'.φ a + (κ.φ b + l.φ c))) * f 2 (x + M α β (σ'.φ a + (κ.φ b + l.φ c))) *
+    (σ'.w a * (κ.w b * l.w c)) = _
+  simp only [FCMeasure.conv, add_assoc, mul_assoc]
+
+
+/-- Auxiliary for `tail:exhaustion`: continuity of translation in `L²`,
+$\|f(\cdot+w)-f(\cdot+w_0)\|_2\to0$ as $w\to w_0$. -/
+theorem aux_appr_translate_tendsto {f : ℝ² → ℂ} (hf : MemLp f 2 volume) (w₀ : ℝ²) :
+    Tendsto (fun w : ℝ² => eLpNorm (fun x => f (x + w) - f (x + w₀)) 2 volume) (𝓝 w₀)
+      (𝓝 0) := by
+  have h1 := ext_approximation_translation (Or.inr rfl) hf
+  have hc : Tendsto (fun w : ℝ² => -(w - w₀)) (𝓝 w₀) (𝓝 0) := by
+    have : Continuous (fun w : ℝ² => -(w - w₀)) := by fun_prop
+    simpa using this.tendsto w₀
+  refine (h1.comp hc).congr (fun w => ?_)
+  simp only [Function.comp, sub_neg_eq_add]
+  have hmp := measurePreserving_add_right (volume : Measure ℝ²) w₀
+  have hm : AEStronglyMeasurable (fun y => f (y + (w - w₀)) - f y) volume :=
+    (hf.1.comp_quasiMeasurePreserving
+      (measurePreserving_add_right volume _).quasiMeasurePreserving).sub hf.1
+  rw [← eLpNorm_comp_measurePreserving hm hmp]
+  congr 1; funext x
+  simp only [Function.comp]
+  congr 2; abel
+
+/-- Auxiliary for `tail:exhaustion` and `tail:convolved-tail`: for `L²` inputs, the function
+$w\mapsto\Lambda_{\sigma*\kappa}(f_0,f_1(\cdot+w),f_2(\cdot+Mw))$ is continuous (by `lem:triple-l2`). -/
+theorem aux_appr_G_cont (α β : ℝ) (hβ : β ≠ 0) (κ : FCMeasure) (f : Fin 3 → ℝ² → ℂ)
+    (hf : ∀ j, MemLp (f j) 2 volume) :
+    Continuous (fun w => form α β (FCMeasure.sigma.conv κ) (f 0) (fun x => f 1 (x + w))
+      (fun x => f 2 (x + M α β w))) := by
+  obtain ⟨C, -, hC⟩ := aux_tail_form_lip α β hβ
+  have hmp := fun c : ℝ² => measurePreserving_add_right (volume : Measure ℝ²) c
+  have hT : ∀ j (c : ℝ²), MemLp (fun x => f j (x + c)) 2 volume := fun j c =>
+    (hf j).comp_measurePreserving (hmp c)
+  have hN : ∀ j (c : ℝ²), eLpNorm (fun x => f j (x + c)) 2 volume = eLpNorm (f j) 2 volume :=
+    fun j c => eLpNorm_comp_measurePreserving (hf j).1 (hmp c)
+  rw [continuous_iff_continuousAt]
+  intro w₀
+  set g : ℝ² → Fin 3 → ℝ² → ℂ :=
+    fun w => ![f 0, fun x => f 1 (x + w), fun x => f 2 (x + M α β w)] with hgdef
+  have hg : ∀ w j, MemLp (g w j) 2 volume := by
+    intro w j; fin_cases j
+    exacts [hf 0, hT 1 w, hT 2 _]
+  have hlim1 := aux_appr_translate_tendsto (hf 1) w₀
+  have hlim2 := (aux_appr_translate_tendsto (hf 2) (M α β w₀)).comp
+    ((M α β).continuous.tendsto w₀)
+  set c := ENNReal.ofReal C * κ.tv
+  have hc : c ≠ ⊤ := ENNReal.mul_ne_top ENNReal.ofReal_ne_top κ.integrable_w.2.ne
+  have ha0 : eLpNorm (f 0) 2 volume ≠ ⊤ := (hf 0).2.ne
+  have ha1 : eLpNorm (f 1) 2 volume ≠ ⊤ := (hf 1).2.ne
+  have ha2 : eLpNorm (f 2) 2 volume ≠ ⊤ := (hf 2).2.ne
+  have hT0 : Tendsto (fun w => c * (eLpNorm (f 0) 2 volume *
+      eLpNorm (fun x => f 1 (x + w) - f 1 (x + w₀)) 2 volume * eLpNorm (f 2) 2 volume +
+      eLpNorm (f 0) 2 volume * eLpNorm (f 1) 2 volume *
+        eLpNorm (fun x => f 2 (x + M α β w) - f 2 (x + M α β w₀)) 2 volume)) (𝓝 w₀) (𝓝 0) := by
+    have := ENNReal.Tendsto.const_mul (((tendsto_const_nhds (x := (0 : ℝ≥0∞))).add
+      (ENNReal.Tendsto.mul_const (ENNReal.Tendsto.const_mul hlim1 (Or.inr ha0)) (Or.inr ha2))).add
+      (ENNReal.Tendsto.const_mul hlim2 (Or.inr (ENNReal.mul_ne_top ha0 ha1)))) (Or.inr hc)
+    simpa using this
+  rw [ContinuousAt, tendsto_iff_edist_tendsto_0]
+  refine tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds hT0
+    (fun _ => bot_le) (fun w => ?_)
+  have hb := hC κ (g w₀) (g w) (hg w₀) (hg w)
+  simp only [hgdef, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
+    Matrix.head_cons, Matrix.tail_cons, sub_self, eLpNorm_zero, hN] at hb
+  rw [edist_eq_enorm_sub]
+  simp only [zero_mul, zero_add] at hb
+  exact hb
+
+
+/-- Auxiliary for `tail:exhaustion`: the translated forms
+$\Lambda_{\sigma*\kappa}(f_0,f_1(\cdot+w),f_2(\cdot+Mw))$ are bounded uniformly in $w$. -/
+theorem aux_appr_G_bound (α β : ℝ) (hβ : β ≠ 0) (κ : FCMeasure) (f : Fin 3 → ℝ² → ℂ)
+    (hf : ∀ j, MemLp (f j) 2 volume) :
+    ∃ D : ℝ, ∀ w, ‖form α β (FCMeasure.sigma.conv κ) (f 0) (fun x => f 1 (x + w))
+      (fun x => f 2 (x + M α β w))‖ ≤ D := by
+  obtain ⟨C, -, hC⟩ := lem_triple_l2 α β hβ
+  have hmp := fun c : ℝ² => measurePreserving_add_right (volume : Measure ℝ²) c
+  refine ⟨(ENNReal.ofReal C * κ.tv * ∏ j : Fin 3, eLpNorm (f j) 2 volume).toReal, fun w => ?_⟩
+  set g : Fin 3 → ℝ² → ℂ := ![f 0, fun x => f 1 (x + w), fun x => f 2 (x + M α β w)]
+  have hg : ∀ j, MemLp (g j) 2 volume := by
+    intro j; fin_cases j
+    exacts [hf 0, (hf 1).comp_measurePreserving (hmp w), (hf 2).comp_measurePreserving (hmp _)]
+  have hN : ∀ j, eLpNorm (g j) 2 volume = eLpNorm (f j) 2 volume := by
+    intro j; fin_cases j
+    exacts [rfl, eLpNorm_comp_measurePreserving (hf 1).1 (hmp w),
+      eLpNorm_comp_measurePreserving (hf 2).1 (hmp _)]
+  have hb := (hC κ g hg).2
+  simp only [hN] at hb
+  have hfin : ENNReal.ofReal C * κ.tv * ∏ j : Fin 3, eLpNorm (f j) 2 volume ≠ ⊤ :=
+    ENNReal.mul_ne_top (ENNReal.mul_ne_top ENNReal.ofReal_ne_top κ.integrable_w.2.ne)
+      (ENNReal.prod_ne_top fun j _ => (hf j).2.ne)
+  rw [← toReal_enorm]
+  exact ENNReal.toReal_mono hfin hb
+
 /-- **Lemma `tail:exhaustion`** (Exhaustion by smooth low frequencies).
 For every finite measure $\kappa$ and every triple of $L^2$ inputs,
 $$\Lambda_{\sigma*\kappa*q_S}(f_0,f_1,f_2)\longrightarrow\Lambda_{\sigma*\kappa}(f_0,f_1,f_2)
@@ -41,9 +217,111 @@ theorem tail_exhaustion (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (hχ
     Tendsto (fun S : ℝ => form α β ((FCMeasure.sigma.conv κ).conv
         (FCMeasure.ofDensity (tailQ χ S))) (f 0) (f 1) (f 2)) atTop
       (𝓝 (form α β (FCMeasure.sigma.conv κ) (f 0) (f 1) (f 2))) := by
-  sorry
+  set F : ℝ² → ℂ := fun w => form α β (FCMeasure.sigma.conv κ) (f 0) (fun x => f 1 (x + w))
+    (fun x => f 2 (x + M α β w)) with hFdef
+  have hFc : Continuous F := aux_appr_G_cont α β hβ κ f hf
+  obtain ⟨D, hD⟩ := aux_appr_G_bound α β hβ κ f hf
+  obtain ⟨h1, h2⟩ := aux_tail_chiC χ hχ
+  set q : ℝ² → ℂ := 𝓕⁻ (fun b => (χ b : ℂ)) with hqdef
+  have hqi : Integrable q := aux_tail_fourierInv_integrable _ h1 h2
+  have hq1 : ∫ y, q y = 1 := by
+    have := (aux_tail_annular_definition χ hχ).2.1 1 one_pos
+    simpa [tailQ, scaleR] using this
+  have hrep : ∀ S : ℝ, 0 < S → form α β ((FCMeasure.sigma.conv κ).conv
+      (FCMeasure.ofDensity (tailQ χ S))) (f 0) (f 1) (f 2) = ∫ y, F (S⁻¹ • y) * q y := by
+    intro S hS
+    have hQi : Integrable (tailQ χ S) := by
+      have e : tailQ χ S = fun x => ((S ^ 2 : ℝ) : ℂ) * q (S • x) := rfl
+      rw [e]
+      exact (hqi.comp_smul hS.ne').const_mul ((S ^ 2 : ℝ) : ℂ)
+    rw [(aux_appr_conv_translate_l2 α β hβ κ _ f hf).2]
+    simp only [FCMeasure.integral, FCMeasure.ofDensity, if_pos hQi, id]
+    have h := Measure.integral_comp_smul (μ := (volume : Measure ℝ²))
+      (fun w => F w * q (S • w)) S⁻¹
+    rw [finrank_euclideanSpace_fin, inv_pow, inv_inv, abs_of_pos (by positivity)] at h
+    simp only [smul_smul, mul_inv_cancel₀ hS.ne', one_smul] at h
+    rw [h, Complex.real_smul, ← integral_const_mul]
+    congr 1; funext w
+    simp only [tailQ, scaleR]
+    push_cast; ring
+  have hlim : Tendsto (fun S : ℝ => ∫ y, F (S⁻¹ • y) * q y) atTop (𝓝 (∫ y, F 0 * q y)) := by
+    refine tendsto_integral_filter_of_dominated_convergence (fun y => D * ‖q y‖) ?_ ?_
+      (hqi.norm.const_mul D) ?_
+    · exact Eventually.of_forall fun S =>
+        (hFc.comp (continuous_const_smul S⁻¹)).aestronglyMeasurable.mul hqi.1
+    · exact Eventually.of_forall fun S => Eventually.of_forall fun y => by
+        rw [norm_mul]; exact mul_le_mul_of_nonneg_right (hD _) (norm_nonneg _)
+    · refine Eventually.of_forall fun y => ?_
+      have : Tendsto (fun S : ℝ => S⁻¹ • y) atTop (𝓝 0) := by
+        have := (tendsto_inv_atTop_zero (𝕜 := ℝ)).smul_const y
+        rwa [zero_smul] at this
+      exact ((hFc.tendsto 0).comp this).mul_const _
+  have hF0 : F 0 = form α β (FCMeasure.sigma.conv κ) (f 0) (f 1) (f 2) := by
+    simp [hFdef]
+  rw [integral_const_mul, hq1, mul_one, hF0] at hlim
+  refine hlim.congr' ?_
+  filter_upwards [eventually_gt_atTop 0] with S hS
+  exact (hrep S hS).symm
 
 /-! ### Tails after convolution (`tail:convolved-tail`) -/
+
+/-- Auxiliary for `tail:convolved-tail`: commutativity of the last two convolution factors at the
+level of the form, $\Lambda_{(\nu*\kappa)*\lambda}=\Lambda_{(\nu*\lambda)*\kappa}$. -/
+theorem aux_appr_form_comm (α β : ℝ) (ν κ l : FCMeasure) (f₀ f₁ f₂ : ℝ² → ℂ) :
+    form α β ((ν.conv κ).conv l) f₀ f₁ f₂ = form α β ((ν.conv l).conv κ) f₀ f₁ f₂ := by
+  rw [aux_appr_form_assoc, aux_appr_form_assoc]
+  refine aux_appr_form_congr α β _ _
+    (MeasurableEquiv.prodCongr (MeasurableEquiv.refl _) MeasurableEquiv.prodComm)
+    ((MeasurePreserving.id ν.m).prod (Measure.measurePreserving_swap (μ := κ.m) (ν := l.m)))
+    (fun z => ?_) (fun z => ?_) _ _ _
+  · rcases z with ⟨a, b, c⟩
+    change ν.φ a + (l.φ c + κ.φ b) = ν.φ a + (κ.φ b + l.φ c)
+    rw [add_comm (l.φ c)]
+  · rcases z with ⟨a, b, c⟩
+    change ν.w a * (l.w c * κ.w b) = ν.w a * (κ.w b * l.w c)
+    rw [mul_comm (l.w c)]
+
+/-- Auxiliary for `tail:convolved-tail`, `tail:bounded-smoothing`: inputs bounded in both norms
+are in `L²`. -/
+theorem aux_appr_bothBounded_memLp {B : ℝ} {f : Fin 3 → ℝ² → ℂ} (hf : aux_IsBothBounded B f)
+    (j : Fin 3) : MemLp (f j) 2 volume :=
+  ⟨(hf j).1, (hf j).2.1.trans_lt ENNReal.ofReal_lt_top⟩
+
+/-- Auxiliary for `tail:convolved-tail`: the translations
+$(f_0,f_1,f_2)\mapsto(f_0,f_1(\cdot+w),f_2(\cdot+Mw))$ preserve the two norms (used to apply
+`Auto.tail_bound` inside the integral against $\kappa$). -/
+theorem aux_appr_bothBounded_translate {B : ℝ} {f : Fin 3 → ℝ² → ℂ} (hf : aux_IsBothBounded B f)
+    (α β : ℝ) (w : ℝ²) :
+    aux_IsBothBounded B ![f 0, fun x => f 1 (x + w), fun x => f 2 (x + M α β w)] := by
+  have hmp := fun c : ℝ² => measurePreserving_add_right (volume : Measure ℝ²) c
+  have key : ∀ (j : Fin 3) (c : ℝ²), aux_IsBothBounded B f →
+      AEStronglyMeasurable (fun x => f j (x + c)) volume ∧
+      eLpNorm (fun x => f j (x + c)) 2 volume ≤ ENNReal.ofReal B ∧
+      eLpNorm (fun x => f j (x + c)) ⊤ volume ≤ ENNReal.ofReal B := by
+    intro j c hf
+    refine ⟨(hf j).1.comp_quasiMeasurePreserving (hmp c).quasiMeasurePreserving, ?_, ?_⟩
+    · exact le_of_eq_of_le (eLpNorm_comp_measurePreserving (hf j).1 (hmp c)) (hf j).2.1
+    · exact le_of_eq_of_le (eLpNorm_comp_measurePreserving (hf j).1 (hmp c)) (hf j).2.2
+  intro j; fin_cases j
+  exacts [hf 0, key 1 w hf, key 2 _ hf]
+
+/-- Auxiliary for `tail:convolved-tail` (`Auto.tail_convolved_tail`): by
+`lem:convolution-translate`, each summand is an integral against $\kappa$ of $\Lambda_r$ applied to
+$f_0$ and translates of $f_1,f_2$. -/
+theorem aux_appr_convolved_term (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (κ : FCMeasure) (r : ℝ)
+    (f : Fin 3 → ℝ² → ℂ) (hf : ∀ j, MemLp (f j) 2 volume) :
+    form α β ((FCMeasure.sigma.conv κ).conv (FCMeasure.ofDensity (tailK χ r))) (f 0) (f 1) (f 2) =
+      κ.integral (fun w => tailForm α β χ r (f 0) (fun x => f 1 (x + w))
+        (fun x => f 2 (x + M α β w))) := by
+  rw [aux_appr_form_comm]
+  exact (aux_appr_conv_translate_l2 α β hβ _ κ f hf).2
+
+/-- Auxiliary for `tail:convolved-tail`: $|\int g\,d\nu|\le\int|g|\,d|\nu|$ for a presentation. -/
+theorem aux_appr_integral_enorm_le (κ : FCMeasure) (g : ℝ² → ℂ) :
+    ‖κ.integral g‖ₑ ≤ ∫⁻ z, ‖g (κ.φ z)‖ₑ * ‖κ.w z‖ₑ ∂κ.m := by
+  unfold FCMeasure.integral
+  refine (enorm_integral_le_lintegral_enorm _).trans (le_of_eq ?_)
+  simp only [enorm_mul]
 
 /-- **Lemma `tail:convolved-tail`** (Tails after convolution; the bound).
 For every finite measure $\kappa$, dyadic $R\ge1$, and inputs with
@@ -60,7 +338,85 @@ theorem tail_convolved_tail (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) 
             (FCMeasure.ofDensity (tailK χ (2 ^ (K + k))))) (f 0) (f 1) (f 2)‖ₑ ≤
           ENNReal.ofReal CMB * κ.tv *
             (⨆ (r : ℝ) (_ : (2 : ℝ) ^ K ≤ r), ENNReal.ofReal (a r)) ^ (1 / 2 : ℝ) := by
-  sorry
+  obtain ⟨C₀₀, hC₀₀, hb⟩ := tail_bound α β hβ χ hχ
+  refine ⟨C₀₀, hC₀₀, fun C₀ hC₀ B => ?_⟩
+  obtain ⟨CMB, hCMB⟩ := hb C₀ hC₀ B
+  refine ⟨CMB, fun a ha κ K f hf => ?_⟩
+  set S := (⨆ (r : ℝ) (_ : (2 : ℝ) ^ K ≤ r), ENNReal.ofReal (a r)) ^ (1 / 2 : ℝ)
+  have hf2 := aux_appr_bothBounded_memLp hf
+  set G : ℕ → ℝ² → ℂ := fun k w => tailForm α β χ (2 ^ (K + k)) (f 0)
+    (fun x => f 1 (x + w)) (fun x => f 2 (x + M α β w)) with hGdef
+  have hGc : ∀ k, Continuous (G k) := fun k =>
+    aux_appr_G_cont α β hβ (FCMeasure.ofDensity (tailK χ (2 ^ (K + k)))) f hf2
+  have hGs : ∀ w, ∑' k, ‖G k w‖ₑ ≤ ENNReal.ofReal CMB * S := by
+    intro w
+    have h := hCMB a ha K _ (aux_appr_bothBounded_translate hf α β w)
+    simp only [Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
+      Matrix.head_cons, Matrix.tail_cons] at h
+    exact h
+  calc ∑' k : ℕ, ‖form α β ((FCMeasure.sigma.conv κ).conv
+            (FCMeasure.ofDensity (tailK χ (2 ^ (K + k))))) (f 0) (f 1) (f 2)‖ₑ
+      = ∑' k, ‖κ.integral (G k)‖ₑ := by
+        congr 1; funext k; rw [aux_appr_convolved_term α β hβ χ κ _ f hf2]
+    _ ≤ ∑' k, ∫⁻ z, ‖G k (κ.φ z)‖ₑ * ‖κ.w z‖ₑ ∂κ.m :=
+        ENNReal.tsum_le_tsum fun k => aux_appr_integral_enorm_le κ (G k)
+    _ = ∫⁻ z, ∑' k, ‖G k (κ.φ z)‖ₑ * ‖κ.w z‖ₑ ∂κ.m := by
+        rw [lintegral_tsum]
+        intro k
+        exact (((hGc k).measurable.comp κ.measurable_φ).enorm.aemeasurable).mul
+          κ.integrable_w.1.enorm
+    _ ≤ ∫⁻ z, ENNReal.ofReal CMB * S * ‖κ.w z‖ₑ ∂κ.m := by
+        refine lintegral_mono fun z => ?_
+        rw [ENNReal.tsum_mul_right]
+        exact mul_le_mul_left (hGs _) _
+    _ = ENNReal.ofReal CMB * κ.tv * S := by
+        rw [lintegral_const_mul'' _ κ.integrable_w.1.enorm, FCMeasure.tv]; ring
+
+/-- Auxiliary for `tail:convolved-tail`, `tail:bounded-smoothing`: $q_S\in L^1$ for $S>0$. -/
+theorem aux_appr_tailQ_integrable (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ) (S : ℝ) (hS : 0 < S) :
+    Integrable (tailQ χ S) := by
+  obtain ⟨h1, h2⟩ := aux_tail_chiC χ hχ
+  have hqi := aux_tail_fourierInv_integrable _ h1 h2
+  have e : tailQ χ S = fun x => ((S ^ 2 : ℝ) : ℂ) * 𝓕⁻ (fun b => (χ b : ℂ)) (S • x) := rfl
+  rw [e]
+  exact (hqi.comp_smul hS.ne').const_mul ((S ^ 2 : ℝ) : ℂ)
+
+/-- Auxiliary for `tail:convolved-tail`, `tail:bounded-smoothing`: for an `L¹` density $h$,
+$\Lambda_{(\sigma*\kappa)*h}(f)=\int\Lambda_{\sigma*\kappa}(f_0,f_1(\cdot+w),f_2(\cdot+Mw))h(w)\,dw$,
+with integrable integrand (`L²` inputs). -/
+theorem aux_appr_density_rep (α β : ℝ) (hβ : β ≠ 0) (κ : FCMeasure) (h : ℝ² → ℂ)
+    (hh : Integrable h) (f : Fin 3 → ℝ² → ℂ) (hf : ∀ j, MemLp (f j) 2 volume) :
+    Integrable (fun w => form α β (FCMeasure.sigma.conv κ) (f 0) (fun x => f 1 (x + w))
+      (fun x => f 2 (x + M α β w)) * h w) ∧
+    form α β ((FCMeasure.sigma.conv κ).conv (FCMeasure.ofDensity h)) (f 0) (f 1) (f 2) =
+      ∫ w, form α β (FCMeasure.sigma.conv κ) (f 0) (fun x => f 1 (x + w))
+        (fun x => f 2 (x + M α β w)) * h w := by
+  have hw : (FCMeasure.ofDensity h).w = h := by simp [FCMeasure.ofDensity, hh]
+  obtain ⟨H1, H2⟩ := aux_appr_conv_translate_l2 α β hβ κ (FCMeasure.ofDensity h) f hf
+  rw [hw] at H1
+  refine ⟨H1, ?_⟩
+  rw [H2]; unfold FCMeasure.integral; rw [hw]; rfl
+
+/-- Auxiliary for `tail:convolved-tail` (`Auto.tail_convolved_tail_sum`): the kernel identity
+$k_r=q_{2r}-q_r$ of `tail:annular-definition` at the level of the forms
+$\Lambda_{\sigma*\kappa*k_r}=\Lambda_{\sigma*\kappa*q_{2r}}-\Lambda_{\sigma*\kappa*q_r}$. -/
+theorem aux_appr_form_K_eq (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff χ)
+    (κ : FCMeasure) (r : ℝ) (hr : 0 < r) (f : Fin 3 → ℝ² → ℂ) (hf : ∀ j, MemLp (f j) 2 volume) :
+    form α β ((FCMeasure.sigma.conv κ).conv (FCMeasure.ofDensity (tailK χ r))) (f 0) (f 1) (f 2) =
+      form α β ((FCMeasure.sigma.conv κ).conv (FCMeasure.ofDensity (tailQ χ (2 * r))))
+          (f 0) (f 1) (f 2) -
+        form α β ((FCMeasure.sigma.conv κ).conv (FCMeasure.ofDensity (tailQ χ r)))
+          (f 0) (f 1) (f 2) := by
+  have hq2 := aux_appr_tailQ_integrable χ hχ (2 * r) (by positivity)
+  have hq1 := aux_appr_tailQ_integrable χ hχ r hr
+  have hK : tailK χ r = fun u => tailQ χ (2 * r) u - tailQ χ r u :=
+    (aux_tail_annular_definition χ hχ).2.2.1 r hr
+  have hKi : Integrable (tailK χ r) := by rw [hK]; exact hq2.sub hq1
+  obtain ⟨i2, e2⟩ := aux_appr_density_rep α β hβ κ _ hq2 f hf
+  obtain ⟨i1, e1⟩ := aux_appr_density_rep α β hβ κ _ hq1 f hf
+  rw [(aux_appr_density_rep α β hβ κ _ hKi f hf).2, e2, e1, ← integral_sub i2 i1]
+  congr 1; funext w
+  rw [hK]; ring
 
 /-- **Lemma `tail:convolved-tail`** (Tails after convolution; the value of the sum).
 For every finite measure $\kappa$, dyadic $R\ge1$, and inputs with
@@ -76,9 +432,436 @@ theorem tail_convolved_tail_sum (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → �
       (form α β (FCMeasure.sigma.conv κ) (f 0) (f 1) (f 2) -
         form α β ((FCMeasure.sigma.conv κ).conv (FCMeasure.ofDensity (tailQ χ (2 ^ K))))
           (f 0) (f 1) (f 2)) := by
-  sorry
+  have hf2 := aux_appr_bothBounded_memLp hf
+  set T : ℕ → ℂ := fun k => form α β ((FCMeasure.sigma.conv κ).conv
+    (FCMeasure.ofDensity (tailK χ (2 ^ (K + k))))) (f 0) (f 1) (f 2) with hTdef
+  set A : ℕ → ℂ := fun n => form α β ((FCMeasure.sigma.conv κ).conv
+    (FCMeasure.ofDensity (tailQ χ (2 ^ n)))) (f 0) (f 1) (f 2) with hAdef
+  have hTA : ∀ k, T k = A (K + k + 1) - A (K + k) := by
+    intro k
+    simp only [hTdef, hAdef]
+    rw [aux_appr_form_K_eq α β hβ χ hχ κ _ (by positivity) f hf2, pow_succ, mul_comm]
+  -- summability from the bound of `tail:convolved-tail`
+  have hsum : Summable T := by
+    obtain ⟨C₀₀, hC₀₀, hb⟩ := tail_convolved_tail α β hβ χ hχ
+    obtain ⟨CMB, hCMB⟩ := hb C₀₀ le_rfl B
+    obtain ⟨hψs, -⟩ := aux_tail_psi_smooth χ hχ
+    obtain ⟨a, ha⟩ := ann_global α β hβ (tailPsi χ) hψs
+      ⟨1, 4, one_pos, (aux_tail_annular_definition χ hχ).1⟩ C₀₀ hC₀₀
+    have h1 := hCMB a ha κ K f hf
+    have hsup : (⨆ (r : ℝ) (_ : (2 : ℝ) ^ K ≤ r), ENNReal.ofReal (a r)) ≠ ⊤ := by
+      refine ne_top_of_le_ne_top (ENNReal.ofReal_ne_top (r := ∫ x, ‖𝓕⁻ (tailPsi χ) x‖)) ?_
+      exact iSup₂_le fun r _ => ENNReal.ofReal_le_ofReal (ha.2.1 r).2
+    have hfin : ∑' k, ‖T k‖ₑ ≠ ⊤ := by
+      refine ne_top_of_le_ne_top ?_ h1
+      exact ENNReal.mul_ne_top (ENNReal.mul_ne_top ENNReal.ofReal_ne_top κ.integrable_w.2.ne)
+        (ENNReal.rpow_ne_top_of_nonneg (by norm_num) hsup)
+    refine Summable.of_norm ?_
+    have := ENNReal.summable_toReal hfin
+    simpa only [toReal_enorm] using this
+  have hpart : ∀ N, ∑ k ∈ Finset.range N, T k = A (K + N) - A K := by
+    intro N
+    simp only [hTA]
+    have := Finset.sum_range_sub (fun k => A (K + k)) N
+    simpa [add_assoc] using this
+  have hA : Tendsto (fun N => A (K + N)) atTop
+      (𝓝 (form α β (FCMeasure.sigma.conv κ) (f 0) (f 1) (f 2))) := by
+    have h1 := tail_exhaustion α β hβ χ hχ κ f hf2
+    have h2 : Tendsto (fun N : ℕ => (2 : ℝ) ^ (K + N)) atTop atTop :=
+      (tendsto_pow_atTop_atTop_of_one_lt (by norm_num : (1 : ℝ) < 2)).comp
+        (tendsto_atTop_atTop_of_monotone (fun a b h => by omega) (fun b => ⟨b, by omega⟩))
+    exact h1.comp h2
+  have hlim : Tendsto (fun N => ∑ k ∈ Finset.range N, T k) atTop
+      (𝓝 (form α β (FCMeasure.sigma.conv κ) (f 0) (f 1) (f 2) - A K)) := by
+    simp only [hpart]
+    exact hA.sub_const _
+  have := hsum.hasSum
+  rwa [tendsto_nhds_unique this.tendsto_sum_nat hlim] at this
 
 /-! ### Smoothing for inputs bounded in both norms (`tail:bounded-smoothing`) -/
+
+/-- Auxiliary for `tail:bounded-smoothing`, `tail:smoothing`: integration against a difference
+$\nu-\mu$ of presented measures is the difference of the integrals (for integrable integrands). -/
+theorem aux_appr_integral_sub (ν μ : FCMeasure) (g : ℝ² → ℂ)
+    (hν : Integrable (fun z => g (ν.φ z) * ν.w z) ν.m)
+    (hμ : Integrable (fun z => g (μ.φ z) * μ.w z) μ.m) :
+    (ν.sub μ).integral g = ν.integral g - μ.integral g := by
+  have hl : MeasurableEmbedding (Sum.inl : ν.Z → ν.Z ⊕ μ.Z) :=
+    ⟨Sum.inl_injective, measurable_inl, fun _ hs => hs.inl_image⟩
+  have hr : MeasurableEmbedding (Sum.inr : μ.Z → ν.Z ⊕ μ.Z) :=
+    ⟨Sum.inr_injective, measurable_inr, fun _ hs => hs.inr_image⟩
+  set F : ν.Z ⊕ μ.Z → ℂ := fun z => g (Sum.elim ν.φ μ.φ z) *
+    Sum.elim ν.w (fun z => -1 * μ.w z) z with hF
+  have i1 : Integrable F (ν.m.map Sum.inl) := (hl.integrable_map_iff).2
+    (hν.congr (Eventually.of_forall fun z => by simp [hF]))
+  have i2 : Integrable F (μ.m.map Sum.inr) := (hr.integrable_map_iff).2
+    (hμ.neg.congr (Eventually.of_forall fun z => by simp [hF]))
+  have key : ∫ z, F z ∂(ν.m.map Sum.inl + μ.m.map Sum.inr) =
+      ∫ z, F (Sum.inl z) ∂ν.m + ∫ z, F (Sum.inr z) ∂μ.m := by
+    rw [integral_add_measure i1 i2, hl.integral_map, hr.integral_map]
+  calc (ν.sub μ).integral g = ∫ z, F z ∂(ν.m.map (Sum.inl : ν.Z → ν.Z ⊕ μ.Z) +
+        μ.m.map (Sum.inr : μ.Z → ν.Z ⊕ μ.Z)) := rfl
+    _ = _ := key
+    _ = ν.integral g - μ.integral g := by
+      simp only [hF, Sum.elim_inl, Sum.elim_inr, FCMeasure.integral]
+      rw [sub_eq_add_neg, ← integral_neg]
+      congr 1
+      refine integral_congr_ae (Eventually.of_forall fun z => ?_)
+      simp
+
+/-- Auxiliary for `tail:bounded-smoothing`, `tail:smoothing`: for endpoint inputs the inner
+integral of the form is integrable against $\nu$ (from `lem:form-basic`). -/
+theorem aux_appr_form_integrable (α β : ℝ) (ν : FCMeasure) (i : Fin 3) (f : Fin 3 → ℝ² → ℂ)
+    (hf : ∀ j, MemLp (f j) (aux_slotExp i j) volume) :
+    Integrable (fun z => (fun u => ∫ x, f 0 x * f 1 (x + u) * f 2 (x + M α β u)) (ν.φ z) *
+      ν.w z) ν.m := by
+  refine (lem_form_basic_integrable α β ν i f hf).integral_prod_left.congr
+    (Eventually.of_forall fun z => ?_)
+  exact integral_mul_const (ν.w z) _
+
+/-- Auxiliary for `tail:bounded-smoothing`, `tail:smoothing`: linearity of the form in the measure,
+$\Lambda_{\nu-\mu}=\Lambda_\nu-\Lambda_\mu$ on endpoint inputs. -/
+theorem aux_appr_form_sub (α β : ℝ) (ν μ : FCMeasure) (i : Fin 3) (f : Fin 3 → ℝ² → ℂ)
+    (hf : ∀ j, MemLp (f j) (aux_slotExp i j) volume) :
+    form α β (ν.sub μ) (f 0) (f 1) (f 2) =
+      form α β ν (f 0) (f 1) (f 2) - form α β μ (f 0) (f 1) (f 2) :=
+  aux_appr_integral_sub ν μ (fun u => ∫ x, f 0 x * f 1 (x + u) * f 2 (x + M α β u))
+    (aux_appr_form_integrable α β ν i f hf) (aux_appr_form_integrable α β μ i f hf)
+
+/-- Auxiliary for `tail:bounded-smoothing`: `Z × PUnit ≃ Z` carries `m ⊗ δ` to `m`. -/
+theorem aux_appr_mp_prodPUnit {Z : Type} [MeasurableSpace Z] (m : Measure Z) [SFinite m] :
+    MeasurePreserving (MeasurableEquiv.prodPUnit : Z × PUnit.{1} ≃ᵐ Z)
+      (m.prod (Measure.dirac PUnit.unit)) m := by
+  refine ⟨MeasurableEquiv.prodPUnit.measurable, ?_⟩
+  rw [Measure.prod_dirac, Measure.map_map MeasurableEquiv.prodPUnit.measurable
+    (by fun_prop : Measurable fun x : Z => (x, PUnit.unit.{1}))]
+  exact Measure.map_id
+
+/-- Auxiliary for `tail:bounded-smoothing`, `tail:smoothing`: $\Lambda_{\nu*\delta_0}=\Lambda_\nu$
+(the case $\kappa=\delta_0$ of `tail:convolved-tail`). -/
+theorem aux_appr_form_conv_dirac (α β : ℝ) (ν : FCMeasure) (f₀ f₁ f₂ : ℝ² → ℂ) :
+    form α β (ν.conv (FCMeasure.dirac 0)) f₀ f₁ f₂ = form α β ν f₀ f₁ f₂ := by
+  refine aux_appr_form_congr α β _ _ MeasurableEquiv.prodPUnit (aux_appr_mp_prodPUnit ν.m)
+    (fun z => ?_) (fun z => ?_) _ _ _
+  · change ν.φ z.1 = ν.φ z.1 + 0
+    rw [add_zero]
+  · change ν.w z.1 = ν.w z.1 * 1
+    rw [mul_one]
+
+/-- Auxiliary for `tail:smoothing`: $\Lambda_{\nu*(a-b)}=\Lambda_{\nu*a}-\Lambda_{\nu*b}$ on endpoint
+inputs (via `lem:convolution-translate`). -/
+theorem aux_appr_form_conv_sub (α β : ℝ) (ν a b : FCMeasure) (i : Fin 3) (f : Fin 3 → ℝ² → ℂ)
+    (hf : ∀ j, MemLp (f j) (aux_slotExp i j) volume) :
+    form α β (ν.conv (a.sub b)) (f 0) (f 1) (f 2) =
+      form α β (ν.conv a) (f 0) (f 1) (f 2) - form α β (ν.conv b) (f 0) (f 1) (f 2) := by
+  have ha := aux_appr_conv_translate_int α β ν a f (lem_form_basic_integrable α β _ i f hf)
+  have hb := aux_appr_conv_translate_int α β ν b f (lem_form_basic_integrable α β _ i f hf)
+  rw [lem_convolution_translate α β ν (a.sub b) i f hf, ha.2, hb.2]
+  exact aux_appr_integral_sub a b _ ha.1 hb.1
+
+/-- Auxiliary for `tail:bounded-smoothing`: `lem:convolution-translate` for an `L¹` density $h$ and
+endpoint inputs, written as a Lebesgue integral, with integrable integrand. -/
+theorem aux_appr_density_rep_end (α β : ℝ) (ν : FCMeasure) (h : ℝ² → ℂ) (hh : Integrable h)
+    (i : Fin 3) (f : Fin 3 → ℝ² → ℂ) (hf : ∀ j, MemLp (f j) (aux_slotExp i j) volume) :
+    Integrable (fun w => form α β ν (f 0) (fun x => f 1 (x + w))
+      (fun x => f 2 (x + M α β w)) * h w) ∧
+    form α β (ν.conv (FCMeasure.ofDensity h)) (f 0) (f 1) (f 2) =
+      ∫ w, form α β ν (f 0) (fun x => f 1 (x + w)) (fun x => f 2 (x + M α β w)) * h w := by
+  have hw : (FCMeasure.ofDensity h).w = h := by simp [FCMeasure.ofDensity, hh]
+  obtain ⟨H1, H2⟩ := aux_appr_conv_translate_int α β ν (FCMeasure.ofDensity h) f
+    (lem_form_basic_integrable α β _ i f hf)
+  rw [hw] at H1
+  refine ⟨H1, ?_⟩
+  rw [H2]; unfold FCMeasure.integral; rw [hw]; rfl
+
+/-- Auxiliary for `tail:bounded-smoothing`: inputs bounded in both norms are endpoint inputs for
+every bounded slot. -/
+theorem aux_appr_bothBounded_memLp_end {B : ℝ} {f : Fin 3 → ℝ² → ℂ}
+    (hf : aux_IsBothBounded B f) (i j : Fin 3) : MemLp (f j) (aux_slotExp i j) volume := by
+  unfold aux_slotExp
+  split_ifs
+  · exact ⟨(hf j).1, (hf j).2.2.trans_lt ENNReal.ofReal_lt_top⟩
+  · exact aux_appr_bothBounded_memLp hf j
+
+/-- Auxiliary for `tail:bounded-smoothing`: $|\Lambda_\sigma(f_0,f_1,f_2)|\le B^3$ for inputs bounded
+in both norms by $B$ (total variation estimate of `lem:form-basic`). -/
+theorem aux_appr_sigma_bound {B : ℝ} {f : Fin 3 → ℝ² → ℂ} (α β : ℝ)
+    (hf : aux_IsBothBounded B f) :
+    ‖form α β FCMeasure.sigma (f 0) (f 1) (f 2)‖ ≤ max B 0 ^ 3 := by
+  have h := lem_form_basic_bound α β FCMeasure.sigma 0 f (fun j => (hf j).1)
+  have htv : FCMeasure.sigma.tv = 1 := by
+    simp only [FCMeasure.tv, FCMeasure.sigma, enorm_one]
+    change ∫⁻ (_ : Ang), (1 : ℝ≥0∞) ∂σ = 1
+    simp
+  have hp : ∏ j : Fin 3, eLpNorm (f j) (aux_slotExp 0 j) volume ≤ ENNReal.ofReal B ^ 3 := by
+    rw [Fin.prod_univ_three, pow_three, ← mul_assoc]
+    have e : ∀ j, eLpNorm (f j) (aux_slotExp 0 j) volume ≤ ENNReal.ofReal B := by
+      intro j; unfold aux_slotExp; split_ifs
+      exacts [(hf j).2.2, (hf j).2.1]
+    gcongr <;> exact e _
+  rw [htv, one_mul] at h
+  have h2 := h.trans hp
+  rw [← toReal_enorm]
+  calc (‖form α β FCMeasure.sigma (f 0) (f 1) (f 2)‖ₑ).toReal
+      ≤ (ENNReal.ofReal B ^ 3).toReal := ENNReal.toReal_mono (by finiteness) h2
+    _ = max B 0 ^ 3 := by rw [ENNReal.toReal_pow, ENNReal.toReal_ofReal']
+
+/-- Auxiliary for `tail:bounded-smoothing`, `tail:smoothing`: $\rho_\varepsilon\in L^1$ and
+$\int\rho_\varepsilon=\int\rho$ for $\varepsilon>0$. -/
+theorem aux_appr_rho_integral (ρ : ℝ² → ℝ) (hρ : Integrable ρ) (ε : ℝ) (hε : 0 < ε)
+ :
+    Integrable (fun x => (ε ^ 2)⁻¹ * ρ (ε⁻¹ • x)) ∧
+      ∫ x, (ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) = ∫ y, ρ y := by
+  refine ⟨(hρ.comp_smul (inv_ne_zero hε.ne')).const_mul _, ?_⟩
+  rw [integral_const_mul, Measure.integral_comp_smul, finrank_euclideanSpace_fin, inv_pow,
+    inv_inv, abs_of_pos (by positivity), smul_eq_mul, ← mul_assoc,
+    inv_mul_cancel₀ (by positivity), one_mul]
+
+/-- Auxiliary for `tail:bounded-smoothing`, `tail:smoothing`:
+$\int_{|v|\ge\delta}\rho_\varepsilon=\int_{\varepsilon|y|\ge\delta}\rho$. -/
+theorem aux_appr_rho_tail_eq (ρ : ℝ² → ℝ) (ε δ : ℝ) (hε : 0 < ε) :
+    ∫ x, Set.indicator {v : ℝ² | δ ≤ ‖v‖} (fun x => (ε ^ 2)⁻¹ * ρ (ε⁻¹ • x)) x =
+      ∫ y, Set.indicator {y : ℝ² | δ ≤ ε * ‖y‖} ρ y := by
+  have e : ∀ x : ℝ², Set.indicator {v : ℝ² | δ ≤ ‖v‖} (fun x => (ε ^ 2)⁻¹ * ρ (ε⁻¹ • x)) x =
+      (ε ^ 2)⁻¹ * Set.indicator {y : ℝ² | δ ≤ ε * ‖y‖} ρ (ε⁻¹ • x) := by
+    intro x
+    have hn : ε * ‖ε⁻¹ • x‖ = ‖x‖ := by
+      rw [norm_smul, Real.norm_eq_abs, abs_of_pos (inv_pos.2 hε), ← mul_assoc,
+        mul_inv_cancel₀ hε.ne', one_mul]
+    by_cases h : δ ≤ ‖x‖
+    · rw [Set.indicator_of_mem (show x ∈ {v : ℝ² | δ ≤ ‖v‖} from h),
+        Set.indicator_of_mem (show ε⁻¹ • x ∈ {y : ℝ² | δ ≤ ε * ‖y‖} by simp [hn, h])]
+    · rw [Set.indicator_of_notMem (show x ∉ {v : ℝ² | δ ≤ ‖v‖} from h),
+        Set.indicator_of_notMem (show ε⁻¹ • x ∉ {y : ℝ² | δ ≤ ε * ‖y‖} by simp [hn, h]),
+        mul_zero]
+  simp_rw [e]
+  rw [integral_const_mul, Measure.integral_comp_smul, finrank_euclideanSpace_fin, inv_pow,
+    inv_inv, abs_of_pos (by positivity), smul_eq_mul, ← mul_assoc,
+    inv_mul_cancel₀ (by positivity), one_mul]
+
+/-- Auxiliary for `tail:bounded-smoothing`, `tail:smoothing`: the mass of $\rho_\varepsilon$ outside
+$B(0,\delta)$ tends to zero as $\varepsilon\downarrow0$ (dominated convergence). -/
+theorem aux_appr_rho_tail_tendsto (ρ : ℝ² → ℝ) (hρ : Integrable ρ) (δ : ℝ) (hδ : 0 < δ) :
+    Tendsto (fun ε : ℝ => ∫ y, Set.indicator {y : ℝ² | δ ≤ ε * ‖y‖} ρ y) (𝓝[>] 0) (𝓝 0) := by
+  have h := tendsto_integral_filter_of_dominated_convergence (μ := (volume : Measure ℝ²))
+    (l := 𝓝[>] (0 : ℝ)) (F := fun ε : ℝ => Set.indicator {y : ℝ² | δ ≤ ε * ‖y‖} ρ)
+    (f := fun _ => (0 : ℝ)) (fun y => ‖ρ y‖) ?_ ?_ hρ.norm ?_
+  · simpa using h
+  · exact Eventually.of_forall fun ε => hρ.1.indicator
+      (measurableSet_le measurable_const (by fun_prop))
+  · exact Eventually.of_forall fun ε => Eventually.of_forall fun y => by
+      rw [Set.indicator]; split_ifs <;> simp
+  · refine Eventually.of_forall fun y => tendsto_const_nhds.congr' ?_
+    have h1 : ∀ᶠ ε in 𝓝[>] (0 : ℝ), ε < δ / (‖y‖ + 1) :=
+      nhdsWithin_le_nhds (eventually_lt_nhds (by positivity))
+    filter_upwards [h1, self_mem_nhdsWithin] with ε hε hε0
+    have hε0' : (0 : ℝ) < ε := hε0
+    rw [Set.indicator_of_notMem]
+    simp only [Set.mem_ofPred_eq, not_le]
+    rw [lt_div_iff₀ (by positivity)] at hε
+    nlinarith [norm_nonneg y]
+
+/-- Auxiliary for `tail:bounded-smoothing`: translation continuity in $L^1$ in the quantitative form
+$\|q(\cdot-v)-q\|_1\le\eta+2\|q\|_1\mathbf 1_{|v|\ge\delta}$. -/
+theorem aux_appr_Tq (q : ℝ² → ℂ) (hq : Integrable q) (η : ℝ) (hη : 0 < η) :
+    ∃ δ > 0, ∀ v : ℝ², (∫ x, ‖q (x - v) - q x‖) ≤ η + 2 * (∫ x, ‖q x‖) *
+      Set.indicator {v : ℝ² | δ ≤ ‖v‖} (fun _ => (1 : ℝ)) v := by
+  have h := ext_approximation_translation (Or.inl rfl) (memLp_one_iff_integrable.2 hq)
+  have h2 := (ENNReal.tendsto_nhds_zero.1 h) (ENNReal.ofReal η) (ENNReal.ofReal_pos.2 hη)
+  obtain ⟨δ, hδ, hδv⟩ := Metric.eventually_nhds_iff.1 h2
+  refine ⟨δ, hδ, fun v => ?_⟩
+  have hqv : Integrable (fun x => q (x - v) - q x) := (hq.comp_sub_right v).sub hq
+  have hTn : (∫ x, ‖q (x - v) - q x‖) =
+      (eLpNorm (fun x => q (x - v) - q x) 1 volume).toReal := by
+    rw [integral_norm_eq_lintegral_enorm hqv.1, eLpNorm_one_eq_lintegral_enorm]
+  have hpos : 0 ≤ ∫ x, ‖q x‖ := integral_nonneg fun _ => norm_nonneg _
+  by_cases hv : δ ≤ ‖v‖
+  · rw [Set.indicator_of_mem (show v ∈ {v : ℝ² | δ ≤ ‖v‖} from hv), mul_one]
+    calc (∫ x, ‖q (x - v) - q x‖) ≤ ∫ x, (‖q (x - v)‖ + ‖q x‖) :=
+          integral_mono hqv.norm ((hq.comp_sub_right v).norm.add hq.norm)
+            fun x => norm_sub_le _ _
+      _ = 2 * ∫ x, ‖q x‖ := by
+          rw [integral_add (hq.comp_sub_right v).norm hq.norm,
+            integral_sub_right_eq_self (fun x => ‖q x‖) v]
+          ring
+      _ ≤ η + 2 * ∫ x, ‖q x‖ := by linarith
+  · rw [Set.indicator_of_notMem (show v ∉ {v : ℝ² | δ ≤ ‖v‖} from hv), mul_zero, add_zero, hTn]
+    have hd : dist v 0 < δ := by rw [dist_zero_right]; exact lt_of_not_ge hv
+    have := hδv hd
+    exact ENNReal.toReal_le_of_le_ofReal hη.le this
+
+/-- Auxiliary for `tail:bounded-smoothing` (`Auto.tail_bounded_smoothing`): the low-frequency
+estimate $|\Lambda_{\sigma*\rho_\varepsilon*q}-\Lambda_{\sigma*q}|\le B^3\int\rho(y)
+\|q(\cdot-\varepsilon y)-q\|_1\,dy$, in the explicit form $B^3(\eta+2\|q\|_1\int_{\varepsilon|y|\ge\delta}\rho)$. -/
+theorem aux_appr_lowfreq (α β : ℝ) (q : ℝ² → ℂ) (hq : Integrable q) (ρ : ℝ² → ℝ)
+    (hρ0 : ∀ x, 0 ≤ ρ x) (hρ : Integrable ρ) (hρ1 : ∫ x, ρ x = 1) (B η : ℝ) (hη : 0 < η) :
+    ∃ δ > 0, ∀ ε : ℝ, 0 < ε → ∀ f : Fin 3 → ℝ² → ℂ, aux_IsBothBounded B f →
+      ‖form α β ((FCMeasure.sigma.conv
+          (FCMeasure.ofDensity (fun x => (((ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) : ℝ) : ℂ)))).conv
+          (FCMeasure.ofDensity q)) (f 0) (f 1) (f 2) -
+        form α β (FCMeasure.sigma.conv (FCMeasure.ofDensity q)) (f 0) (f 1) (f 2)‖ ≤
+      max B 0 ^ 3 * (η + 2 * (∫ x, ‖q x‖) *
+        ∫ y, Set.indicator {y : ℝ² | δ ≤ ε * ‖y‖} ρ y) := by
+  obtain ⟨δ, hδ, hT⟩ := aux_appr_Tq q hq η hη
+  refine ⟨δ, hδ, fun ε hε f hf => ?_⟩
+  set Bc := max B 0 ^ 3 with hBc
+  have hBc0 : 0 ≤ Bc := by positivity
+  set ρr : ℝ² → ℝ := fun x => (ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) with hρr
+  obtain ⟨hρri, hρr1⟩ := aux_appr_rho_integral ρ hρ ε hε
+  rw [hρ1] at hρr1
+  have hρr0 : ∀ x, 0 ≤ ρr x := fun x => mul_nonneg (by positivity) (hρ0 _)
+  set ρc : ℝ² → ℂ := fun x => ((ρr x : ℝ) : ℂ) with hρc
+  have hρci : Integrable ρc := hρri.ofReal
+  have hρc1 : ∫ x, ρc x = 1 := by rw [integral_complex_ofReal, hρr1]; simp
+  set H : ℝ² → ℂ := fun u => form α β FCMeasure.sigma (f 0) (fun x => f 1 (x + u))
+    (fun x => f 2 (x + M α β u)) with hH
+  set G : ℝ² → ℂ := fun v => form α β (FCMeasure.sigma.conv (FCMeasure.ofDensity q)) (f 0)
+    (fun x => f 1 (x + v)) (fun x => f 2 (x + M α β v)) with hG
+  have hfe := aux_appr_bothBounded_memLp_end hf 0
+  -- the bound on `H`
+  have hHb : ∀ u, ‖H u‖ ≤ Bc := fun u => by
+    have := aux_appr_sigma_bound α β (aux_appr_bothBounded_translate hf α β u)
+    simpa only [Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
+      Matrix.head_cons, Matrix.tail_cons] using this
+  -- representation of `G v`
+  have hGrep : ∀ v, Integrable (fun w => H (w + v) * q w) ∧ G v = ∫ w, H (w + v) * q w := by
+    intro v
+    have h := aux_appr_density_rep_end α β FCMeasure.sigma q hq 0 _
+      (aux_appr_bothBounded_memLp_end (aux_appr_bothBounded_translate hf α β v) 0)
+    simp only [Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
+      Matrix.head_cons, Matrix.tail_cons] at h
+    have e : ∀ w, form α β FCMeasure.sigma (f 0) (fun x => f 1 (x + w + v))
+        (fun x => f 2 (x + M α β w + M α β v)) = H (w + v) := by
+      intro w
+      simp only [hH, map_add, add_assoc]
+    simp only [e] at h
+    exact h
+  have hG0 : G 0 = form α β (FCMeasure.sigma.conv (FCMeasure.ofDensity q)) (f 0) (f 1) (f 2) := by
+    simp [hG]
+  -- difference bound
+  have hdiff : ∀ v, ‖G v - G 0‖ ≤ Bc * ∫ x, ‖q (x - v) - q x‖ := by
+    intro v
+    obtain ⟨Iv, Gv⟩ := hGrep v
+    obtain ⟨I0, G0⟩ := hGrep 0
+    simp only [add_zero] at I0 G0
+    have I1 : Integrable (fun w => H w * q (w - v)) := by
+      have := Iv.comp_sub_right v
+      simpa only [sub_add_cancel] using this
+    have hqv : Integrable (fun x => q (x - v) - q x) := (hq.comp_sub_right v).sub hq
+    have e1 : ∫ w, H (w + v) * q w = ∫ w, H w * q (w - v) := by
+      have := integral_add_right_eq_self (μ := (volume : Measure ℝ²))
+        (fun w => H w * q (w - v)) v
+      simpa only [add_sub_cancel_right] using this
+    rw [Gv, G0, e1, ← integral_sub I1 I0]
+    calc ‖∫ w, (H w * q (w - v) - H w * q w)‖ ≤ ∫ w, Bc * ‖q (w - v) - q w‖ := by
+          refine norm_integral_le_of_norm_le (hqv.norm.const_mul Bc)
+            (Eventually.of_forall fun w => ?_)
+          rw [← mul_sub, norm_mul]
+          exact mul_le_mul_of_nonneg_right (hHb w) (norm_nonneg _)
+      _ = Bc * ∫ x, ‖q (x - v) - q x‖ := integral_const_mul _ _
+  -- representation of the first form
+  have hrep : form α β ((FCMeasure.sigma.conv (FCMeasure.ofDensity ρc)).conv
+      (FCMeasure.ofDensity q)) (f 0) (f 1) (f 2) = ∫ v, G v * ρc v := by
+    rw [aux_appr_form_comm]
+    exact (aux_appr_density_rep_end α β _ ρc hρci 0 f hfe).2
+  have hIG : Integrable (fun v => G v * ρc v) :=
+    (aux_appr_density_rep_end α β _ ρc hρci 0 f hfe).1
+  have hL : (∫ v, G v * ρc v) - G 0 = ∫ v, (G v - G 0) * ρc v := by
+    have : G 0 = ∫ v, G 0 * ρc v := by rw [integral_const_mul, hρc1, mul_one]
+    conv_lhs => rw [this]
+    rw [← integral_sub hIG (hρci.const_mul _)]
+    congr 1; funext v; ring
+  set c := 2 * ∫ x, ‖q x‖
+  set ind : ℝ² → ℝ := Set.indicator {v : ℝ² | δ ≤ ‖v‖} ρr with hind
+  have hindi : Integrable ind :=
+    hρri.indicator (measurableSet_le measurable_const continuous_norm.measurable)
+  have hind_eq : ∀ v, Set.indicator {v : ℝ² | δ ≤ ‖v‖} (fun _ => (1 : ℝ)) v * ρr v = ind v := by
+    intro v; simp only [hind, Set.indicator]; split_ifs <;> simp
+  change ‖form α β ((FCMeasure.sigma.conv (FCMeasure.ofDensity ρc)).conv
+      (FCMeasure.ofDensity q)) (f 0) (f 1) (f 2) - _‖ ≤ _
+  rw [hrep, ← hG0, hL]
+  calc ‖∫ v, (G v - G 0) * ρc v‖ ≤ ∫ v, Bc * (η * ρr v + c * ind v) := by
+        refine norm_integral_le_of_norm_le
+          (((hρri.const_mul η).add (hindi.const_mul c)).const_mul Bc)
+          (Eventually.of_forall fun v => ?_)
+        rw [norm_mul, hρc]
+        simp only [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (hρr0 v)]
+        calc ‖G v - G 0‖ * ρr v ≤ (Bc * (η + c * Set.indicator {v : ℝ² | δ ≤ ‖v‖}
+              (fun _ => (1 : ℝ)) v)) * ρr v := by
+              refine mul_le_mul_of_nonneg_right ((hdiff v).trans ?_) (hρr0 v)
+              exact mul_le_mul_of_nonneg_left (hT v) hBc0
+          _ = Bc * (η * ρr v + c * ind v) := by rw [← hind_eq]; ring
+    _ = Bc * (η + c * ∫ y, Set.indicator {y : ℝ² | δ ≤ ε * ‖y‖} ρ y) := by
+        have e1 : ∫ a, η * ρr a = η := by
+          rw [integral_const_mul η ρr]
+          change η * (∫ x, (ε ^ 2)⁻¹ * ρ (ε⁻¹ • x)) = η
+          rw [hρr1, mul_one]
+        have e2 : ∫ a, c * ind a = c * ∫ y, Set.indicator {y : ℝ² | δ ≤ ε * ‖y‖} ρ y := by
+          rw [integral_const_mul c ind, hind, aux_appr_rho_tail_eq ρ ε δ hε]
+        rw [integral_const_mul Bc, integral_add (hρri.const_mul η) (hindi.const_mul c), e1, e2]
+
+/-- Auxiliary for `tail:bounded-smoothing`: a cutoff `χ` as in `tail:annular-definition` exists
+(`x ↦ smoothTransition((4-|x|²)/3)`). -/
+theorem aux_appr_tailCutoff_exists : ∃ χ : ℝ² → ℝ, aux_IsTailCutoff χ := by
+  refine ⟨fun x => Real.smoothTransition ((4 - ‖x‖ ^ 2) / 3), ?_, ?_, ?_, ?_⟩
+  · exact Real.smoothTransition.contDiff.comp
+      (((contDiff_const.sub (contDiff_norm_sq ℝ)).div_const 3))
+  · intro x y hxy; simp only [hxy]
+  · intro b hb
+    apply Real.smoothTransition.one_of_one_le
+    rw [le_div_iff₀ (by norm_num)]
+    nlinarith [norm_nonneg b]
+  · intro b hb
+    apply Real.smoothTransition.zero_of_nonpos
+    apply div_nonpos_of_nonpos_of_nonneg _ (by norm_num)
+    nlinarith [norm_nonneg b]
+
+/-- Auxiliary for `tail:bounded-smoothing`, `tail:smoothing`: $\|\rho_\varepsilon\|_{\mathrm{TV}}=1$. -/
+theorem aux_appr_tv_rho (ρ : ℝ² → ℝ) (hρ0 : ∀ x, 0 ≤ ρ x) (hρ : Integrable ρ)
+    (hρ1 : ∫ x, ρ x = 1) (ε : ℝ) (hε : 0 < ε) :
+    (FCMeasure.ofDensity (fun x => (((ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) : ℝ) : ℂ))).tv = 1 := by
+  obtain ⟨hi, h1⟩ := aux_appr_rho_integral ρ hρ ε hε
+  rw [hρ1] at h1
+  have hic : Integrable (fun x => (((ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) : ℝ) : ℂ)) := hi.ofReal
+  have h0 : ∀ x, 0 ≤ (ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) := fun x => mul_nonneg (by positivity) (hρ0 _)
+  simp only [FCMeasure.tv, FCMeasure.ofDensity, if_pos hic]
+  have e : ∀ x : ℝ², ‖(((ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) : ℝ) : ℂ)‖ₑ =
+      ENNReal.ofReal ((ε ^ 2)⁻¹ * ρ (ε⁻¹ • x)) := by
+    intro x
+    rw [← ofReal_norm, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (h0 x)]
+  change ∫⁻ x, ‖(((ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) : ℝ) : ℂ)‖ₑ = 1
+  simp_rw [e]
+  rw [← ofReal_integral_eq_lintegral_ofReal hi (Eventually.of_forall h0), h1, ENNReal.ofReal_one]
+
+/-- Auxiliary for `tail:bounded-smoothing`, `tail:smoothing`: $\|\delta_0\|_{\mathrm{TV}}=1$. -/
+theorem aux_appr_tv_dirac : (FCMeasure.dirac 0).tv = 1 := by
+  simp only [FCMeasure.tv, FCMeasure.dirac, enorm_one]
+  change ∫⁻ (_ : Unit), (1 : ℝ≥0∞) ∂(Measure.dirac ()) = 1
+  simp
+
+/-- Auxiliary for `tail:bounded-smoothing`: $a(r)\to0$ implies $(\sup_{r\ge2^K}a(r))^{1/2}\to0$. -/
+theorem aux_appr_sup_tendsto (a : ℝ → ℝ) (ha : Tendsto a atTop (𝓝 0)) :
+    Tendsto (fun K : ℕ => (⨆ (r : ℝ) (_ : (2 : ℝ) ^ K ≤ r), ENNReal.ofReal (a r)) ^ (1 / 2 : ℝ))
+      atTop (𝓝 0) := by
+  set S : ℕ → ℝ≥0∞ := fun K => ⨆ (r : ℝ) (_ : (2 : ℝ) ^ K ≤ r), ENNReal.ofReal (a r)
+  have hS : Tendsto S atTop (𝓝 0) := by
+    rw [ENNReal.tendsto_atTop_zero]
+    intro ε hε
+    by_cases hεt : ε = ⊤
+    · exact ⟨0, fun n _ => hεt ▸ le_top⟩
+    have hεr : 0 < ε.toReal := ENNReal.toReal_pos hε.ne' hεt
+    obtain ⟨R₀, hR₀⟩ := (Metric.tendsto_atTop.1 ha) ε.toReal hεr
+    obtain ⟨N, hN⟩ := pow_unbounded_of_one_lt R₀ (by norm_num : (1 : ℝ) < 2)
+    refine ⟨N, fun K hK => iSup₂_le fun r hr => ?_⟩
+    have hrR : R₀ ≤ r := by
+      have : (2 : ℝ) ^ N ≤ 2 ^ K := pow_le_pow_right₀ (by norm_num) hK
+      linarith
+    have := hR₀ r hrR
+    rw [Real.dist_eq, sub_zero] at this
+    rw [← ENNReal.ofReal_toReal hεt]
+    exact ENNReal.ofReal_le_ofReal ((le_abs_self _).trans this.le)
+  have h := ((ENNReal.continuous_rpow_const (y := (1 / 2 : ℝ))).tendsto 0).comp hS
+  rwa [ENNReal.zero_rpow_of_pos (by norm_num)] at h
 
 /-- **Proposition `tail:bounded-smoothing`** (Smoothing for inputs bounded in both norms).
 Let $\rho\in L^1(\mathbb R^2)$ be nonnegative with $\int\rho=1$, and set
@@ -92,9 +875,297 @@ theorem tail_bounded_smoothing (α β : ℝ) (hβ : β ≠ 0) (ρ : ℝ² → �
         (FCMeasure.ofDensity (fun x => (((ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) : ℝ) : ℂ)))).sub
           FCMeasure.sigma) (f 0) (f 1) (f 2)‖ₑ)
       (𝓝[>] 0) (𝓝 0) := by
-  sorry
+  obtain ⟨χ, hχ⟩ := aux_appr_tailCutoff_exists
+  obtain ⟨C₀₀, hC₀₀, hb⟩ := tail_convolved_tail α β hβ χ hχ
+  obtain ⟨CMB, hCMB⟩ := hb C₀₀ le_rfl B
+  obtain ⟨hψs, -⟩ := aux_tail_psi_smooth χ hχ
+  obtain ⟨a, ha⟩ := ann_global α β hβ (tailPsi χ) hψs
+    ⟨1, 4, one_pos, (aux_tail_annular_definition χ hχ).1⟩ C₀₀ hC₀₀
+  set S : ℕ → ℝ≥0∞ := fun K =>
+    (⨆ (r : ℝ) (_ : (2 : ℝ) ^ K ≤ r), ENNReal.ofReal (a r)) ^ (1 / 2 : ℝ) with hSdef
+  have hS : Tendsto (fun K => ENNReal.ofReal CMB * S K) atTop (𝓝 0) := by
+    have := ENNReal.Tendsto.const_mul (aux_appr_sup_tendsto a ha.1)
+      (Or.inr (ENNReal.ofReal_ne_top (r := CMB)))
+    rwa [mul_zero] at this
+  rw [ENNReal.tendsto_nhds_zero]
+  intro e he
+  by_cases het : e = ⊤
+  · exact Eventually.of_forall fun _ => het ▸ le_top
+  set t := e.toReal with ht
+  have ht0 : 0 < t := ENNReal.toReal_pos he.ne' het
+  -- high frequencies
+  obtain ⟨K, hK⟩ := ((ENNReal.tendsto_nhds_zero.1 hS) (ENNReal.ofReal (t / 4))
+    (ENNReal.ofReal_pos.2 (by positivity))).exists
+  set q := tailQ χ (2 ^ K) with hqdef
+  have hq : Integrable q := aux_appr_tailQ_integrable χ hχ _ (by positivity)
+  -- low frequencies
+  set Bc := max B 0 ^ 3
+  have hBc0 : 0 ≤ Bc := by positivity
+  set η := t / (8 * (Bc + 1)) with hη
+  have hη0 : 0 < η := by positivity
+  have hBη : Bc * η ≤ t / 8 := by
+    rw [hη, mul_div_assoc', div_le_div_iff₀ (by positivity) (by norm_num)]
+    nlinarith
+  obtain ⟨δ, hδ, hlow⟩ := aux_appr_lowfreq α β q hq ρ hρ0 hρ hρ1 B η hη0
+  set c := 2 * ∫ x, ‖q x‖
+  have htail := ((aux_appr_rho_tail_tendsto ρ hρ δ hδ).const_mul (Bc * c))
+  rw [mul_zero] at htail
+  have hev := (tendsto_order.1 htail).2 (t / 8) (by positivity)
+  filter_upwards [hev, self_mem_nhdsWithin] with ε hεt hε0
+  have hε : (0 : ℝ) < ε := hε0
+  refine iSup₂_le fun f hf => ?_
+  set κ := FCMeasure.ofDensity (fun x => (((ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) : ℝ) : ℂ)) with hκ
+  have hfe := aux_appr_bothBounded_memLp_end hf 0
+  have hT1 := tail_convolved_tail_sum α β hβ χ hχ B κ K f hf
+  have hT2 := tail_convolved_tail_sum α β hβ χ hχ B (FCMeasure.dirac 0) K f hf
+  rw [aux_appr_form_conv_dirac, aux_appr_form_comm, aux_appr_form_conv_dirac] at hT2
+  have hb1 := hCMB a ha κ K f hf
+  have hb2 := hCMB a ha (FCMeasure.dirac 0) K f hf
+  rw [aux_appr_tv_rho ρ hρ0 hρ hρ1 ε hε, mul_one] at hb1
+  rw [aux_appr_tv_dirac, mul_one] at hb2
+  set L := form α β ((FCMeasure.sigma.conv κ).conv (FCMeasure.ofDensity q)) (f 0) (f 1) (f 2) -
+    form α β (FCMeasure.sigma.conv (FCMeasure.ofDensity q)) (f 0) (f 1) (f 2) with hL
+  have hdec : form α β ((FCMeasure.sigma.conv κ).sub FCMeasure.sigma) (f 0) (f 1) (f 2) =
+      L + (∑' k, form α β ((FCMeasure.sigma.conv κ).conv
+          (FCMeasure.ofDensity (tailK χ (2 ^ (K + k))))) (f 0) (f 1) (f 2)) -
+        ∑' k, form α β ((FCMeasure.sigma.conv (FCMeasure.dirac 0)).conv
+          (FCMeasure.ofDensity (tailK χ (2 ^ (K + k))))) (f 0) (f 1) (f 2) := by
+    rw [aux_appr_form_sub α β _ _ 0 f hfe, hT1.tsum_eq, hT2.tsum_eq, hL]
+    ring
+  have hLb : ‖L‖ₑ ≤ ENNReal.ofReal (t / 4) := by
+    have h := hlow ε hε f hf
+    rw [← ofReal_norm]
+    refine ENNReal.ofReal_le_ofReal (h.trans ?_)
+    have : Bc * c * ∫ y, Set.indicator {y : ℝ² | δ ≤ ε * ‖y‖} ρ y < t / 8 := hεt
+    nlinarith
+  rw [hdec]
+  calc _ ≤ ‖L‖ₑ + ‖∑' k, form α β ((FCMeasure.sigma.conv κ).conv
+          (FCMeasure.ofDensity (tailK χ (2 ^ (K + k))))) (f 0) (f 1) (f 2)‖ₑ +
+        ‖∑' k, form α β ((FCMeasure.sigma.conv (FCMeasure.dirac 0)).conv
+          (FCMeasure.ofDensity (tailK χ (2 ^ (K + k))))) (f 0) (f 1) (f 2)‖ₑ :=
+        (enorm_sub_le).trans (by gcongr; exact enorm_add_le _ _)
+    _ ≤ ENNReal.ofReal (t / 4) + ENNReal.ofReal (t / 4) + ENNReal.ofReal (t / 4) := by
+        gcongr
+        · exact enorm_tsum_le_tsum_enorm.trans (hb1.trans hK)
+        · exact enorm_tsum_le_tsum_enorm.trans (hb2.trans hK)
+    _ ≤ e := by
+        rw [← ENNReal.ofReal_add (by positivity) (by positivity),
+          ← ENNReal.ofReal_add (by positivity) (by positivity), ← ENNReal.ofReal_toReal het]
+        exact ENNReal.ofReal_le_ofReal (by linarith)
 
 /-! ### Uniform smoothing in the endpoint form norm (`tail:smoothing`) -/
+
+/-- Auxiliary for `tail:smoothing`: convolution with $\delta_0$ is the identity ($P_n=\mathrm{id}$ in
+`ann:localize`). -/
+theorem aux_appr_convFun_dirac (f : ℝ² → ℂ) : (FCMeasure.dirac 0).convFun f = f := by
+  funext x
+  simp only [FCMeasure.convFun, FCMeasure.integral, FCMeasure.dirac]
+  change ∫ (z : Unit), f (x - 0) * 1 ∂(Measure.dirac ()) = f x
+  rw [integral_dirac]; simp
+
+/-- Auxiliary for `tail:smoothing`: $\|\nu-\mu\|_{\mathrm{TV}}=\|\nu\|_{\mathrm{TV}}+\|\mu\|_{\mathrm{TV}}$ for
+the presentation of a difference (so $\|\kappa_n\|_{\mathrm{TV}}\le2$). -/
+theorem aux_appr_tv_sub (ν μ : FCMeasure) : (ν.sub μ).tv = ν.tv + μ.tv := by
+  have hl : MeasurableEmbedding (Sum.inl : ν.Z → ν.Z ⊕ μ.Z) :=
+    ⟨Sum.inl_injective, measurable_inl, fun _ hs => hs.inl_image⟩
+  have hr : MeasurableEmbedding (Sum.inr : μ.Z → ν.Z ⊕ μ.Z) :=
+    ⟨Sum.inr_injective, measurable_inr, fun _ hs => hs.inr_image⟩
+  set F : ν.Z ⊕ μ.Z → ℝ≥0∞ := fun z => ‖Sum.elim ν.w (fun z => -1 * μ.w z) z‖ₑ with hF
+  calc (ν.sub μ).tv = ∫⁻ z, F z ∂(ν.m.map (Sum.inl : ν.Z → ν.Z ⊕ μ.Z) +
+        μ.m.map (Sum.inr : μ.Z → ν.Z ⊕ μ.Z)) := rfl
+    _ = ν.tv + μ.tv := by
+      rw [lintegral_add_measure, hl.lintegral_map, hr.lintegral_map]
+      simp [hF, FCMeasure.tv]
+
+/-- Auxiliary for `tail:smoothing`: $|\mu_n|(\{|u|>2\})\le\int_{|w|\ge1}\rho_\varepsilon(w)\,dw
+=\int_{\varepsilon|y|\ge1}\rho(y)\,dy$ for $\mu_n=\sigma*(\rho_\varepsilon-\delta_0)$. -/
+theorem aux_appr_varOn_bound (ρ : ℝ² → ℝ) (hρ0 : ∀ x, 0 ≤ ρ x) (hρ : Integrable ρ)
+    (ε : ℝ) (hε : 0 < ε) :
+    (FCMeasure.sigma.conv ((FCMeasure.ofDensity
+        (fun x => (((ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) : ℝ) : ℂ))).sub (FCMeasure.dirac 0))).varOn
+      {u | 2 < ‖u‖} ≤ ENNReal.ofReal (∫ y, Set.indicator {y : ℝ² | 1 ≤ ε * ‖y‖} ρ y) := by
+  obtain ⟨hi, -⟩ := aux_appr_rho_integral ρ hρ ε hε
+  have hic : Integrable (fun x => (((ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) : ℝ) : ℂ)) := hi.ofReal
+  have h0 : ∀ x, 0 ≤ (ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) := fun x => mul_nonneg (by positivity) (hρ0 _)
+  set ρr : ℝ² → ℝ := fun x => (ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) with hρr
+  set H : ℝ² → ℝ≥0∞ := Set.indicator {v : ℝ² | 1 ≤ ‖v‖} (fun y => ENNReal.ofReal (ρr y))
+  set G : Ang × (ℝ² ⊕ Unit) → ℝ≥0∞ := fun z => Sum.elim H (fun _ => 0) z.2 with hG
+  set ν := FCMeasure.sigma.conv ((FCMeasure.ofDensity
+        (fun x => (((ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) : ℝ) : ℂ))).sub (FCMeasure.dirac 0)) with hν
+  have hS : MeasurableSet (ν.φ ⁻¹' {u : ℝ² | 2 < ‖u‖}) :=
+    ν.measurable_φ (measurableSet_lt measurable_const continuous_norm.measurable)
+  have hpt : ∀ z ∈ ν.φ ⁻¹' {u : ℝ² | 2 < ‖u‖}, ‖ν.w z‖ₑ ≤ G z := by
+    rintro ⟨(a : Ang), (y : ℝ²) | b⟩ hz
+    · have hz' : 2 < ‖u a + y‖ := hz
+      have hy : 1 ≤ ‖y‖ := by
+        have := norm_add_le (u a) y
+        rw [aux_cd_norm_u] at this; linarith
+      have hwd : (FCMeasure.ofDensity
+          (fun x => (((ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) : ℝ) : ℂ))).w =
+          (fun x => (((ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) : ℝ) : ℂ)) := by
+        simp only [FCMeasure.ofDensity, if_pos hic]
+      have hw : ν.w (a, Sum.inl y) = 1 * (FCMeasure.ofDensity
+          (fun x => (((ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) : ℝ) : ℂ))).w y := rfl
+      rw [hw, hwd, one_mul]
+      change _ ≤ Set.indicator {v : ℝ² | 1 ≤ ‖v‖} (fun y => ENNReal.ofReal (ρr y)) y
+      rw [Set.indicator_of_mem (show y ∈ {v : ℝ² | 1 ≤ ‖v‖} from hy),
+        ← ofReal_norm, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (h0 y)]
+    · have hz' : 2 < ‖u a + 0‖ := hz
+      have h1 := aux_cd_norm_u a
+      rw [add_zero] at hz'
+      linarith
+  calc ν.varOn {u | 2 < ‖u‖} ≤ ∫⁻ z in ν.φ ⁻¹' {u : ℝ² | 2 < ‖u‖}, G z ∂ν.m :=
+        setLIntegral_mono' hS hpt
+    _ ≤ ∫⁻ z, G z ∂ν.m := setLIntegral_le_lintegral _ _
+    _ ≤ ∫⁻ y, H y := by
+        refine (lintegral_prod_le _).trans ?_
+        have hin : ∀ x, ∫⁻ s, G (x, s) ∂(Measure.map (Sum.inl : ℝ² → ℝ² ⊕ Unit) volume +
+            Measure.map (Sum.inr : Unit → ℝ² ⊕ Unit) (Measure.dirac ())) ≤ ∫⁻ y, H y := by
+          intro x
+          rw [lintegral_add_measure]
+          refine (add_le_add (lintegral_map_le _ _) (lintegral_map_le _ _)).trans ?_
+          simp [hG]
+        exact (lintegral_mono hin).trans (by
+          change ∫⁻ (_ : Ang), (∫⁻ y, H y) ∂σ ≤ _
+          simp)
+    _ = _ := by
+        have e : H = fun y => ENNReal.ofReal (Set.indicator {v : ℝ² | 1 ≤ ‖v‖} ρr y) := by
+          funext y
+          by_cases hy : 1 ≤ ‖y‖
+          · simp [H, Set.indicator_of_mem (show y ∈ {v : ℝ² | 1 ≤ ‖v‖} from hy)]
+          · simp [H, Set.indicator_of_notMem (show y ∉ {v : ℝ² | 1 ≤ ‖v‖} from hy)]
+        rw [e, ← ofReal_integral_eq_lintegral_ofReal
+          (hi.indicator (measurableSet_le measurable_const continuous_norm.measurable))
+          (Eventually.of_forall fun y => Set.indicator_nonneg (fun v _ => h0 v) y),
+          aux_appr_rho_tail_eq ρ ε 1 hε]
+
+/-- Auxiliary for `tail:smoothing`: $\Lambda_{\sigma*(a-\delta_0)}=\Lambda_{\sigma*a-\sigma}$ on endpoint
+inputs. -/
+theorem aux_appr_form_kappa (α β : ℝ) (a : FCMeasure) (i : Fin 3) (f : Fin 3 → ℝ² → ℂ)
+    (hf : ∀ j, MemLp (f j) (aux_slotExp i j) volume) :
+    form α β (FCMeasure.sigma.conv (a.sub (FCMeasure.dirac 0))) (f 0) (f 1) (f 2) =
+      form α β ((FCMeasure.sigma.conv a).sub FCMeasure.sigma) (f 0) (f 1) (f 2) := by
+  rw [aux_appr_form_conv_sub α β _ a _ i f hf, aux_appr_form_conv_dirac,
+    aux_appr_form_sub α β _ _ i f hf]
+
+/-- Auxiliary for `tail:smoothing`: by dilation invariance (`lem:form-basic`),
+$\sup_{s>0}\|\Lambda_{\nu_s}\|_i=\|\Lambda_\nu\|_i$. -/
+theorem aux_appr_endNorm_dil (α β : ℝ) (ν : FCMeasure) (i : Fin 3) :
+    (⨆ (s : ℝ) (_ : 0 < s), endNorm α β (ν.dil s) i) = endNorm α β ν i := by
+  refine le_antisymm (iSup₂_le fun s hs => (lem_form_basic_scaling α β ν i s hs).le) ?_
+  exact le_iSup₂_of_le (1 : ℝ) one_pos (lem_form_basic_scaling α β ν i 1 one_pos).ge
+
+/-- Auxiliary for `tail:smoothing`: for fixed cutoffs $\chi_j\in C_c^\infty$ and $\|f_j\|_\infty\le1$,
+the inputs $\chi_jf_j$ are bounded in both norms by a constant depending only on the cutoffs. -/
+theorem aux_appr_cutoff_bounded (χ : Fin 3 → ℝ² → ℝ)
+    (hχ : ∀ j, ContDiff ℝ (⊤ : ℕ∞) (χ j) ∧ HasCompactSupport (χ j)) :
+    ∃ Bχ : ℝ, ∀ f : Fin 3 → ℝ² → ℂ, (∀ j, AEStronglyMeasurable (f j) volume) →
+      (∀ j, eLpNorm (f j) ⊤ volume ≤ 1) →
+      aux_IsBothBounded Bχ (fun j x => (χ j x : ℂ) * f j x) := by
+  set χc : Fin 3 → ℝ² → ℂ := fun j x => (χ j x : ℂ) with hχc
+  have hc : ∀ j, Continuous (χc j) := fun j =>
+    Complex.continuous_ofReal.comp (hχ j).1.continuous
+  have hs : ∀ j, HasCompactSupport (χc j) := fun j =>
+    (hχ j).2.comp_left Complex.ofReal_zero
+  have hm : ∀ j (p : ℝ≥0∞), MemLp (χc j) p volume := fun j p =>
+    (hc j).memLp_of_hasCompactSupport (hs j)
+  refine ⟨∑ j, ((eLpNorm (χc j) 2 volume).toReal + (eLpNorm (χc j) ⊤ volume).toReal),
+    fun f hfm hf1 j => ?_⟩
+  have hle : ∀ p : ℝ≥0∞, p = 2 ∨ p = ⊤ → eLpNorm (χc j) p volume ≤ ENNReal.ofReal
+      (∑ j, ((eLpNorm (χc j) 2 volume).toReal + (eLpNorm (χc j) ⊤ volume).toReal)) := by
+    intro p hp
+    rw [← ENNReal.ofReal_toReal (hm j p).2.ne]
+    refine ENNReal.ofReal_le_ofReal ?_
+    refine le_trans ?_ (Finset.single_le_sum (f := fun j =>
+      (eLpNorm (χc j) 2 volume).toReal + (eLpNorm (χc j) ⊤ volume).toReal)
+      (fun j _ => by positivity) (Finset.mem_univ j))
+    rcases hp with rfl | rfl
+    · simp
+    · simp
+  have hae : ∀ᵐ x ∂(volume : Measure ℝ²), ‖(χ j x : ℂ) * f j x‖ ≤ ‖χc j x‖ := by
+    have h := ae_le_eLpNormEssSup (f := f j) (μ := (volume : Measure ℝ²))
+    filter_upwards [h] with x hx
+    have h1 : ‖f j x‖ₑ ≤ 1 := hx.trans ((eLpNorm_exponent_top).symm.le.trans (hf1 j))
+    have h2 : ‖f j x‖ ≤ 1 := by
+      rw [← ofReal_norm] at h1
+      exact (ENNReal.ofReal_le_one.1 h1)
+    rw [norm_mul]
+    exact mul_le_of_le_one_right (norm_nonneg _) h2
+  refine ⟨(hc j).aestronglyMeasurable.mul (hfm j), ?_, ?_⟩
+  · exact (eLpNorm_mono_ae hae).trans (hle 2 (Or.inl rfl))
+  · exact (eLpNorm_mono_ae hae).trans (hle ⊤ (Or.inr rfl))
+
+/-- Auxiliary for `tail:smoothing` (`Auto.tail_smoothing`): the conclusion along a positive sequence
+$\varepsilon_n\downarrow0$, from `ann:localize` with $\kappa_n=\rho_{\varepsilon_n}-\delta_0$, $P_n=\mathrm{id}$
+and `tail:bounded-smoothing`. -/
+theorem aux_appr_smoothing_seq (α β : ℝ) (hβ : β ≠ 0) (ρ : ℝ² → ℝ) (hρ0 : ∀ x, 0 ≤ ρ x)
+    (hρ : Integrable ρ) (hρ1 : ∫ x, ρ x = 1) (i : Fin 3) (e : ℕ → ℝ) (he0 : ∀ n, 0 < e n)
+    (he : Tendsto e atTop (𝓝[>] 0)) :
+    Tendsto (fun n => endNorm α β ((FCMeasure.sigma.conv
+        (FCMeasure.ofDensity (fun x => (((e n ^ 2)⁻¹ * ρ ((e n)⁻¹ • x) : ℝ) : ℂ)))).sub
+          FCMeasure.sigma) i) atTop (𝓝 0) := by
+  set a : ℕ → FCMeasure := fun n =>
+    FCMeasure.ofDensity (fun x => (((e n ^ 2)⁻¹ * ρ ((e n)⁻¹ • x) : ℝ) : ℂ)) with ha
+  set κ : ℕ → FCMeasure := fun n => (a n).sub (FCMeasure.dirac 0) with hκ
+  have hκtv : ⨆ n, (κ n).tv < ⊤ := by
+    refine lt_of_le_of_lt (iSup_le fun n => ?_) (ENNReal.ofReal_lt_top (r := 2))
+    rw [hκ]; dsimp only
+    rw [aux_appr_tv_sub, ha]; dsimp only
+    rw [aux_appr_tv_rho ρ hρ0 hρ hρ1 _ (he0 n), aux_appr_tv_dirac]
+    norm_num
+  have hU : Tendsto (fun n => (FCMeasure.sigma.conv (κ n)).varOn {u | 2 < ‖u‖}) atTop
+      (𝓝 0) := by
+    have h1 := ENNReal.tendsto_ofReal ((aux_appr_rho_tail_tendsto ρ hρ 1 one_pos).comp he)
+    rw [ENNReal.ofReal_zero] at h1
+    exact tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds h1 (fun _ => bot_le)
+      (fun n => aux_appr_varOn_bound ρ hρ0 hρ (e n) (he0 n))
+  have hPsupp : ∀ n : ℕ, (FCMeasure.dirac 0).varOn {u | 1 < ‖u‖} = 0 := by
+    intro n
+    have h : ((fun _ : Unit => (0 : ℝ²)) ⁻¹' {u : ℝ² | 1 < ‖u‖}) = ∅ := by
+      ext; simp only [Set.mem_preimage, Set.mem_ofPred_eq, norm_zero, Set.mem_empty_iff_false,
+        iff_false, not_lt, zero_le_one]
+    simp only [FCMeasure.varOn, FCMeasure.dirac]
+    rw [h]
+    change ∫⁻ (z : Unit) in (∅ : Set Unit), ‖(1 : ℂ)‖ₑ ∂(Measure.dirac ()) = 0
+    simp
+  have hPtv : ⨆ _n : ℕ, (FCMeasure.dirac 0).tv < ⊤ := by
+    simp [aux_appr_tv_dirac]
+  have hloc : ∀ χ : Fin 3 → ℝ² → ℝ, (∀ j, ContDiff ℝ (⊤ : ℕ∞) (χ j) ∧ HasCompactSupport (χ j)) →
+      Tendsto (fun n => ⨆ (f : Fin 3 → ℝ² → ℂ) (_ : ∀ j, AEStronglyMeasurable (f j) volume)
+          (_ : ∀ j, eLpNorm (f j) ⊤ volume ≤ 1),
+          ‖form α β (FCMeasure.sigma.conv (κ n))
+            (fun x => (χ 0 x : ℂ) * (FCMeasure.dirac 0).convFun (f 0) x)
+            (fun x => (χ 1 x : ℂ) * (FCMeasure.dirac 0).convFun (f 1) x)
+            (fun x => (χ 2 x : ℂ) * (FCMeasure.dirac 0).convFun (f 2) x)‖ₑ) atTop (𝓝 0) := by
+    intro χ hχ
+    obtain ⟨Bχ, hBχ⟩ := aux_appr_cutoff_bounded χ hχ
+    have hΦ := (tail_bounded_smoothing α β hβ ρ hρ0 hρ hρ1 Bχ).comp he
+    refine tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds hΦ (fun _ => bot_le)
+      (fun n => ?_)
+    refine iSup_le fun f => iSup_le fun hfm => iSup_le fun hf1 => ?_
+    simp only [aux_appr_convFun_dirac]
+    have hg := hBχ f hfm hf1
+    have hk := aux_appr_form_kappa α β (a n) 0 (fun j x => (χ j x : ℂ) * f j x)
+      (aux_appr_bothBounded_memLp_end hg 0)
+    rw [hκ]; dsimp only
+    rw [hk]
+    exact le_iSup₂_of_le (fun j x => (χ j x : ℂ) * f j x) hg le_rfl
+  have H := ann_localize α β hβ κ hκtv 2 hU (fun _ => FCMeasure.dirac 0) hPsupp hPtv hloc i
+  refine tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds H (fun _ => bot_le)
+    (fun n => ?_)
+  unfold endNorm
+  refine iSup_le fun f => iSup_le fun hfm => iSup_le fun hfi => iSup_le fun hfj => ?_
+  have hfe : ∀ j, MemLp (f j) (aux_slotExp i j) volume := by
+    intro j
+    unfold aux_slotExp
+    split_ifs with hji
+    · subst hji; exact ⟨hfm j, hfi.trans_lt ENNReal.one_lt_top⟩
+    · exact ⟨hfm j, (hfj j hji).trans_lt ENNReal.one_lt_top⟩
+  have hk := aux_appr_form_kappa α β (a n) i f hfe
+  refine le_iSup_of_le f (le_iSup_of_le hfm (le_iSup_of_le hfi (le_iSup_of_le hfj ?_)))
+  simp only [aux_appr_convFun_dirac]
+  rw [hκ]; dsimp only
+  rw [hk]
 
 /-- **Theorem `tail:smoothing`** (Uniform smoothing in the endpoint form norm).
 For every probability density $\rho\in L^1(\mathbb R^2)$,
@@ -109,6 +1180,19 @@ theorem tail_smoothing (α β : ℝ) (hβ : β ≠ 0) (ρ : ℝ² → ℝ) (hρ0
         (FCMeasure.ofDensity (fun x => (((ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) : ℝ) : ℂ)))).sub
           FCMeasure.sigma).dil s) i)
       (𝓝[>] 0) (𝓝 0) := by
-  sorry
+  simp only [aux_appr_endNorm_dil]
+  rw [tendsto_iff_seq_tendsto]
+  intro x hx
+  set x' : ℕ → ℝ := fun n => if 0 < x n then x n else 1 with hx'def
+  have hx'0 : ∀ n, 0 < x' n := by
+    intro n; simp only [hx'def]; split_ifs with h
+    · exact h
+    · exact one_pos
+  have hxx' : ∀ᶠ n in atTop, x' n = x n :=
+    (hx.eventually self_mem_nhdsWithin).mono fun n hn => if_pos hn
+  have hx' : Tendsto x' atTop (𝓝[>] 0) := hx.congr' (hxx'.mono fun n h => h.symm)
+  refine (aux_appr_smoothing_seq α β hβ ρ hρ0 hρ hρ1 i x' hx'0 hx').congr' ?_
+  filter_upwards [hxx'] with n hn
+  simp only [Function.comp, hn]
 
 end Auto

@@ -9,8 +9,8 @@ Lean file: Auto/IntroductionFoundations/IntroductionFoundations.lean
 
 #### Theorems
 
-\label{intro:density}: [Statement completed] (Lean: Auto.intro_density) (2026-11-06T12:24:28-08:00)
-\label{intro:smoothing}: [Statement completed] (Lean: Auto.intro_smoothing) (2026-11-06T12:24:28-08:00)
+\label{intro:density}: [Proof completed] (Lean: Auto.intro_density) (2026-11-06T17:01:48-08:00)
+\label{intro:smoothing}: [Proof completed] (Lean: Auto.intro_smoothing) (2026-11-06T17:01:48-08:00)
 
 ## Analytic prerequisites with proofs
 
@@ -181,16 +181,16 @@ Lean file: Auto/TranslationCorrelationsLocalCancellation/TranslationCorrelations
 
 #### Theorems
 
-\label{ann:extract}: [Statement completed] (Lean: Auto.ann_extract) (2026-11-06T12:50:39-08:00)
-\label{ann:spectral}: [Statement completed] (Lean: Auto.ann_spectral) (2026-11-06T12:50:39-08:00)
-\label{ann:factor}: [Statement completed] (Lean: Auto.ann_factor_one, Auto.ann_factor_two) (2026-11-06T12:50:39-08:00)
-\label{ann:form}: [Statement completed] (Lean: Auto.ann_form) (2026-11-06T12:50:39-08:00)
-\label{ann:invariance}: [Statement completed] (Lean: Auto.ann_invariance) (2026-11-06T12:50:39-08:00)
-\label{ann:fibers}: [Statement completed] (Lean: Auto.annH, Auto.ann_fibers, Auto.ann_fibers_hyperplane) (2026-11-06T12:50:39-08:00)
-\label{ann:selectors}: [Statement completed] (Lean: Auto.ann_selectors) (2026-11-06T12:50:39-08:00)
-\label{ann:atomic-rigidity}: [Statement completed] (Lean: Auto.ann_atomic_rigidity) (2026-11-06T12:50:39-08:00)
-\label{ann:displacement}: [Statement completed] (Lean: Auto.ann_displacement) (2026-11-06T12:50:39-08:00)
-\label{ann:local}: [Statement completed] (Lean: Auto.ann_local) (2026-11-06T12:50:39-08:00)
+\label{ann:extract}: [Proof completed] (Lean: Auto.ann_extract) (2026-11-06T16:17:19-08:00)
+\label{ann:spectral}: [Proof completed] (Lean: Auto.ann_spectral) (2026-11-06T16:17:19-08:00)
+\label{ann:factor}: [Proof completed] (Lean: Auto.ann_factor_one, Auto.ann_factor_two) (2026-11-06T16:17:19-08:00)
+\label{ann:form}: [Proof completed] (Lean: Auto.ann_form) (2026-11-06T16:17:19-08:00)
+\label{ann:invariance}: [Proof completed] (Lean: Auto.ann_invariance) (2026-11-06T16:40:00-08:00)
+\label{ann:fibers}: [Proof completed] (Lean: Auto.annH, Auto.ann_fibers, Auto.ann_fibers_hyperplane) (2026-11-06T16:17:19-08:00)
+\label{ann:selectors}: [Proof completed] (Lean: Auto.ann_selectors) (2026-11-06T16:17:19-08:00)
+\label{ann:atomic-rigidity}: [Proof completed] (Lean: Auto.ann_atomic_rigidity) (2026-11-06T16:40:00-08:00)
+\label{ann:displacement}: [Proof completed] (Lean: Auto.ann_displacement) (2026-11-06T16:40:00-08:00)
+\label{ann:local}: [Proof completed] (Lean: Auto.ann_local) (2026-11-06T16:40:00-08:00)
 
 ## Localization and a global annular estimate
 
@@ -201,8 +201,8 @@ Lean file: Auto/LocalizationGlobalAnnularEstimate/LocalizationGlobalAnnularEstim
 
 #### Theorems
 
-\label{ann:localize}: [Statement completed] (Lean: Auto.ann_localize) (2026-11-06T12:50:39-08:00)
-\label{ann:global}: [Statement completed] (Lean: Auto.ann_global) (2026-11-06T12:50:39-08:00)
+\label{ann:localize}: [Proof completed] (Lean: Auto.ann_localize) (2026-11-06T16:44:23-08:00)
+\label{ann:global}: [Proof completed] (Lean: Auto.ann_global) (2026-11-06T17:01:48-08:00)
 
 ## Summation over frequency annuli
 
@@ -223,7 +223,7 @@ Lean file: Auto/SummationFrequencyAnnuli/SummationFrequencyAnnuli.lean
 \label{tail:one-triple}: [Proof completed] (Lean: Auto.tail_one_triple) (2026-11-06T16:05:16-08:00)
 \label{tail:increment}: [Proof completed] (Lean: Auto.tail_increment) (2026-11-06T16:05:16-08:00)
 \label{tail:telescoping}: [Proof completed] (Lean: Auto.tail_telescoping) (2026-11-06T16:05:16-08:00)
-\label{tail:bound}: [Statement completed] (Lean: Auto.tail_bound, Auto.tail_bound_tendsto) (2026-11-06T12:50:39-08:00)
+\label{tail:bound}: [Proof completed] (Lean: Auto.tail_bound, Auto.tail_bound_tendsto) (2026-11-06T17:01:48-08:00)
 
 ## Approximation of the counting form
 
@@ -234,10 +234,10 @@ Lean file: Auto/ApproximationCountingForm/ApproximationCountingForm.lean
 
 #### Theorems
 
-\label{tail:exhaustion}: [Statement completed] (Lean: Auto.tail_exhaustion) (2026-11-06T12:50:39-08:00)
-\label{tail:convolved-tail}: [Statement completed] (Lean: Auto.tail_convolved_tail, Auto.tail_convolved_tail_sum) (2026-11-06T12:50:39-08:00)
-\label{tail:bounded-smoothing}: [Statement completed] (Lean: Auto.tail_bounded_smoothing) (2026-11-06T12:50:39-08:00)
-\label{tail:smoothing}: [Statement completed] (Lean: Auto.tail_smoothing) (2026-11-06T12:50:39-08:00)
+\label{tail:exhaustion}: [Proof completed] (Lean: Auto.tail_exhaustion) (2026-11-06T16:44:23-08:00)
+\label{tail:convolved-tail}: [Proof completed] (Lean: Auto.tail_convolved_tail, Auto.tail_convolved_tail_sum) (2026-11-06T17:01:48-08:00)
+\label{tail:bounded-smoothing}: [Proof completed] (Lean: Auto.tail_bounded_smoothing) (2026-11-06T17:01:48-08:00)
+\label{tail:smoothing}: [Proof completed] (Lean: Auto.tail_smoothing) (2026-11-06T17:01:48-08:00)
 
 ## From smoothing to triangles
 
@@ -250,12 +250,12 @@ Lean file: Auto/FromSmoothingTriangles/FromSmoothingTriangles.lean
 
 #### Theorems
 
-\label{den:continuity}: [Statement completed] (Lean: Auto.den_continuity) (2026-11-06T12:23:06-08:00)
+\label{den:continuity}: [Proof completed] (Lean: Auto.den_continuity) (2026-11-06T17:01:48-08:00)
 \label{den:dense-squares}: [Proof completed] (Lean: Auto.den_dense_squares_exists, Auto.den_dense_squares_borel, Auto.den_dense_squares_missed, Auto.den_dense_squares_copy) (2026-11-06T14:05:18-08:00)
 \label{den:line-number}: [Proof completed] (Lean: Auto.den_line_number_fixed, Auto.den_line_number) (2026-11-06T14:05:18-08:00)
 \label{den:weighted-lower}: [Proof completed] (Lean: Auto.den_weighted_lower) (2026-11-06T14:05:18-08:00)
-\label{den:select-scales}: [Statement completed] (Lean: Auto.den_select_scales) (2026-11-06T12:23:06-08:00)
-\label{den:main}: [Statement completed] (Lean: Auto.den_main, Auto.den_main_general) (2026-11-06T12:23:06-08:00)
+\label{den:select-scales}: [Proof completed] (Lean: Auto.den_select_scales) (2026-11-06T17:01:48-08:00)
+\label{den:main}: [Proof completed] (Lean: Auto.den_main, Auto.den_main_general) (2026-11-06T17:01:48-08:00)
 
 ## The Fourier inverse consequence
 

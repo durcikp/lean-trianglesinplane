@@ -77,6 +77,7 @@ to a measurable subset of Euclidean space.
 
 \begin{maintheorem}[Geometric conclusion]\label{intro:density}
 \lean{Auto.intro_density}
+\leanok
 Let $\Delta\subset\R^2$ consist of three noncollinear points.  If
 $E\subset\R^2$ is measurable and $d^*(E)>0$, there is $\lambda_0>0$
 such that, for every $\lambda\ge\lambda_0$, the set $E$ contains a
@@ -97,6 +98,7 @@ $L^2\times L^2\times L^\infty$ operator norm.
 
 \begin{maintheorem}[Uniform smoothing]\label{intro:smoothing}
 \lean{Auto.intro_smoothing}
+\leanok
 For every nonnegative $\rho\in L^1(\R^2)$ with $\int\rho=1$, put
 $\rho_\varepsilon(u)=\varepsilon^{-2}\rho(u/\varepsilon)$.  Then
 \[
@@ -2845,6 +2847,7 @@ convergence against every $L^1$ test function on that space.
 
 \begin{lemma}[Simultaneous correlation limits]\label{ann:extract}
 \lean{Auto.ann_extract}
+\leanok
 Every admissible sequence has a subsequence with the following properties.
 For all real shifts $s,t,s_0,s_1,s_2\in\R^2$, the limits
 \begin{align*}
@@ -2890,6 +2893,7 @@ last assertion.
 
 \begin{lemma}[Measurable spectral measures]\label{ann:spectral}
 \lean{Auto.ann_spectral}
+\leanok
 For a subsequence as in Lemma~\ref{ann:extract}, there are measurable
 kernels of finite positive Borel measures $z\mapsto\nu_{j,z}$ on
 $\R^2$, of mass at most one, such that
@@ -2953,6 +2957,7 @@ When $p$ is fixed, abbreviate $\nu_j=\nu_{j,\pi_jp}$.
 \begin{lemma}[Factorization of two-vertex quadratic correlations]
 \label{ann:factor}
 \lean{Auto.ann_factor_one,Auto.ann_factor_two}
+\leanok
 For the notation of Definition~\ref{ann:polynomials},
 \begin{align*}
  |F_{0,n}[a](\pi_0p)|^2
@@ -3007,6 +3012,7 @@ bounded compactly supported tests to all $L^1$ tests.
 
 \begin{lemma}[The limiting bilinear correlation form]\label{ann:form}
 \lean{Auto.ann_form}
+\leanok
 For almost every configuration $p$, there is a complex bilinear form
 \[
  \ell_p:L^2(\nu_0)\times L^2(\nu_1\otimes\nu_2)\longrightarrow\C
@@ -3080,6 +3086,7 @@ all polynomial or tensor representations.
 \begin{lemma}[Infinitesimal translation and rotation invariance]
 \label{ann:invariance}
 \lean{Auto.ann_invariance}
+\leanok
 Outside a fixed null set of configurations, for every
 $s\in\R^2$, $h\in\R$, $a\in L^2(\nu_0)$, and
 $G\in L^2(\nu_1\otimes\nu_2)$,
@@ -3122,6 +3129,7 @@ multipliers have norm one throughout this extension.
 
 \begin{lemma}[Atoms of one-dimensional projections]\label{ann:fibers}
 \lean{Auto.annH,Auto.ann_fibers,Auto.ann_fibers_hyperplane}
+\leanok
 Let $z\mapsto\nu_z$ be a measurable kernel of finite positive
 measures on $\R^2$, of mass at most one, and let $N$ be invertible.
 For almost every $(z,\theta)$, every positive-mass fiber of
@@ -3177,6 +3185,7 @@ its total mass.
 \begin{lemma}[Countably many measurable selectors cover all atoms]
 \label{ann:selectors}
 \lean{Auto.ann_selectors}
+\leanok
 For a measurable kernel $z\mapsto\nu_z$ of finite positive Borel
 measures on $\R^2$, there is a countable family of measurable maps
 $a_m:\R^2\to\R^2$ such that every point atom of every nonzero
@@ -3216,6 +3225,7 @@ It is harmless that other pairs of quantiles need not be atoms.
 \begin{lemma}[Rigidity for all contributing atomic triples]
 \label{ann:atomic-rigidity}
 \lean{Auto.ann_atomic_rigidity}
+\leanok
 For almost every configuration $p$, every triple of point atoms
 $\xi_j$ of $\nu_{j,\pi_jp}$ satisfying
 \begin{equation}\label{ann:stationarity}
@@ -3252,6 +3262,7 @@ the asserted implication holds for all atomic triples at once.
 \begin{lemma}[Invariance under displacement smoothing]
 \label{ann:displacement}
 \lean{Auto.ann_displacement}
+\leanok
 For almost every configuration $p$ and every $y\in\R^2$,
 \[
  \ell_p(1,e_y\otimes e_{My})=\ell_p(1,1).
@@ -3306,6 +3317,7 @@ for every $a,G,y$. Taking $a=1$ and $G=1$ proves the assertion.
 \begin{proposition}[Cancellation for bounded Lipschitz inputs]
 \label{ann:local}
 \lean{Auto.ann_local}
+\leanok
 Let $\Psi\in L^1(\R^2)$ satisfy $\int\Psi=0$, and put
 $\Psi_R(u)=R^2\Psi(Ru)$. For every bounded box $Q$ and every
 $C<\infty$,
@@ -3347,6 +3359,7 @@ of $y$, and $\int\Psi=0$ makes the resulting expression zero.
 \begin{lemma}[From bounded local inputs to endpoint operator norms]
 \label{ann:localize}
 \lean{Auto.ann_localize}
+\leanok
 Let $\mu_n=\sigma*\kappa_n$, where
 $\sup_n\|\kappa_n\|_{\mathrm{TV}}<\infty$, and suppose that for
 some fixed $U<\infty$,
@@ -3445,6 +3458,7 @@ argument applies to each of the three choices of $i$.
 
 \begin{corollary}[Global cancellation on one annulus]\label{ann:global}
 \lean{Auto.ann_global}
+\leanok
 Let $\psi\in C_c^\infty(\R^2)$ be supported in a compact
 annulus disjoint from the origin. Put
 \[
@@ -3811,6 +3825,7 @@ convergence gives the infinite-sum bound.
 
 \begin{proposition}[Uniform annular tails]\label{tail:bound}
 \lean{Auto.tail_bound,Auto.tail_bound_tendsto}
+\leanok
 Let $R\ge1$ be dyadic. If $\|f_j\|_2,\|f_j\|_\infty\le B$, then
 \[
  \sum_{r=2^k\ge R}|\Lambda_r(f_0,f_1,f_2)|
@@ -3839,6 +3854,7 @@ $a(r)\to0$ implies $\sup_{r\ge R}a(r)\to0$.
 
 \begin{lemma}[Exhaustion by smooth low frequencies]\label{tail:exhaustion}
 \lean{Auto.tail_exhaustion}
+\leanok
 For every finite measure $\kappa$ and every triple of $L^2$ inputs,
 \[
  \Lambda_{\sigma*\kappa*q_S}(f_0,f_1,f_2)
@@ -3865,6 +3881,7 @@ $\check\chi$ is required.
 
 \begin{lemma}[Tails after convolution]\label{tail:convolved-tail}
 \lean{Auto.tail_convolved_tail,Auto.tail_convolved_tail_sum}
+\leanok
 For every finite measure $\kappa$, dyadic $R\ge1$, and inputs with
 $\|f_j\|_2,\|f_j\|_\infty\le B$,
 \[
@@ -3896,6 +3913,7 @@ proved to pass to the limit.
 \begin{proposition}[Smoothing for inputs bounded in both norms]
 \label{tail:bounded-smoothing}
 \lean{Auto.tail_bounded_smoothing}
+\leanok
 Let $\rho\in L^1(\R^2)$ be nonnegative with $\int\rho=1$, and set
 $\rho_\varepsilon(u)=\varepsilon^{-2}\rho(u/\varepsilon)$. For each
 fixed $B<\infty$,
@@ -3934,6 +3952,7 @@ make this last term small. The estimates are uniform in the inputs.
 \begin{theorem}[Uniform smoothing in the endpoint form norm]
 \label{tail:smoothing}
 \lean{Auto.tail_smoothing}
+\leanok
 For every probability density $\rho\in L^1(\R^2)$,
 \[
  \lim_{\varepsilon\downarrow0}\sup_{s>0}
@@ -3980,6 +3999,7 @@ This proves the asserted uniformity in $s$.
 
 \begin{lemma}[Continuity under small changes of scale]\label{den:continuity}
 \lean{Auto.den_continuity}
+\leanok
 For every endpoint placement $i$,
 \[
  \lim_{r\to1}\|\Lambda_{\sigma_r-\sigma}\|_i=0.
@@ -4155,6 +4175,7 @@ justified by nonnegativity or bounded compact support.
 
 \begin{lemma}[Selecting scales with close subsums]\label{den:select-scales}
 \lean{Auto.den_select_scales}
+\leanok
 Let $\mathcal S\subset(0,\infty)$ be unbounded.  Given
 $n\ge1$ and $\tau>0$, one can choose
 $\lambda_1<\cdots<\lambda_n$ in $\mathcal S$ such that,
@@ -4188,6 +4209,7 @@ the desired inequality.  When $J=\{1\}$ it is immediate.
 
 \begin{theorem}[All sufficiently large planar triangles]\label{den:main}
 \lean{Auto.den_main,Auto.den_main_general}
+\leanok
 If $E\subset\R^2$ is Lebesgue measurable with $d^*(E)>0$,
 then every sufficiently large scale of
 $\{0,e_1,Me_1\}$ has a translate of a rotation contained

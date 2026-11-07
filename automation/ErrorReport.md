@@ -109,3 +109,27 @@ formalization from the blueprint. Each entry records the date/time and the bluep
   bound uses a modulation-plus-dilation formula; absolute summability uses u₀u₁ ≤ u₀²+u₁² (no error).
 - (2026-11-06T16:05:16-08:00) `tail:one-triple`, `tail:increment`, `tail:bound`: explicit choices C₀₀ = (Σ_j‖V_j‖+1)·D, c = d/4, C = D+d, and an
   explicit partition of unity φ(z) = φ₁(z₀)φ₁(z₁) with Q_* = [0,2]² (no error).
+- (2026-11-06T16:17:19-08:00) `ann:form` (tex ~2950–3010): proof route changed (no error): the bounded bilinear form is built on the closures
+  of the character spans and composed with orthogonal projections; density of tensor characters in L²(ν₁⊗ν₂) is not
+  needed for existence (it is needed later, for `ann:invariance`).
+- (2026-11-06T16:40:00-08:00) `ann:displacement` (tex ~3268–3293): proof route changed (no error). Instead of averaging over h, s ∈ [0,H] (which
+  would pass an integral through the raw form ℓ_p), discrete Cesàro averages over h ∈ ℕ and h ∈ √2·ℕ isolate {Φ = 0} via
+  irrationality of √2. Only the identity needed by the statement (a = 1, G ∈ {1, e_y⊗e_{My}}) is proved.
+- (2026-11-06T16:40:00-08:00) `ann:local` (tex ~3178–3215): the cutoff is the indicator of the closure of Q (Q need not be measurable) (no error).
+- (2026-11-06T16:44:23-08:00) `tail:bounded-smoothing` (tex ~3746–3781): proof route changed (no error). Existence of the cutoff χ is proved
+  explicitly; the low-frequency term is written as ∫ρ_ε(v)(G(v)−G(0))dv and bounded by B³‖q_R(·−v)−q_R‖₁ split at |v| = δ,
+  instead of dominated convergence.
+- (2026-11-06T16:44:23-08:00) `tail:smoothing` (tex ~3783–3823): `ann:localize` is applied with κ_n = ρ_{ε_n} − δ₀, P_n = δ₀, U = 2; the passage from
+  sequences to ε ↓ 0 replaces each sequence by an eventually-equal positive one (no error).
+- (2026-11-06T16:57:33-08:00) `den:continuity` (tex ~3831–3855): the auxiliary density ρ is the indicator of the unit square rather than a smooth
+  bump; `tail:smoothing` only needs an L¹ probability density (no error).
+- (2026-11-06T16:57:33-08:00) `den:select-scales` (tex ~3997–4027): the recursion requires λ_{k+1} > max(λ_k, (k+1)λ_k/η), which still gives
+  Σ_{j<k} λ_j < ηλ_k (no error).
+- (2026-11-06T16:57:33-08:00) `den:main` (tex ~4029–4082): squares of side L ≥ 5S are used (instead of 2S/(√2−1)) to get |Q+[−S,S]²| ≤ 2|Q|, and
+  Σ_{J≠∅} 3^{n−|J|} ≤ 4^n is taken from the binomial identity instead of `den:line-number`; same contradiction (no error).
+- (2026-11-06T17:01:57-08:00) `ann:localize` (tex ~3218–3315): proof route changed (no error). The lattice partition of unity is replaced by a
+  continuous one (integral over translations q ∈ ℝ²); the tail error is bounded directly by |μ_n|({|u|>U}); Σ_q r_j r_k is
+  replaced by ∫(r_j² + r_k²) dq via Tonelli; large parts are truncated at height T‖g‖₂ with Chebyshev.
+- (2026-11-06T17:01:57-08:00) `ann:global` (tex ~3316–3377): proof route changed (no error). The R-dependent kernel q_R is replaced, for each η, by
+  a fixed C_c^∞ function g with ‖p − g‖₁ ≤ η, so that the Lipschitz bound O(R) follows from g's fixed Lipschitz constant;
+  the cost O(η) is uniform in R. The limit is taken by contradiction along R_n → ∞ via `ann:localize` and `ann:local`.
