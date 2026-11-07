@@ -1,6 +1,6 @@
 # Error report
 
-Definitive mathematical errors found in `blueprint/triangles_in_the_plane_blueprint.tex`, discrepancies
+Definitive mathematical errors found in `blueprint/blueprint.tex`, discrepancies
 between displayed constants and the proved Lean bounds, and other substantial deviations of the
 formalization from the blueprint. Each entry records the date/time and the blueprint source line.
 
@@ -136,10 +136,95 @@ formalization from the blueprint. Each entry records the date/time and the bluep
 - (2026-11-06T17:04:53-08:00) Resolution of the scope entry above: at the user's request (P8) Section `sec:inverse` ("The Fourier inverse
   consequence", former tex lines 4267–4344, labels `inv:smooth`, `inv:consequence`) was removed from the blueprint, since
   neither Theorem A nor Theorem B uses it; its Status.md entries were removed with it.
-- (2026-11-06T19:16:32-08:00) Deviation by user decision (P13–P15), Section `sec:introduction`: instead of a section folder, the definitions
-  needed to state Theorems A and B live in `Auto/Definitions.lean` and their statements in `Auto/Theorems.lean` as the
-  Props `TheoremA`, `TheoremB` (Prop-valued definitions rather than `theorem`s, since these files import no proofs); the
-  proofs are `den_main_general` and `tail_smoothing`, which inhabit exactly these Props (checked).
-- (2026-11-06T19:34:54-08:00) Resolution of the previous entry (P16): \`Auto/Theorems.lean\` now imports the proof files and states Theorems A and
-  B as \`theorem\`s (\`intro_density\`, \`intro_smoothing\`) instead of Prop-valued definitions; the definitions remain in
-  \`Auto/Definitions.lean\`.
+
+## Removed unused hypotheses (user request P20, 2026-11-07T11:14:53-08:00)
+
+At the user's request, every hypothesis of a public Lean theorem that its proof does not use was
+removed, so each Lean theorem below is *stronger* than the blueprint statement: it holds without
+the listed assumption. Line numbers refer to `blueprint/blueprint.tex`. "Standing assumption" means
+the hypothesis is not written in the lemma itself but is fixed by an earlier definition that the lemma
+relies on. Each affected docstring now ends with a note naming the omitted hypothesis. Theorems A and B
+(`intro_density`, `intro_smoothing`) are unchanged: they use all of their hypotheses.
+
+Section 2 (Analytic prerequisites):
+- `ext_reproduction_L2`, `ext_reproduction_bounded` (`ext:reproduction`, line 391): removed
+  `(hK : IsCompact K)`, i.e. "a compact set $K$" (line 395). Reproduction $p*g=g$ holds for any $K$
+  on a neighborhood of which $\widehat p=1$.
+- `ext_reproduction_agree` (`ext:reproduction`, line 391): removed `(hgi : MemLp g ⊤ volume)`, the
+  $L^\infty$ half of "for a function in $L^2\cap L^\infty$" (line 397). The two support conditions
+  agree for every $g\in L^2$.
+- `ext_compact_facts_integral` (`ext:compact-facts`, line 471, item 2): removed
+  `(hX : MeasurableSet X)` and `(hY : MeasurableSet Y)`, the word "measurable" in "bounded measurable
+  subsets of Euclidean space" (line 481). Boundedness of $X,Y$ is kept.
+- `ext_compact_facts_finite_rank`, `ext_compact_facts_limit` (`ext:compact-facts`, line 471, item 1):
+  removed the completeness instances `[CompleteSpace H]` (and `[CompleteSpace H']` for the
+  finite-rank part), i.e. the completeness implicit in "Hilbert spaces" (line 474). The two facts hold
+  for inner product spaces.
+- `ext_compact_gap_ker` (`ext:compact-gap`, line 547, finite-dimensional kernel part): removed
+  `(hsa : IsSelfAdjoint K)` ("self-adjoint", line 550), `(hB : ∀ f, 0 ≤ Re⟪(1+K)f, f⟫)` ("suppose
+  $B=I+K$ is nonnegative", line 551) and the instance `[CompleteSpace H]` ("Hilbert space", line 550).
+  $\ker(I+K)$ is finite dimensional for every compact $K$. The gap part `ext_compact_gap` keeps all
+  hypotheses.
+- `ext_measurable_spectral` (`ext:measurable-spectral`, line 868): removed `(hpd : ∀ z, IsPositiveDefinite
+  (c z))` ("positive definite", line 872) and `(h1 : ∀ z, c z 0 ≤ 1)` ("$c_z(0)\le1$", line 873).
+  Measurability follows from the representation of $c_z$ as the Fourier transform of $\nu_z$, which is
+  kept as a hypothesis.
+- `ext_matrix_group` (`ext:matrix-group`, line 972): removed `(hGL : ∀ h ∈ U, IsUnit (C h))`, i.e. that
+  $C$ takes values in $\mathrm{GL}_d(\R)$ (line 976). Invertibility near $0$ follows from continuity and
+  $C(0)=I$.
+- `ext_analytic_zero` (`ext:analytic-zero`, line 1029): removed `(hd : d = 1 ∨ d = 2 ∨ d = 3)`, the
+  restriction "where $d=1,2,$ or $3$" (line 1033). The result holds in every dimension $d$.
+
+Section 3 (Finite words, binary density, and tilings):
+- `cj_binary` (`cj:binary`, line 1130): removed `(hα1 : α ≤ 1)`, the upper bound in "For
+  $0<\alpha\le1$" (line 1133).
+- `cj_transfer_uniform` (`cj:transfer-uniform`, line 1546): removed `(hr : 1 ≤ r)`, i.e. "$r\ge1$" in
+  "Fix $k\in\{2,3\}$, $r\ge1$, and $\zeta>0$" (line 1549).
+
+Section 4 (Geometry, forms, and elementary estimates):
+- `lem_form_basic_ae` (`lem:form-basic`, line 2019, independence of a.e. versions, line 2030):
+  removed `(hβ : β ≠ 0)`, the standing assumption "$\beta\ne0$" of `def:geometry` (line 1952).
+
+Section 7 (Translation correlations and local cancellation):
+- `ann_factor_one` (`ann:factor`, line 2958, first convergence): removed `(hβ : β ≠ 0)` (standing
+  assumption, `def:geometry`, line 1952) and `(hQ : Bornology.IsBounded Q)` (standing assumption "Fix a
+  bounded box $Q\subset\R^2$" of `ann:sequence`, line 2834).
+- `ann_factor_two` (`ann:factor`, line 2958, second convergence): removed `(hQ : Bornology.IsBounded Q)`
+  (standing assumption, `ann:sequence`, line 2834).
+- `ann_form` (`ann:form`, line 3013): removed `(hQ : Bornology.IsBounded Q)` (standing assumption,
+  `ann:sequence`, line 2834).
+- `ann_invariance` (`ann:invariance`, line 3087): removed `(hβ : β ≠ 0)` (standing assumption,
+  `def:geometry`, line 1952) and `(hQ : Bornology.IsBounded Q)` (standing assumption, `ann:sequence`,
+  line 2834).
+- `ann_fibers` (`ann:fibers`, line 3130, first assertion): removed `(hν1 : ∀ z, ν z univ ≤ 1)`, "of
+  mass at most one" (line 3134).
+- `ann_fibers_hyperplane` (`ann:fibers`, line 3130, "Consequently" part, lines 3140–3146): removed
+  `(hν₁1 : ∀ z, ν₁ z univ ≤ 1)` and `(hν₂1 : ∀ z, ν₂ z univ ≤ 1)`, "of mass at most one" (line 3134;
+  for $\nu_1,\nu_2$ also `ann:spectral`, line 2899).
+- `ann_atomic_rigidity` (`ann:atomic-rigidity`, line 3226): removed `(hν1 : ∀ j z, ν j z univ ≤ 1)`, the
+  mass bound "of mass at most one" of the kernels $\nu_j$ from `ann:spectral` (line 2899).
+- `ann_displacement` (`ann:displacement`, line 3263): removed `(hQ : Bornology.IsBounded Q)` (standing
+  assumption, `ann:sequence`, line 2834).
+
+Section 9 (Summation over frequency annuli):
+- `tail_increment` (`tail:increment`, line 3766): removed `(hβ : β ≠ 0)` (standing assumption,
+  `def:geometry`, line 1952) and `(hχ : aux_IsTailCutoff χ)`, the standing assumption on the cutoff
+  "a real radial function $\chi\in C_c^\infty(\R^2)$ which equals one on $B(0,1)$ and vanishes outside
+  $B(0,2)$" of `tail:annular-definition` (lines 3531–3532).
+- `tail_telescoping` (`tail:telescoping`, line 3806): removed `(hD : 0 < D)`, "positive" in "$D$ is any
+  positive integer with $2^Dc\ge C$" (line 3815). For $c>0$ the condition $2^Dc\ge C>c$ already forces
+  $D\ge1$.
+
+Section 11 (From smoothing to triangles):
+- `den_dense_squares_exists` (`den:dense-squares`, line 4049, first assertion): removed `(hδ : 0 < δ)`,
+  the lower bound in "If $0<\delta<d^*(E)$" (line 4052).
+- `den_dense_squares_copy` (`den:dense-squares`, line 4049, last assertion): removed
+  `(hA : MeasurableSet A)`, "a Borel set $A$" (line 4054).
+- `den_weighted_lower` (`den:weighted-lower`, line 4106): removed `(hδ1 : δ ≤ 1)`, the upper bound in
+  "Let $0<\delta\le1$" (line 4109).
+- `den_select_scales` (`den:select-scales`, line 4176): removed `(hn : 1 ≤ n)`, "$n\ge1$" (line 4180).
+
+The removals also made the following `aux_` helpers' hypotheses unused, so those were removed too.
+They are not blueprint statements: `aux_binary_multi_step` (`hα1`), `aux_ann_ineq_ae`,
+`aux_ann_ineq_all`, `aux_ann_cs_all` (`hQ`), `aux_loc_Phi_ae`, `aux_loc_Phi_add`, `aux_loc_scaled`,
+`aux_loc_core`, `aux_loc_bound`, `aux_glob_tele`, `aux_glob_replace` (`hβ`).

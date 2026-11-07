@@ -611,8 +611,7 @@ theorem aux_appr_sigma_bound {B : ℝ} {f : Fin 3 → ℝ² → ℂ} (α β : �
 
 /-- Auxiliary for `tail:bounded-smoothing`, `tail:smoothing`: $\rho_\varepsilon\in L^1$ and
 $\int\rho_\varepsilon=\int\rho$ for $\varepsilon>0$. -/
-theorem aux_appr_rho_integral (ρ : ℝ² → ℝ) (hρ : Integrable ρ) (ε : ℝ) (hε : 0 < ε)
- :
+theorem aux_appr_rho_integral (ρ : ℝ² → ℝ) (hρ : Integrable ρ) (ε : ℝ) (hε : 0 < ε) :
     Integrable (fun x => (ε ^ 2)⁻¹ * ρ (ε⁻¹ • x)) ∧
       ∫ x, (ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) = ∫ y, ρ y := by
   refine ⟨(hρ.comp_smul (inv_ne_zero hε.ne')).const_mul _, ?_⟩

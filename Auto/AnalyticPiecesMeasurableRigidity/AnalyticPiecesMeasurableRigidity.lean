@@ -1179,7 +1179,7 @@ theorem rig_pieces (α β : ℝ) (hβ : β ≠ 0) (E : Set (ℝ² × Ang)) (X : 
   set U' := U ∩ {h | IsUnit (C h)} with hU'def
   have hU' : U' ∈ 𝓝 (0 : ℝ²) := Filter.inter_mem hU (hgood.mono fun h hh => hh.2.1)
   obtain ⟨T₁, T₂, hT, hCP⟩ := ext_matrix_group hU' C (hcont.mono inter_subset_left)
-    (fun h hh => hh.2) hC0 (fun h k hh hk hhk => hmul h k hh.1 hk.1 hhk.1)
+    hC0 (fun h k hh hk hhk => hmul h k hh.1 hk.1 hhk.1)
   -- the row identities with `P(h) = exp(h₁T₁ + h₂T₂)`
   have hYC : ∀ j, ∀ᶠ h in 𝓝 (0 : ℝ²),
       (MeasurableSet (Y h j) ∧ Y h j ⊆ X j ∩ (· + h) ⁻¹' X j) ∧

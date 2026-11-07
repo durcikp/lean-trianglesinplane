@@ -311,12 +311,11 @@ theorem aux_volume_squareAt (z : ℝ²) (L : ℝ) (hL : 0 ≤ L) :
       measurableSet_Icc.nullMeasurableSet, Real.volume_Icc_pi]
   simp [sq, ENNReal.ofReal_mul hL]
 
--- The hypothesis hδ belongs to the manuscript statement but is not needed by the proof.
-set_option linter.unusedVariables false in
 /-- **Lemma `den:dense-squares`** (dense squares). If $0<\delta<d^*(E)$, there are squares $Q$ of
-arbitrarily large side length for which $|E\cap Q|\ge\delta|Q|$. -/
-@[nolint unusedArguments]
-theorem den_dense_squares_exists (E : Set ℝ²) (δ : ℝ) (hδ : 0 < δ)
+arbitrarily large side length for which $|E\cap Q|\ge\delta|Q|$.
+(In Lean the blueprint hypothesis `(hδ : 0 < δ)` is omitted since the proof does not need it; see
+`automation/ErrorReport.md`.) -/
+theorem den_dense_squares_exists (E : Set ℝ²) (δ : ℝ)
     (hd : ENNReal.ofReal δ < upperBanachDensity E) (L₀ : ℝ) :
     ∃ (z : ℝ²) (L : ℝ), L₀ ≤ L ∧ 0 < L ∧
       ENNReal.ofReal δ * volume (squareAt z L) ≤ volume (E ∩ squareAt z L) := by
@@ -353,12 +352,11 @@ theorem den_dense_squares_missed (α β : ℝ) (E A : Set ℝ²) (hA : A ⊆ E) 
     · simp [h1]
   simp [triangleCount, h0]
 
--- The hypothesis hA belongs to the manuscript statement but is not needed by the proof.
-set_option linter.unusedVariables false in
 /-- **Lemma `den:dense-squares`** (exact copies). If $D_s(\mathbf 1_A)>0$, then $A$, and hence
-$E$, contains a translate of a rotation of $s\{0,e_1,Me_1\}$. -/
-@[nolint unusedArguments]
-theorem den_dense_squares_copy (α β : ℝ) (A : Set ℝ²) (hA : MeasurableSet A) (s : ℝ)
+$E$, contains a translate of a rotation of $s\{0,e_1,Me_1\}$.
+(In Lean the blueprint hypothesis `(hA : MeasurableSet A)` is omitted since the proof does not need
+it; see `automation/ErrorReport.md`.) -/
+theorem den_dense_squares_copy (α β : ℝ) (A : Set ℝ²) (s : ℝ)
     (hpos : 0 < triangleCount α β s (A.indicator 1)) :
     ∃ (x : ℝ²) (t : ℝ), ∀ p ∈ ({0, e1, M α β e1} : Set ℝ²), x + rot t (s • p) ∈ A := by
   obtain ⟨θ, hθ⟩ : ∃ θ : Ang, (∫ x, A.indicator (1 : ℝ² → ℝ) x * A.indicator 1 (x + s • u θ) *
@@ -721,16 +719,15 @@ theorem aux_den_pointwise (α β : ℝ) (δ : ℝ) (hδ0 : 0 < δ) (n : ℕ)
     _ ≤ _ := hvolG
     _ = _ := hsum
 
--- The hypothesis hδ1 belongs to the manuscript statement but is not needed by the proof.
-set_option linter.unusedVariables false in
 /-- **Lemma `den:weighted-lower`**. Let $0<\delta\le1$ and choose $n\ge H_3(\delta/4)$ from
 Theorem `cj:dhj3` (here: $n$ is such that every subset of $[3]^n$ of density at least $\delta/4$
 contains a combinatorial line). Let $\lambda_1,\ldots,\lambda_n>0$ and put
 $S=\max(1,\|M\|)\sum_{j=1}^n\lambda_j$. Suppose $A$ is a Borel subset of a square $Q$ with
 $|A|\ge\delta|Q|$, and that $Q'=Q+[-S,S]^2$ satisfies $|Q'|\le2|Q|$. Then, for $f=\mathbf 1_A$,
-$$\sum_{\varnothing\ne J\subset[n]}3^{n-|J|}D_{s_J}(f)\ge\frac{\delta}{2}|Q|.$$ -/
-@[nolint unusedArguments]
-theorem den_weighted_lower (α β : ℝ) (δ : ℝ) (hδ0 : 0 < δ) (hδ1 : δ ≤ 1) (n : ℕ)
+$$\sum_{\varnothing\ne J\subset[n]}3^{n-|J|}D_{s_J}(f)\ge\frac{\delta}{2}|Q|.$$
+(In Lean the blueprint hypothesis `(hδ1 : δ ≤ 1)` is omitted since the proof does not need it; see
+`automation/ErrorReport.md`.) -/
+theorem den_weighted_lower (α β : ℝ) (δ : ℝ) (hδ0 : 0 < δ) (n : ℕ)
     (hn : ∀ A : Finset (Fin n → Fin 3), δ / 4 * (3 : ℝ) ^ n ≤ (A.card : ℝ) → ContainsLine A)
     (lam : Fin n → ℝ) (hlam : ∀ j, 0 < lam j) (z : ℝ²) (L : ℝ) (hL : 0 < L)
     (A : Set ℝ²) (hA : MeasurableSet A) (hAQ : A ⊆ squareAt z L)
@@ -795,14 +792,13 @@ theorem aux_den_fast_seq (S : Set ℝ) (hSu : ¬ BddAbove S) (η : ℝ) (hη : 0
     rw [← hsucc, div_lt_iff₀ hη] at h
     linarith
 
--- The hypothesis hn belongs to the manuscript statement but is not needed by the proof.
-set_option linter.unusedVariables false in
 /-- **Lemma `den:select-scales`**. Let $\mathcal S\subset(0,\infty)$ be unbounded. Given $n\ge1$
 and $\tau>0$, one can choose $\lambda_1<\cdots<\lambda_n$ in $\mathcal S$ such that, for every
-nonempty $J\subset[n]$ and $k=\max J$, $\|\Lambda_{\sigma_{s_J}-\sigma_{\lambda_k}}\|<\tau$. -/
-@[nolint unusedArguments]
+nonempty $J\subset[n]$ and $k=\max J$, $\|\Lambda_{\sigma_{s_J}-\sigma_{\lambda_k}}\|<\tau$.
+(In Lean the blueprint hypothesis `(hn : 1 ≤ n)` is omitted since the proof does not need it; see
+`automation/ErrorReport.md`.) -/
 theorem den_select_scales (α β : ℝ) (hβ : β ≠ 0) (S : Set ℝ) (hS : S ⊆ Ioi 0)
-    (hSu : ¬ BddAbove S) (n : ℕ) (hn : 1 ≤ n) (τ : ℝ) (hτ : 0 < τ) :
+    (hSu : ¬ BddAbove S) (n : ℕ) (τ : ℝ) (hτ : 0 < τ) :
     ∃ lam : Fin n → ℝ, StrictMono lam ∧ (∀ k, lam k ∈ S) ∧
       ∀ (J : Finset (Fin n)) (hJ : J.Nonempty),
         formNorm α β ((FCMeasure.sigma.dil (∑ j ∈ J, lam j)).sub
@@ -984,14 +980,13 @@ theorem aux_den_missed_bdd (α β : ℝ) (hβ : β ≠ 0) (E : Set ℝ²) (hE : 
   have hnH := hH n (le_max_left _ _)
   set τ := δ / (4 * 4 ^ n) with hτ
   have hτ0 : 0 < τ := by positivity
-  obtain ⟨lam, -, hlamS, hclose⟩ := den_select_scales α β hβ Sm (fun s hs => hs.1) hSu n
-    (le_max_right _ _) τ hτ0
+  obtain ⟨lam, -, hlamS, hclose⟩ := den_select_scales α β hβ Sm (fun s hs => hs.1) hSu n τ hτ0
   have hlam0 : ∀ j, 0 < lam j := fun j => (hlamS j).1
   set S0 := max 1 ‖M α β‖ * ∑ j, lam j with hS0def
   have hS0 : 0 ≤ S0 := mul_nonneg (le_max_of_le_left zero_le_one)
     (Finset.sum_nonneg fun j _ => (hlam0 j).le)
   -- a dense square
-  obtain ⟨z, L, hLL, hL, hdens⟩ := den_dense_squares_exists E δ hδ0 hδd (5 * S0)
+  obtain ⟨z, L, hLL, hL, hdens⟩ := den_dense_squares_exists E δ hδd (5 * S0)
   set Q := squareAt z L with hQ
   have hQm : MeasurableSet Q := aux_measurableSet_squareAt z L
   have hQv : volume Q = ENNReal.ofReal (L ^ 2) := aux_volume_squareAt z L hL.le
@@ -1005,7 +1000,7 @@ theorem aux_den_missed_bdd (α β : ℝ) (hβ : β ≠ 0) (E : Set ℝ²) (hE : 
       show (2 : ℝ≥0∞) * ENNReal.ofReal (L ^ 2) = ENNReal.ofReal (2 * L ^ 2) by
         rw [ENNReal.ofReal_mul (by norm_num)]; simp]
     exact ENNReal.ofReal_le_ofReal (by nlinarith)
-  have hlow := den_weighted_lower α β δ hδ0 hδ1 n hnH lam hlam0 z L hL A hAm hAQ hAδ hQ'
+  have hlow := den_weighted_lower α β δ hδ0 n hnH lam hlam0 z L hL A hAm hAQ hAδ hQ'
   -- the upper bound for each subsum
   have hAf : volume A ≠ ∞ := ne_top_of_le_ne_top (by rw [hQv]; exact ENNReal.ofReal_ne_top)
     (measure_mono hAQ)
