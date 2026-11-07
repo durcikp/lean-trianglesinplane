@@ -32,7 +32,8 @@ theorem intro_density (a b c : ℝ²) (hΔ : ¬ Collinear ℝ ({a, b, c} : Set �
 /-- **Theorem B `intro:smoothing`** (Uniform smoothing). Let $M=\alpha I+\beta J$ with $\beta\ne0$.
 For every nonnegative $\rho\in L^1(\R^2)$ with $\int\rho=1$, put
 $\rho_\varepsilon(u)=\varepsilon^{-2}\rho(u/\varepsilon)$. Then
-$$\lim_{\varepsilon\downarrow0}\sup_{s>0}\big\|\Lambda_{(\sigma*\rho_\varepsilon-\sigma)_s}\big\|=0.$$
+$$\lim_{\varepsilon\downarrow0}\sup_{s>0}
+\big\|\Lambda_{(\sigma*\rho_\varepsilon-\sigma)_s}\big\|=0.$$
 The same statement holds with the $L^\infty$ slot at any of the three vertices (here `i`). -/
 theorem intro_smoothing (α β : ℝ) (hβ : β ≠ 0) (ρ : ℝ² → ℝ) (hρ0 : ∀ x, 0 ≤ ρ x)
     (hρ : Integrable ρ) (hρ1 : ∫ x, ρ x = 1) (i : Fin 3) :

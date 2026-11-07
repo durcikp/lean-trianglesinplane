@@ -7,7 +7,8 @@ import Auto.AnalyticPrerequisitesProofs.LocalMatrixGroupsAnalyticZeroSets
 /-!
 # Geometry, forms, and elementary estimates
 
-Formalization of Section `sec:prelim` ("Geometry, forms, and elementary estimates") of the blueprint.
+Formalization of Section `sec:prelim` ("Geometry, forms, and elementary estimates") of the
+blueprint.
 
 ## Conventions of the formalization
 
@@ -18,8 +19,8 @@ Formalization of Section `sec:prelim` ("Geometry, forms, and elementary estimate
   (σ-finite) positive measure and `w ∈ L¹(m)` is a complex density.  Then `‖ν‖_TV = ∫ |w| dm`.
   The positive measure `σ` corresponds to `w = 1`, and an integrable kernel `k` to
   `m = volume`, `w = k`.  Differences of measures (such as `ν_ε = σ * ρ_ε - σ`) are handled
-  by linearity of the aux_form in the measure.
-* Operators are raw maps `(ℝ² → ℂ) → (ℝ² → ℂ)`; their `L² → L²` operator norm is `aux_opNorm2`.
+  by linearity of the form in the measure.
+* Operators are raw maps `(ℝ² → ℂ) → (ℝ² → ℂ)`; `L² → L²` bounds are stated with `eLpNorm`.
 * The Fourier transform is Mathlib's `𝓕`, which agrees with the blueprint convention
   `f̂(ξ) = ∫ f(x) e(-x·ξ) dx`.
 -/
@@ -31,7 +32,6 @@ noncomputable section
 
 namespace Auto
 
-
 instance instFactTwoPiPos : Fact (0 < 2 * π) := ⟨Real.two_pi_pos⟩
 
 /-- The circle of angles `ℝ/(2πℤ)`. -/
@@ -39,38 +39,8 @@ abbrev Ang := AddCircle (2 * π)
 
 /-! ### Conventions (`def:fourier`) -/
 
-/-- The Japanese bracket `⟨x⟩ = (1 + |x|²)^{1/2}` (part of `\label{def:fourier}`). -/
-def aux_jb {V : Type*} [Norm V] (x : V) : ℝ := Real.sqrt (1 + ‖x‖ ^ 2)
-
 /-- The character `e(t) = exp(2π i t)` (part of `\label{def:fourier}`). -/
 def e (t : ℝ) : ℂ := Complex.exp (2 * π * t * Complex.I)
-
-/-- The Fourier transform of a finite (positive) measure, `μ̂(ξ) = ∫ e(-x·ξ) dμ(x)`
-(part of `\label{def:fourier}`).  For functions we use Mathlib's `𝓕`, whose convention
-`f̂(ξ) = ∫ f(x) e(-x·ξ) dx` is the one of the blueprint. -/
-def aux_fourierMeasure {V : Type*} [NormedAddCommGroup V] [InnerProductSpace ℝ V]
-    [MeasurableSpace V] (μ : Measure V) (ξ : V) : ℂ :=
-  ∫ x, e (-⟪x, ξ⟫_ℝ) ∂μ
-
-/-- The Fourier transform of the complex measure `w · m`,
-`ν̂(ξ) = ∫ e(-x·ξ) w(x) dm(x)` (part of `\label{def:fourier}`). -/
-def aux_fourierW {V : Type*} [NormedAddCommGroup V] [InnerProductSpace ℝ V]
-    [MeasurableSpace V] (m : Measure V) (w : V → ℂ) (ξ : V) : ℂ :=
-  ∫ x, e (-⟪x, ξ⟫_ℝ) * w x ∂m
-
-/-- A locally integrable function `g` (in particular a bounded or an `L²` function) has Fourier
-support in the closed set `K` if its Fourier transform, as a tempered distribution, is supported
-in `K`: `⟨ĝ, φ⟩ = ∫ g φ̂ = 0` for every Schwartz function `φ` whose support is disjoint from `K`
-(part of `\label{def:fourier}`). -/
-def aux_HasFourierSupportIn {V : Type*} [NormedAddCommGroup V] [InnerProductSpace ℝ V]
-    [FiniteDimensional ℝ V] [MeasurableSpace V] [BorelSpace V]
-    (g : V → ℂ) (K : Set V) : Prop :=
-  ∀ φ : 𝓢(V, ℂ), Disjoint (tsupport (φ : V → ℂ)) K → ∫ x, g x * 𝓕 (φ : V → ℂ) x = 0
-
-/-- The `L²` inner product, linear in its first entry, `⟨f, g⟩ = ∫ f ḡ`
-(part of `\label{def:fourier}`). -/
-def aux_ip {V : Type*} [MeasurableSpace V] (μ : Measure V) (f g : V → ℂ) : ℂ :=
-  ∫ x, f x * conj (g x) ∂μ
 
 /-! ### Triangle parameters (`def:geometry`) -/
 
@@ -127,10 +97,6 @@ def σ : Measure Ang := AddCircle.haarAddCircle
 
 instance : IsProbabilityMeasure σ := by unfold σ; infer_instance
 
-/-- Probability arclength on the unit circle `S¹ ⊂ ℝ²`, the pushforward of `σ` under `θ ↦ u_θ`
-(part of `\label{def:geometry}`). -/
-def aux_sigmaS : Measure ℝ² := σ.map u
-
 /-- The measure `σ_r`, the pushforward of `σ` under `θ ↦ r u_θ`
 (part of `\label{def:geometry}`). -/
 def aux_sigmaR (r : ℝ) : Measure ℝ² := σ.map (fun θ => r • u θ)
@@ -142,11 +108,6 @@ def proj (α β : ℝ) (j : Fin 3) (p : ℝ² × Ang) : ℝ² := p.1 + Lv α β 
 def μinc : Measure (ℝ² × Ang) := (volume : Measure ℝ²).prod σ
 
 /-! ### Similarities and normalization (`lem:geometry`) -/
-
-/-- An orientation-preserving isometry of the plane: a translation followed by a rotation
-(introduction of the blueprint). -/
-def aux_IsOPIsometry (f : ℝ² → ℝ²) : Prop :=
-  ∃ (t : ℝ) (z : ℝ²), ∀ x, f x = rot t (x + z)
 
 /-- Coordinates of `simil a b x` (auxiliary computation rule for `\label{def:geometry}`). -/
 @[simp] lemma aux_simil_apply_zero (a b : ℝ) (x : ℝ²) : simil a b x 0 = a * x 0 - b * x 1 := by
@@ -218,12 +179,6 @@ lemma aux_collinear_of_det (a b c : ℝ²)
 /-- `R_t e₁ = u_t` (auxiliary for `\label{lem:geometry}`). -/
 lemma aux_rot_e1 (t : ℝ) : rot t e1 = aux_uR t := by
   ext i; fin_cases i <;> simp
-
-/-- `R_t R_{-t} = I` (auxiliary for `\label{lem:geometry}`). -/
-lemma aux_rot_rot_neg (t : ℝ) (x : ℝ²) : rot t (rot (-t) x) = x := by
-  ext i; fin_cases i
-  · simp [Real.cos_neg, Real.sin_neg]; linear_combination (x 0) * Real.sin_sq_add_cos_sq t
-  · simp [Real.cos_neg, Real.sin_neg]; linear_combination (x 1) * Real.sin_sq_add_cos_sq t
 
 /-- **Lemma `lem:geometry`** (part 1).
 Each difference $L_i-L_j$, $i\ne j$, is an invertible orientation-preserving similarity. -/
@@ -298,109 +253,7 @@ theorem lem_geometry_normalization (a b c : ℝ²) (h : ¬ Collinear ℝ {a, b, 
       simp; linarith
   rw [← hb, ← hc]
 
-/-- Auxiliary (adapted from the reference formalization; used for `lem:geometry`) (part 4).
-The orientation-preserving copies of $\lambda\Delta_M$ are exactly
-$\{x,x+\lambda u_\theta,x+\lambda Mu_\theta\}$. -/
-theorem aux_geometry_copies (α β lam : ℝ) (S : Set ℝ²) :
-    (∃ f, aux_IsOPIsometry f ∧ S = f '' ((fun x => lam • x) '' aux_DeltaM α β)) ↔
-      ∃ (x : ℝ²) (θ : Ang), S = {x, x + lam • u θ, x + lam • M α β (u θ)} := by
-  have aux_hM : ∀ t : ℝ, rot t (M α β e1) = M α β (aux_uR t) := by
-    intro t
-    have := congrArg (fun F : ℝ² →L[ℝ] ℝ² => F e1) (lem_geometry_commute α β t)
-    simp only [ContinuousLinearMap.comp_apply] at this
-    rw [← this, aux_rot_e1]
-  constructor
-  · rintro ⟨f, ⟨t, z, hf⟩, rfl⟩
-    refine ⟨rot t z, (t : Ang), ?_⟩
-    simp only [aux_DeltaM, Set.image_insert_eq, Set.image_singleton, hf, aux_u_coe]
-    simp only [smul_zero, zero_add, map_add, map_smul, aux_rot_e1, aux_hM]
-    simp only [add_comm]
-  · rintro ⟨x, θ, rfl⟩
-    obtain ⟨t, rfl⟩ := QuotientAddGroup.mk_surjective θ
-    refine ⟨fun y => rot t (y + rot (-t) x), ⟨t, rot (-t) x, fun y => rfl⟩, ?_⟩
-    simp only [aux_DeltaM, Set.image_insert_eq, Set.image_singleton, smul_zero,
-      map_add, map_smul, aux_rot_e1, aux_hM, aux_rot_rot_neg]
-    simp only [aux_u_coe, map_zero, add_zero, add_comm]
-
 /-! ### Forms, operators and dilations (`def:form`) -/
-
-/-- The trilinear aux_form against the complex measure `ν = w · m`,
-`Λ_ν(f₀,f₁,g) = ∫∫ f₀(x) f₁(x+u) g(x+Mu) dν(u) dx` (`\label{def:form}`, `pre:aux_form`). -/
-def aux_formW (α β : ℝ) (m : Measure ℝ²) (w : ℝ² → ℂ) (f₀ f₁ g : ℝ² → ℂ) : ℂ :=
-  ∫ x, ∫ y, f₀ x * f₁ (x + y) * g (x + M α β y) * w y ∂m
-
-/-- The trilinear aux_form `Λ_ν` for a positive measure `ν` (`\label{def:form}`). -/
-def aux_form (α β : ℝ) (ν : Measure ℝ²) (f₀ f₁ g : ℝ² → ℂ) : ℂ :=
-  aux_formW α β ν 1 f₀ f₁ g
-
-/-- The trilinear aux_form `Λ_k` for the measure `k(u) du` with an integrable density `k`
-(`\label{def:form}`). -/
-def aux_formK (α β : ℝ) (k : ℝ² → ℂ) (f₀ f₁ g : ℝ² → ℂ) : ℂ :=
-  aux_formW α β volume k f₀ f₁ g
-
-/-- The operator `S_g^ν f(x) = ∫ f(x+u) g(x+Mu) dν(u)` for `ν = w · m`
-(`\label{def:form}`, `pre:operator`). -/
-def aux_SW (α β : ℝ) (m : Measure ℝ²) (w : ℝ² → ℂ) (g : ℝ² → ℂ) (f : ℝ² → ℂ) : ℝ² → ℂ :=
-  fun x => ∫ y, f (x + y) * g (x + M α β y) * w y ∂m
-
-/-- The operator `S_g^ν` for a positive measure `ν`; `S_g = S_g^σ` is `aux_Sop α β aux_sigmaS g`
-(`\label{def:form}`). -/
-def aux_Sop (α β : ℝ) (ν : Measure ℝ²) (g : ℝ² → ℂ) : (ℝ² → ℂ) → ℝ² → ℂ :=
-  aux_SW α β ν 1 g
-
-/-- The total variation `‖w · m‖_TV = ∫ |w| dm` (`\label{def:form}`). -/
-def aux_tv (m : Measure ℝ²) (w : ℝ² → ℂ) : ℝ≥0∞ := ∫⁻ y, ‖w y‖ₑ ∂m
-
-/-- The `L² → L²` operator norm `‖T‖` of a raw operator `T` (`\label{def:form}`). -/
-def aux_opNorm2 {V : Type*} [MeasurableSpace V] (μ : Measure V) (T : (V → ℂ) → V → ℂ) : ℝ≥0∞ :=
-  sInf {C : ℝ≥0∞ | ∀ f, MemLp f 2 μ → eLpNorm (T f) 2 μ ≤ C * eLpNorm f 2 μ}
-
-/-- Auxiliary: to bound the `L² → L²` operator norm of a raw map it suffices to exhibit the
-bound on every `L²` input. -/
-lemma aux_opNorm2_le {V : Type*} [MeasurableSpace V] (μ : Measure V)
-    (T : (V → ℂ) → V → ℂ) (C : ℝ≥0∞)
-    (h : ∀ f, MemLp f 2 μ → eLpNorm (T f) 2 μ ≤ C * eLpNorm f 2 μ) :
-    aux_opNorm2 μ T ≤ C :=
-  sInf_le h
-
-/-- Auxiliary: a finite `L² → L²` operator norm is attained, i.e. it is itself an admissible
-bound on every `L²` input. -/
-lemma aux_opNorm2_apply {V : Type*} [MeasurableSpace V] (μ : Measure V)
-    (T : (V → ℂ) → V → ℂ) (f : V → ℂ) (hf : MemLp f 2 μ) (hT : aux_opNorm2 μ T ≠ ⊤) :
-    eLpNorm (T f) 2 μ ≤ aux_opNorm2 μ T * eLpNorm f 2 μ := by
-  have hatop : eLpNorm f 2 μ ≠ ⊤ := hf.2.ne
-  by_cases hS : ({C : ℝ≥0∞ | ∀ f, MemLp f 2 μ → eLpNorm (T f) 2 μ ≤ C * eLpNorm f 2 μ}).Nonempty
-  · have : Nonempty ↥({C : ℝ≥0∞ | ∀ f, MemLp f 2 μ →
-      eLpNorm (T f) 2 μ ≤ C * eLpNorm f 2 μ}) := hS.to_subtype
-    rcases eq_or_ne (eLpNorm f 2 μ) 0 with ha0 | ha0
-    · obtain ⟨C, hC⟩ := hS
-      have hle := hC f hf
-      rw [ha0, mul_zero] at hle
-      rw [le_antisymm hle bot_le]
-      exact bot_le
-    · have key : ∀ x : ↥({C : ℝ≥0∞ | ∀ f, MemLp f 2 μ →
-          eLpNorm (T f) 2 μ ≤ C * eLpNorm f 2 μ}),
-          eLpNorm (T f) 2 μ ≤ (x : ℝ≥0∞) * eLpNorm f 2 μ := fun x => x.2 f hf
-      refine le_trans (le_iInf key) (le_of_eq ?_)
-      rw [← ENNReal.iInf_mul_of_ne ha0 hatop, aux_opNorm2, sInf_eq_iInf']
-  · exact absurd (by rw [aux_opNorm2, Set.not_nonempty_iff_eq_empty.mp hS]; exact sInf_empty) hT
-
-/-- Auxiliary: the `L² → L²` operator norm is subadditive on raw maps that are added
-pointwise. -/
-lemma aux_opNorm2_add {V : Type*} [MeasurableSpace V] (μ : Measure V)
-    (T₁ T₂ : (V → ℂ) → V → ℂ) (h₁ : aux_opNorm2 μ T₁ ≠ ⊤) (h₂ : aux_opNorm2 μ T₂ ≠ ⊤)
-    (hm : ∀ f, MemLp f 2 μ →
-      AEStronglyMeasurable (T₁ f) μ ∧ AEStronglyMeasurable (T₂ f) μ) :
-    aux_opNorm2 μ (fun f => T₁ f + T₂ f) ≤ aux_opNorm2 μ T₁ + aux_opNorm2 μ T₂ := by
-  refine aux_opNorm2_le μ _ _ fun f hf => ?_
-  obtain ⟨hm₁, hm₂⟩ := hm f hf
-  calc eLpNorm (T₁ f + T₂ f) 2 μ ≤ eLpNorm (T₁ f) 2 μ + eLpNorm (T₂ f) 2 μ :=
-        eLpNorm_add_le hm₁ hm₂ (by norm_num)
-    _ ≤ aux_opNorm2 μ T₁ * eLpNorm f 2 μ + aux_opNorm2 μ T₂ * eLpNorm f 2 μ := by
-        gcongr
-        · exact aux_opNorm2_apply μ T₁ f hf h₁
-        · exact aux_opNorm2_apply μ T₂ f hf h₂
-    _ = (aux_opNorm2 μ T₁ + aux_opNorm2 μ T₂) * eLpNorm f 2 μ := by rw [add_mul]
 
 /-- The character `e_a(x) = e(a·x)` (`\label{def:form}`). -/
 def aux_ea (a : ℝ²) (x : ℝ²) : ℂ := e ⟪a, x⟫_ℝ
@@ -408,38 +261,9 @@ def aux_ea (a : ℝ²) (x : ℝ²) : ℂ := e ⟪a, x⟫_ℝ
 /-- The modulation operator `𝓜_a f = e_a f` (`\label{def:form}`). -/
 def aux_modOp (a : ℝ²) (f : ℝ² → ℂ) : ℝ² → ℂ := fun x => aux_ea a x * f x
 
-/-- The dilation `ν_λ` of a measure, the pushforward under `u ↦ λu` (`\label{def:form}`). -/
-def aux_dil (lam : ℝ) (m : Measure ℝ²) : Measure ℝ² := m.map (fun y => lam • y)
-
-/-- The dilated density `k_λ(u) = λ^{-2} k(u/λ)` (`\label{def:form}`). -/
-def aux_kdil (lam : ℝ) (k : ℝ² → ℂ) : ℝ² → ℂ := fun y => ((lam ^ 2)⁻¹ : ℝ) * k (lam⁻¹ • y)
-
 /-! ### Elementary bounds (`lem:form-basic`) -/
 
-/-- The shear `(x, y) ↦ x + L y` is quasi-measure-preserving from `dx × m` to `dx`; used to show
-that composing inputs with the vertex maps respects null sets (`\label{lem:form-basic}`). -/
-lemma aux_s2a_qmp (L : ℝ² →L[ℝ] ℝ²) (m : Measure ℝ²) [SFinite m] :
-    Measure.QuasiMeasurePreserving (fun p : ℝ² × ℝ² => p.1 + L p.2)
-      ((volume : Measure ℝ²).prod m) volume := by
-  refine ⟨by fun_prop, ?_⟩
-  refine Measure.AbsolutelyContinuous.mk fun s hs h0 => ?_
-  rw [Measure.map_apply (by fun_prop) hs,
-    Measure.prod_apply_symm (measurableSet_preimage (by fun_prop) hs)]
-  have : ∀ y : ℝ², (volume : Measure ℝ²)
-      ((fun x : ℝ² => (x, y)) ⁻¹' ((fun p : ℝ² × ℝ² => p.1 + L p.2) ⁻¹' s)) = 0 := by
-    intro y
-    have := measure_preimage_add_right (volume : Measure ℝ²) (L y) s
-    simp only [Set.preimage_preimage]
-    rw [this, h0]
-  simp [this]
-
-/-- Version of `aux_s2a_qmp` with `L = I` (auxiliary for `\label{lem:form-basic}`). -/
-lemma aux_s2a_qmp_add (m : Measure ℝ²) [SFinite m] :
-    Measure.QuasiMeasurePreserving (fun p : ℝ² × ℝ² => p.1 + p.2)
-      ((volume : Measure ℝ²).prod m) volume := by
-  simpa using aux_s2a_qmp (ContinuousLinearMap.id ℝ ℝ²) m
-
-/-- Hölder's inequality in `lintegral` aux_form, `∫ |f||g| ≤ ‖f‖_p ‖g‖_q`
+/-- Hölder's inequality in `lintegral` form, `∫ |f||g| ≤ ‖f‖_p ‖g‖_q`
 (auxiliary for `\label{lem:form-basic}` and `\label{pre:circleimprove}`). -/
 lemma aux_s2a_holder {X : Type*} [MeasurableSpace X] {μ : Measure X} {f g : X → ℂ}
     (hf : AEStronglyMeasurable f μ) (hg : AEStronglyMeasurable g μ) (p q : ℝ≥0∞)
@@ -449,104 +273,6 @@ lemma aux_s2a_holder {X : Type*} [MeasurableSpace X] {μ : Measure X} {f g : X �
   rw [eLpNorm_one_eq_lintegral_enorm] at h
   simpa [enorm_mul] using h
 
-/-- For a fixed translation pair `(a, b)`,
-`∫ |f₀(x) f₁(x+a) g(x+b)| dx ≤ ‖f₀‖₂‖f₁‖₂‖g‖_∞` (auxiliary for `\label{lem:form-basic}`). -/
-lemma aux_s2a_slice {f₀ f₁ g : ℝ² → ℂ} (h₀ : AEStronglyMeasurable f₀ volume)
-    (h₁ : AEStronglyMeasurable f₁ volume) (a b : ℝ²) :
-    ∫⁻ x, ‖f₀ x‖ₑ * ‖f₁ (x + a)‖ₑ * ‖g (x + b)‖ₑ ≤
-      eLpNorm f₀ 2 * eLpNorm f₁ 2 * eLpNorm g ⊤ := by
-  have hb : ∀ᵐ x ∂(volume : Measure ℝ²), ‖g (x + b)‖ₑ ≤ eLpNorm g ⊤ := by
-    have := (measurePreserving_add_right (volume : Measure ℝ²) b).quasiMeasurePreserving.ae
-      (ae_le_eLpNormEssSup (f := g) (μ := volume))
-    rw [eLpNorm_exponent_top]
-    exact this
-  have h₁a : AEStronglyMeasurable (fun x => f₁ (x + a)) volume :=
-    h₁.comp_quasiMeasurePreserving
-      (measurePreserving_add_right (volume : Measure ℝ²) a).quasiMeasurePreserving
-  have e1 : eLpNorm (fun x => f₁ (x + a)) 2 = eLpNorm f₁ 2 :=
-    eLpNorm_comp_measurePreserving h₁ (measurePreserving_add_right volume a)
-  have e2 : ∫⁻ x, ‖f₀ x‖ₑ * ‖f₁ (x + a)‖ₑ * eLpNorm g ⊤ =
-      (∫⁻ x, ‖f₀ x‖ₑ * ‖f₁ (x + a)‖ₑ) * eLpNorm g ⊤ :=
-    lintegral_mul_const'' _ (h₀.enorm.mul h₁a.enorm)
-  have e3 := aux_s2a_holder h₀ h₁a 2 2
-  rw [e1] at e3
-  refine le_trans (lintegral_mono_ae (g := fun x => ‖f₀ x‖ₑ * ‖f₁ (x + a)‖ₑ * eLpNorm g ⊤) ?_) ?_
-  · filter_upwards [hb] with x hx
-    gcongr
-  · rw [e2]; gcongr
-
-/-- Measurability of the absolute integrand of the aux_form on `dx × m`
-(auxiliary for `\label{lem:form-basic}`). -/
-lemma aux_s2a_integrand_aesm (L : ℝ² →L[ℝ] ℝ²) (m : Measure ℝ²) [SFinite m] {w f₀ f₁ g : ℝ² → ℂ}
-    (hw : AEStronglyMeasurable w m) (h₀ : AEStronglyMeasurable f₀ volume)
-    (h₁ : AEStronglyMeasurable f₁ volume) (hg : AEStronglyMeasurable g volume) :
-    AEStronglyMeasurable (fun p : ℝ² × ℝ² => f₀ p.1 * f₁ (p.1 + p.2) * g (p.1 + L p.2) * w p.2)
-      ((volume : Measure ℝ²).prod m) := by
-  have a0 : AEStronglyMeasurable (fun p : ℝ² × ℝ² => f₀ p.1) ((volume : Measure ℝ²).prod m) :=
-    h₀.comp_quasiMeasurePreserving Measure.quasiMeasurePreserving_fst
-  have a1 : AEStronglyMeasurable (fun p : ℝ² × ℝ² => f₁ (p.1 + p.2))
-      ((volume : Measure ℝ²).prod m) := h₁.comp_quasiMeasurePreserving (aux_s2a_qmp_add m)
-  have a2 : AEStronglyMeasurable (fun p : ℝ² × ℝ² => g (p.1 + L p.2))
-      ((volume : Measure ℝ²).prod m) := hg.comp_quasiMeasurePreserving (aux_s2a_qmp L m)
-  have a3 : AEStronglyMeasurable (fun p : ℝ² × ℝ² => w p.2) ((volume : Measure ℝ²).prod m) :=
-    hw.comp_quasiMeasurePreserving Measure.quasiMeasurePreserving_snd
-  exact ((a0.mul a1).mul a2).mul a3
-
-/-- The core absolute bound behind `\label{lem:form-basic}`:
-`∫∫ |f₀(x) f₁(x+y) g(x+Ly) w(y)| dm(y) dx ≤ ‖w‖_{L¹(m)} ‖f₀‖₂ ‖f₁‖₂ ‖g‖_∞`. -/
-lemma aux_s2a_core (L : ℝ² →L[ℝ] ℝ²) (m : Measure ℝ²) [SFinite m] {w f₀ f₁ g : ℝ² → ℂ}
-    (hw : AEStronglyMeasurable w m) (h₀ : AEStronglyMeasurable f₀ volume)
-    (h₁ : AEStronglyMeasurable f₁ volume) (hg : AEStronglyMeasurable g volume) :
-    ∫⁻ x, ∫⁻ y, ‖f₀ x‖ₑ * ‖f₁ (x + y)‖ₑ * ‖g (x + L y)‖ₑ * ‖w y‖ₑ ∂m ≤
-      aux_tv m w * eLpNorm f₀ 2 * eLpNorm f₁ 2 * eLpNorm g ⊤ := by
-  have hF := (aux_s2a_integrand_aesm L m hw h₀ h₁ hg).enorm
-  have hF' : AEMeasurable (fun p : ℝ² × ℝ² =>
-      ‖f₀ p.1‖ₑ * ‖f₁ (p.1 + p.2)‖ₑ * ‖g (p.1 + L p.2)‖ₑ * ‖w p.2‖ₑ)
-      ((volume : Measure ℝ²).prod m) := by simpa [enorm_mul] using hF
-  rw [lintegral_lintegral_swap hF']
-  have e1 : ∀ y, ∫⁻ x, ‖f₀ x‖ₑ * ‖f₁ (x + y)‖ₑ * ‖g (x + L y)‖ₑ * ‖w y‖ₑ =
-      (∫⁻ x, ‖f₀ x‖ₑ * ‖f₁ (x + y)‖ₑ * ‖g (x + L y)‖ₑ) * ‖w y‖ₑ := by
-    intro y
-    rw [lintegral_mul_const'']
-    have h₁a : AEStronglyMeasurable (fun x => f₁ (x + y)) volume :=
-      h₁.comp_quasiMeasurePreserving
-        (measurePreserving_add_right (volume : Measure ℝ²) y).quasiMeasurePreserving
-    have hga : AEStronglyMeasurable (fun x => g (x + L y)) volume :=
-      hg.comp_quasiMeasurePreserving
-        (measurePreserving_add_right (volume : Measure ℝ²) (L y)).quasiMeasurePreserving
-    exact (h₀.enorm.mul h₁a.enorm).mul hga.enorm
-  simp_rw [e1]
-  refine le_trans (lintegral_mono (g := fun y =>
-    (eLpNorm f₀ 2 * eLpNorm f₁ 2 * eLpNorm g ⊤) * ‖w y‖ₑ) fun y => ?_) (le_of_eq ?_)
-  · exact mul_le_mul_left (aux_s2a_slice h₀ h₁ y (L y)) _
-  · rw [lintegral_const_mul'' _ hw.enorm, aux_tv]; ring
-
-/-- Auxiliary (adapted from the reference formalization; used for `lem:form-basic`) (absolute integrability).
-For $f_0,f_1\in L^2$ and $g\in L^\infty$, the aux_form is absolutely integrable. -/
-theorem aux_pre_elementary_integrable (α β : ℝ) (m : Measure ℝ²) [SFinite m] (w : ℝ² → ℂ)
-    (hw : Integrable w m) (f₀ f₁ g : ℝ² → ℂ) (h₀ : MemLp f₀ 2) (h₁ : MemLp f₁ 2)
-    (hg : MemLp g ⊤) :
-    Integrable (fun p : ℝ² × ℝ² => f₀ p.1 * f₁ (p.1 + p.2) * g (p.1 + M α β p.2) * w p.2)
-      ((volume : Measure ℝ²).prod m) := by
-  refine ⟨aux_s2a_integrand_aesm _ m hw.1 h₀.1 h₁.1 hg.1, ?_⟩
-  rw [HasFiniteIntegral, lintegral_prod _
-    (aux_s2a_integrand_aesm _ m hw.1 h₀.1 h₁.1 hg.1).enorm]
-  refine lt_of_le_of_lt ?_ (show aux_tv m w * eLpNorm f₀ 2 * eLpNorm f₁ 2 * eLpNorm g ⊤ < ⊤ from ?_)
-  · simpa [enorm_mul] using aux_s2a_core (M α β) m hw.1 h₀.1 h₁.1 hg.1
-  · have : aux_tv m w < ⊤ := hw.2
-    exact ENNReal.mul_lt_top (ENNReal.mul_lt_top (ENNReal.mul_lt_top this h₀.2) h₁.2) hg.2
-
-/-- Auxiliary (adapted from the reference formalization; used for `lem:form-basic`) (`lem:form-basic`, aux_form bound).
-$|\Lambda_\nu(f_0,f_1,g)|\le\|\nu\|_{\mathrm{TV}}\|f_0\|_2\|f_1\|_2\|g\|_\infty$. -/
-theorem aux_pre_elementary_form (α β : ℝ) (m : Measure ℝ²) [SFinite m] (w : ℝ² → ℂ)
-    (f₀ f₁ g : ℝ² → ℂ) (hw : AEStronglyMeasurable w m) (h₀ : AEStronglyMeasurable f₀ volume)
-    (h₁ : AEStronglyMeasurable f₁ volume) (hg : AEStronglyMeasurable g volume) :
-    ‖aux_formW α β m w f₀ f₁ g‖ₑ ≤ aux_tv m w * eLpNorm f₀ 2 * eLpNorm f₁ 2 * eLpNorm g ⊤ := by
-  refine le_trans ?_ (aux_s2a_core (M α β) m hw h₀ h₁ hg)
-  refine (enorm_integral_le_lintegral_enorm _).trans (lintegral_mono fun x => ?_)
-  refine (enorm_integral_le_lintegral_enorm _).trans (le_of_eq ?_)
-  simp [enorm_mul]
-
 /-- `‖f‖₂² = ∫ |f|²` in `ℝ≥0∞` (auxiliary). -/
 lemma aux_s2a_eLpNorm_two_sq {X E : Type*} [MeasurableSpace X] [ENorm E] (μ : Measure X)
     (f : X → E) : eLpNorm f 2 μ ^ 2 = ∫⁻ x, ‖f x‖ₑ ^ 2 ∂μ := by
@@ -555,144 +281,6 @@ lemma aux_s2a_eLpNorm_two_sq {X E : Type*} [MeasurableSpace X] [ENorm E] (μ : M
   rw [← ENNReal.rpow_natCast, ← ENNReal.rpow_mul]
   norm_num
 
-/-- `L²` duality in `lintegral` aux_form: if `∫ |h| A ≤ C ‖h‖₂` for all `h ∈ L²`, then `‖A‖₂ ≤ C`
-(auxiliary, used for the operator bound in `\label{lem:form-basic}`). -/
-lemma aux_s2a_dual (A : ℝ² → ℝ≥0∞) (hA : AEMeasurable A) (C : ℝ≥0∞)
-    (h : ∀ h : ℝ² → ℂ, MemLp h 2 → ∫⁻ x, ‖h x‖ₑ * A x ≤ C * eLpNorm h 2) :
-    ∫⁻ x, A x ^ 2 ≤ C ^ 2 := by
-  set a : ℕ → ℝ² → ℝ≥0∞ := fun n => (Metric.ball (0 : ℝ²) n).indicator (fun x => min (A x) n)
-  have ha_meas : ∀ n, AEMeasurable (a n) := fun n =>
-    (hA.min aemeasurable_const).indicator measurableSet_ball
-  have ha_le : ∀ n x, a n x ≤ A x := fun n x => by
-    simp only [a, indicator]; split_ifs <;> simp
-  have ha_fin : ∀ n x, a n x ≤ n := fun n x => by
-    simp only [a, indicator]; split_ifs <;> simp
-  have key : ∀ n, ∫⁻ x, a n x ^ 2 ≤ C ^ 2 := by
-    intro n
-    set hn : ℝ² → ℂ := fun x => ((a n x).toReal : ℂ)
-    have hen : ∀ x, ‖hn x‖ₑ = a n x := fun x => by
-      simp only [hn]
-      rw [← ofReal_norm, Complex.norm_real, Real.norm_of_nonneg ENNReal.toReal_nonneg,
-        ENNReal.ofReal_toReal (ne_top_of_le_ne_top (by simp) (ha_fin n x))]
-    have hEq : eLpNorm hn 2 = eLpNorm (a n) 2 := eLpNorm_congr_enorm_ae (Eventually.of_forall
-      fun x => by rw [hen]; rfl)
-    have hsq : eLpNorm (a n) 2 ^ 2 = ∫⁻ x, a n x ^ 2 := by
-      rw [aux_s2a_eLpNorm_two_sq]; rfl
-    have hfin : ∫⁻ x, a n x ^ 2 < ⊤ := by
-      calc ∫⁻ x, a n x ^ 2 ≤ ∫⁻ x, (Metric.ball (0 : ℝ²) n).indicator (fun _ => (n : ℝ≥0∞) ^ 2) x := by
-            refine lintegral_mono fun x => ?_
-            simp only [a, indicator]; split_ifs
-            · gcongr; exact min_le_right _ _
-            · simp
-        _ < ⊤ := by
-            rw [lintegral_indicator_const measurableSet_ball]
-            exact ENNReal.mul_lt_top (by simp) measure_ball_lt_top
-    have hmem : MemLp hn 2 := by
-      refine ⟨?_, ?_⟩
-      · exact (Complex.measurable_ofReal.comp_aemeasurable
-          (ha_meas n).ennreal_toReal).aestronglyMeasurable
-      · rw [hEq]
-        have : eLpNorm (a n) 2 ^ 2 < ⊤ := hsq ▸ hfin
-        exact lt_of_pow_lt_pow_left' 2 (by simpa using this)
-    have h1 := h hn hmem
-    simp_rw [hen] at h1
-    rw [hEq] at h1
-    have h2 : ∫⁻ x, a n x ^ 2 ≤ ∫⁻ x, a n x * A x :=
-      lintegral_mono fun x => by rw [sq]; gcongr; exact ha_le n x
-    set E := eLpNorm (a n) 2
-    have hE : E ^ 2 ≤ C * E := hsq ▸ h2.trans h1
-    have hEfin : E ≠ ⊤ := by
-      intro hE'; rw [hE'] at hsq; simp at hsq; exact hfin.ne hsq.symm
-    rw [← hsq]
-    rcases eq_or_ne E 0 with h0 | h0
-    · simp [h0]
-    · have : E ≤ C := by
-        rw [sq] at hE
-        exact (ENNReal.mul_le_mul_iff_left h0 hEfin).mp hE
-      gcongr
-  have hmono : ∀ x, Monotone fun n => a n x ^ 2 := by
-    intro x i j hij
-    simp only [a, indicator]
-    have hb : Metric.ball (0 : ℝ²) i ⊆ Metric.ball 0 j :=
-      Metric.ball_subset_ball (by exact_mod_cast hij)
-    split_ifs with h1 h2
-    · gcongr
-    · exact absurd (hb h1) h2
-    · simp
-    · simp
-  have hsup : ∀ x, ⨆ n, a n x ^ 2 = A x ^ 2 := by
-    intro x
-    refine tendsto_nhds_unique (tendsto_atTop_iSup (hmono x)) ?_
-    refine ((ENNReal.continuous_pow 2).tendsto _).comp ?_
-    have hev : ∀ᶠ n : ℕ in atTop, a n x = min (A x) n := by
-      obtain ⟨N, hN⟩ := exists_nat_gt ‖x‖
-      filter_upwards [eventually_ge_atTop N] with n hn
-      have : x ∈ Metric.ball (0 : ℝ²) n := by
-        rw [mem_ball_zero_iff]; exact lt_of_lt_of_le hN (by exact_mod_cast hn)
-      simp [a, this]
-    refine Tendsto.congr' (EventuallyEq.symm hev) ?_
-    have : Tendsto (fun n : ℕ => min (A x) (n : ℝ≥0∞)) atTop (𝓝 (min (A x) ⊤)) :=
-      tendsto_const_nhds.min ENNReal.tendsto_nat_nhds_top
-    simpa using this
-  calc ∫⁻ x, A x ^ 2 = ∫⁻ x, ⨆ n, a n x ^ 2 := by simp_rw [hsup]
-    _ = ⨆ n, ∫⁻ x, a n x ^ 2 := by
-        exact lintegral_iSup' (fun n => (ha_meas n).pow_const 2) (Eventually.of_forall hmono)
-    _ ≤ C ^ 2 := iSup_le key
-
-/-- Auxiliary (adapted from the reference formalization; used for `lem:form-basic`) (`lem:form-basic`, operator bound).
-$\|S_g^\nu\|\le\|\nu\|_{\mathrm{TV}}\|g\|_\infty$. -/
-theorem aux_pre_elementary_op (α β : ℝ) (m : Measure ℝ²) [SFinite m] (w : ℝ² → ℂ)
-    (hw : AEStronglyMeasurable w m) (g : ℝ² → ℂ) (hg : AEStronglyMeasurable g volume) :
-    aux_opNorm2 volume (aux_SW α β m w g) ≤ aux_tv m w * eLpNorm g ⊤ := by
-  refine sInf_le ?_
-  intro f hf
-  set A : ℝ² → ℝ≥0∞ := fun x => ∫⁻ y, ‖f (x + y)‖ₑ * ‖g (x + M α β y)‖ₑ * ‖w y‖ₑ ∂m
-  have hA : AEMeasurable A := by
-    have a1 : AEStronglyMeasurable (fun p : ℝ² × ℝ² => f (p.1 + p.2))
-        ((volume : Measure ℝ²).prod m) := hf.1.comp_quasiMeasurePreserving (aux_s2a_qmp_add m)
-    have a2 : AEStronglyMeasurable (fun p : ℝ² × ℝ² => g (p.1 + M α β p.2))
-        ((volume : Measure ℝ²).prod m) := hg.comp_quasiMeasurePreserving (aux_s2a_qmp _ m)
-    have a3 : AEStronglyMeasurable (fun p : ℝ² × ℝ² => w p.2) ((volume : Measure ℝ²).prod m) :=
-      hw.comp_quasiMeasurePreserving Measure.quasiMeasurePreserving_snd
-    exact ((a1.enorm.mul a2.enorm).mul a3.enorm).lintegral_prod_right'
-  have hpt : ∀ x, ‖aux_SW α β m w g f x‖ₑ ≤ A x := fun x =>
-    (enorm_integral_le_lintegral_enorm _).trans (le_of_eq (by simp [A, enorm_mul]))
-  have hdual := aux_s2a_dual A hA (aux_tv m w * eLpNorm g ⊤ * eLpNorm f 2) (fun h hh => by
-    have e : ∀ x, ‖h x‖ₑ * A x =
-        ∫⁻ y, ‖h x‖ₑ * ‖f (x + y)‖ₑ * ‖g (x + M α β y)‖ₑ * ‖w y‖ₑ ∂m := by
-      intro x
-      rw [← lintegral_const_mul' _ _ enorm_ne_top]
-      congr 1; funext y; ring
-    simp_rw [e]
-    refine (aux_s2a_core (M α β) m hw hh.1 hf.1 hg).trans (le_of_eq ?_)
-    ring)
-  have h2 : eLpNorm (aux_SW α β m w g f) 2 ^ 2 ≤ (aux_tv m w * eLpNorm g ⊤ * eLpNorm f 2) ^ 2 := by
-    rw [aux_s2a_eLpNorm_two_sq]
-    refine le_trans (lintegral_mono fun x => ?_) hdual
-    gcongr
-    exact hpt x
-  exact (ENNReal.pow_le_pow_left_iff two_ne_zero).1 h2
-
-/-- Auxiliary (adapted from the reference formalization; used for `lem:form-basic`) (representatives).
-The aux_form is independent of choices of almost-everywhere representatives. -/
-theorem aux_pre_elementary_ae (α β : ℝ) (hβ : β ≠ 0) (m : Measure ℝ²) [SFinite m] (w : ℝ² → ℂ)
-    (f₀ f₁ g f₀' f₁' g' : ℝ² → ℂ) (h₀ : f₀ =ᵐ[volume] f₀') (h₁ : f₁ =ᵐ[volume] f₁')
-    (hg : g =ᵐ[volume] g') :
-    aux_formW α β m w f₀ f₁ g = aux_formW α β m w f₀' f₁' g' := by
-  have H : ∀ᵐ p ∂((volume : Measure ℝ²).prod m), f₀ p.1 = f₀' p.1 ∧
-      f₁ (p.1 + p.2) = f₁' (p.1 + p.2) ∧ g (p.1 + M α β p.2) = g' (p.1 + M α β p.2) := by
-    have e0 := (Measure.quasiMeasurePreserving_fst (μ := (volume : Measure ℝ²)) (ν := m)).ae h₀
-    have e1 := (aux_s2a_qmp_add m).ae h₁
-    have e2 := (aux_s2a_qmp (M α β) m).ae hg
-    filter_upwards [e0, e1, e2] with p hp0 hp1 hp2
-    exact ⟨hp0, hp1, hp2⟩
-  unfold aux_formW
-  refine integral_congr_ae ?_
-  filter_upwards [Measure.ae_ae_of_ae_prod H] with x hx
-  refine integral_congr_ae ?_
-  filter_upwards [hx] with y hy
-  rw [hy.1, hy.2.1, hy.2.2]
-
 /-- `e(a) e(b) = e(a + b)` (auxiliary). -/
 lemma aux_e_add (a b : ℝ) : e a * e b = e (a + b) := by
   simp only [e, ← Complex.exp_add]; congr 1; push_cast; ring
@@ -700,28 +288,6 @@ lemma aux_e_add (a b : ℝ) : e a * e b = e (a + b) := by
 /-- `e_a(x) e_b(x) = e_{a+b}(x)`-type identities reduce to inner products (auxiliary). -/
 lemma aux_inner_two (x y : ℝ²) : ⟪x, y⟫_ℝ = x 0 * y 0 + x 1 * y 1 := by
   simp [PiLp.inner_apply, Fin.sum_univ_two]; ring
-
-/-- Transpose identity `Mᵀω · y = ω · My` (auxiliary for `\label{lem:form-basic}`). -/
-lemma aux_inner_MT (α β : ℝ) (ω y : ℝ²) : ⟪aux_MT α β ω, y⟫_ℝ = ⟪ω, M α β y⟫_ℝ := by
-  have h0 : ∀ a b (x : ℝ²), simil a b x 0 = a * x 0 - b * x 1 := fun a b x => by
-    simp [simil]; ring
-  have h1 : ∀ a b (x : ℝ²), simil a b x 1 = a * x 1 + b * x 0 := fun a b x => by
-    simp [simil]
-  rw [aux_inner_two, aux_inner_two, aux_MT, M, h0, h1, h0, h1]; ring
-
-/-- Auxiliary (adapted from the reference formalization; used for `lem:form-basic`) (`pre:modulation`).
-$S_{\e_\omega g}^\nu=\mathcal M_{\omega-M^T\omega}S_g^\nu\mathcal M_{M^T\omega}$. -/
-theorem aux_pre_elementary_modulation (α β : ℝ) (m : Measure ℝ²) (w : ℝ² → ℂ) (ω : ℝ²)
-    (g f : ℝ² → ℂ) :
-    aux_SW α β m w (aux_modOp ω g) f =
-      aux_modOp (ω - aux_MT α β ω) (aux_SW α β m w g (aux_modOp (aux_MT α β ω) f)) := by
-  funext x
-  simp only [aux_SW, aux_modOp, ← integral_const_mul]
-  congr 1; funext y
-  have : aux_ea (ω - aux_MT α β ω) x * aux_ea (aux_MT α β ω) (x + y) = aux_ea ω (x + M α β y) := by
-    simp only [aux_ea, aux_e_add, inner_sub_left, inner_add_right, aux_inner_MT]
-    congr 1; ring
-  rw [← this]; ring
 
 /-- `|e(t)| = 1` (auxiliary). -/
 lemma aux_norm_e (t : ℝ) : ‖e t‖ = 1 := by
@@ -748,46 +314,6 @@ lemma aux_memLp_modOp_iff (a : ℝ²) (f : ℝ² → ℂ) (p : ℝ≥0∞) :
   have : aux_modOp (-a) (aux_modOp a f) = f := by
     funext x; simp only [aux_modOp, ← mul_assoc, aux_ea, aux_e_add, inner_neg_left]; simp [e]
   rw [← this]; exact key _ _ h
-
-/-- Modulation by `-a` followed by modulation by `a` is the identity (auxiliary). -/
-lemma aux_modOp_neg' (a : ℝ²) (f : ℝ² → ℂ) : aux_modOp a (aux_modOp (-a) f) = f := by
-  funext x; simp only [aux_modOp, ← mul_assoc, aux_ea, aux_e_add, inner_neg_left]; simp [e]
-
-/-- Auxiliary (adapted from the reference formalization; used for `lem:form-basic`) (modulation preserves the operator norm).
-Thus modulation of $g$ preserves its operator norm. -/
-theorem aux_pre_elementary_modulation_norm (α β : ℝ) (m : Measure ℝ²) (w : ℝ² → ℂ) (ω : ℝ²)
-    (g : ℝ² → ℂ) :
-    aux_opNorm2 volume (aux_SW α β m w (aux_modOp ω g)) = aux_opNorm2 volume (aux_SW α β m w g) := by
-  unfold aux_opNorm2
-  congr 1
-  ext C
-  simp only [Set.mem_ofPred_eq]
-  constructor
-  · intro h f hf
-    have := h (aux_modOp (-(aux_MT α β ω)) f) ((aux_memLp_modOp_iff _ _ _).mpr hf)
-    rw [aux_pre_elementary_modulation, aux_eLpNorm_modOp, aux_modOp_neg',
-      aux_eLpNorm_modOp] at this
-    exact this
-  · intro h f hf
-    rw [aux_pre_elementary_modulation, aux_eLpNorm_modOp]
-    have := h (aux_modOp (aux_MT α β ω) f) ((aux_memLp_modOp_iff _ _ _).mpr hf)
-    rwa [aux_eLpNorm_modOp] at this
-
-/-- Auxiliary (adapted from the reference formalization; used for `lem:form-basic`) (simultaneous modulation).
-Simultaneously modulating the three inputs by the frequencies
-$((M^T-I)\omega,-M^T\omega,\omega)$ preserves the aux_form. -/
-theorem aux_pre_elementary_modulation_form (α β : ℝ) (m : Measure ℝ²) (w : ℝ² → ℂ) (ω : ℝ²)
-    (f₀ f₁ g : ℝ² → ℂ) :
-    aux_formW α β m w (aux_modOp (aux_MT α β ω - ω) f₀) (aux_modOp (-aux_MT α β ω) f₁) (aux_modOp ω g) =
-      aux_formW α β m w f₀ f₁ g := by
-  simp only [aux_formW, aux_modOp]
-  congr 1; funext x; congr 1; funext y
-  have : aux_ea (aux_MT α β ω - ω) x * aux_ea (-aux_MT α β ω) (x + y) * aux_ea ω (x + M α β y) = 1 := by
-    simp only [aux_ea, aux_e_add, inner_sub_left, inner_add_right, inner_neg_left, aux_inner_MT]
-    ring_nf; simp [e]
-  calc _ = (aux_ea (aux_MT α β ω - ω) x * aux_ea (-aux_MT α β ω) (x + y) * aux_ea ω (x + M α β y)) *
-        (f₀ x * f₁ (x + y) * g (x + M α β y) * w y) := by ring
-    _ = _ := by rw [this, one_mul]
 
 /-! ### Fourier representation and scaling (`lem:fourier-form`) -/
 
@@ -837,101 +363,6 @@ lemma aux_s2a_inner_MT (α β : ℝ) (ω y : ℝ²) : ⟪aux_MT α β ω, y⟫_�
     simp [PiLp.inner_apply, Fin.sum_univ_two]; ring
   rw [hi, hi, aux_MT, M, h0, h1, h0, h1]; ring
 
-/-- The four-variable integrand used to prove `pre:Fourierform`
-(auxiliary for `\label{lem:fourier-form}`). -/
-def aux_s2a_Phi (α β : ℝ) (w f₀ F₁ G : ℝ² → ℂ) (P : (ℝ² × ℝ²) × (ℝ² × ℝ²)) : ℂ :=
-  (f₀ P.1.1 * w P.1.2) * (F₁ P.2.1 * G P.2.2) *
-    (e ⟪P.2.1, P.1.1 + P.1.2⟫_ℝ * e ⟪P.2.2, P.1.1 + M α β P.1.2⟫_ℝ)
-
-/-- Integrability of `aux_s2a_Phi` on the four-fold product
-(auxiliary for `\label{lem:fourier-form}`). -/
-lemma aux_s2a_Phi_integrable (α β : ℝ) (m : Measure ℝ²) [SFinite m] {w f₀ F₁ G : ℝ² → ℂ}
-    (hw : Integrable w m) (h₀ : Integrable f₀) (h₁ : Integrable F₁) (hG : Integrable G) :
-    Integrable (aux_s2a_Phi α β w f₀ F₁ G)
-      (((volume : Measure ℝ²).prod m).prod ((volume : Measure ℝ²).prod volume)) := by
-  have hA : Integrable (fun p : ℝ² × ℝ² => f₀ p.1 * w p.2) ((volume : Measure ℝ²).prod m) :=
-    h₀.mul_prod hw
-  have hB : Integrable (fun q : ℝ² × ℝ² => F₁ q.1 * G q.2)
-      ((volume : Measure ℝ²).prod volume) := h₁.mul_prod hG
-  have hAB := hA.mul_prod hB
-  refine (hAB.mul_bdd (c := 1) ?_ (Eventually.of_forall fun P => ?_))
-  · exact (Continuous.aestronglyMeasurable (by
-      refine (aux_s2a_continuous_e.comp ?_).mul (aux_s2a_continuous_e.comp ?_) <;> fun_prop))
-  · simp [aux_s2a_norm_e]
-
-/-- Auxiliary (adapted from the reference formalization; used for `lem:fourier-form`) (`pre:Fourierform`). For Schwartz inputs,
-$$\Lambda_\nu(f_0,f_1,g)=\iint \widehat f_0(-\xi-\eta)\widehat f_1(\xi)\widehat g(\eta)
-\widehat\nu(-\xi-M^T\eta)\,d\xi\,d\eta.$$ -/
-theorem aux_pre_fourierscaling_fourier (α β : ℝ) (m : Measure ℝ²) [SFinite m] (w : ℝ² → ℂ)
-    (hw : Integrable w m) (f₀ f₁ g : 𝓢(ℝ², ℂ)) :
-    aux_formW α β m w f₀ f₁ g =
-      ∫ ξ, ∫ η, 𝓕 (f₀ : ℝ² → ℂ) (-ξ - η) * 𝓕 (f₁ : ℝ² → ℂ) ξ * 𝓕 (g : ℝ² → ℂ) η *
-        aux_fourierW m w (-ξ - aux_MT α β η) := by
-  have hF₁ : Integrable (𝓕 (f₁ : ℝ² → ℂ)) := by
-    rw [← SchwartzMap.fourier_coe]; exact (𝓕 f₁).integrable
-  have hG : Integrable (𝓕 (g : ℝ² → ℂ)) := by
-    rw [← SchwartzMap.fourier_coe]; exact (𝓕 g).integrable
-  set Φ := aux_s2a_Phi α β w f₀ (𝓕 (f₁ : ℝ² → ℂ)) (𝓕 (g : ℝ² → ℂ))
-  have hΦ : Integrable Φ (((volume : Measure ℝ²).prod m).prod ((volume : Measure ℝ²).prod volume))
-    := aux_s2a_Phi_integrable α β m hw f₀.integrable hF₁ hG
-  have hL : ∀ x y, f₀ x * f₁ (x + y) * g (x + M α β y) * w y =
-      ∫ q, Φ ((x, y), q) ∂((volume : Measure ℝ²).prod volume) := by
-    intro x y
-    have := integral_prod_mul (μ := (volume : Measure ℝ²)) (ν := (volume : Measure ℝ²))
-      (fun ξ => e ⟪ξ, x + y⟫_ℝ * 𝓕 (f₁ : ℝ² → ℂ) ξ) (fun η => e ⟪η, x + M α β y⟫_ℝ * 𝓕 (g : ℝ² → ℂ) η)
-    rw [aux_s2a_inv_schwartz f₁ (x + y), aux_s2a_inv_schwartz g (x + M α β y),
-      show ∀ a b c d : ℂ, a * b * c * d = (b * c) * (a * d) from fun a b c d => by ring,
-      ← this, ← integral_mul_const]
-    congr 1; funext q
-    simp only [Φ, aux_s2a_Phi]; ring
-  have hR : ∀ ξ η, ∫ p, Φ (p, (ξ, η)) ∂((volume : Measure ℝ²).prod m) =
-      𝓕 (f₀ : ℝ² → ℂ) (-ξ - η) * 𝓕 (f₁ : ℝ² → ℂ) ξ * 𝓕 (g : ℝ² → ℂ) η * aux_fourierW m w (-ξ - aux_MT α β η) := by
-    intro ξ η
-    have := integral_prod_mul (μ := (volume : Measure ℝ²)) (ν := m)
-      (fun x => e (-⟪x, -ξ - η⟫_ℝ) * f₀ x) (fun y => e (-⟪y, -ξ - aux_MT α β η⟫_ℝ) * w y)
-    rw [aux_s2a_fourier_e, aux_fourierW, show ∀ a b c d : ℂ, a * b * c * d = (a * d) * (b * c) from
-      fun a b c d => by ring, ← this, ← integral_mul_const]
-    congr 1; funext p
-    simp only [Φ, aux_s2a_Phi]
-    have hph : e ⟪ξ, p.1 + p.2⟫_ℝ * e ⟪η, p.1 + M α β p.2⟫_ℝ =
-        e (-⟪p.1, -ξ - η⟫_ℝ) * e (-⟪p.2, -ξ - aux_MT α β η⟫_ℝ) := by
-      rw [aux_s2a_e_add, aux_s2a_e_add]
-      congr 1
-      simp only [inner_add_right, inner_sub_right, inner_neg_right, real_inner_comm p.1,
-        real_inner_comm p.2]
-      rw [real_inner_comm (aux_MT α β η), aux_s2a_inner_MT]
-      ring
-    rw [hph]; ring
-  have step1 : aux_formW α β m w f₀ f₁ g =
-      ∫ x, ∫ y, ∫ q, Φ ((x, y), q) ∂((volume : Measure ℝ²).prod volume) ∂m := by
-    simp only [aux_formW, hL]
-  have step2 := (integral_prod _ hΦ.integral_prod_left).symm
-  have step3 := integral_integral_swap (f := fun p q => Φ (p, q)) hΦ
-  have step4 := integral_prod _ hΦ.integral_prod_right
-  rw [step1]
-  refine step2.trans (step3.trans (step4.trans ?_))
-  simp only [hR]
-
-/-- Auxiliary (adapted from the reference formalization; used for `lem:fourier-form`) (even measures).
-If $\nu$ is even, the minus sign in its argument can be omitted. -/
-theorem aux_pre_fourierscaling_even (α β : ℝ) (m : Measure ℝ²) [SFinite m] (w : ℝ² → ℂ)
-    (hw : Integrable w m) (heven : m.map Neg.neg = m) (hweven : ∀ y, w (-y) = w y)
-    (f₀ f₁ g : 𝓢(ℝ², ℂ)) :
-    aux_formW α β m w f₀ f₁ g =
-      ∫ ξ, ∫ η, 𝓕 (f₀ : ℝ² → ℂ) (-ξ - η) * 𝓕 (f₁ : ℝ² → ℂ) ξ * 𝓕 (g : ℝ² → ℂ) η *
-        aux_fourierW m w (ξ + aux_MT α β η) := by
-  have hev : ∀ b, aux_fourierW m w (-b) = aux_fourierW m w b := by
-    intro b
-    unfold aux_fourierW
-    conv_rhs => rw [← heven]
-    rw [show Measure.map Neg.neg m = Measure.map (MeasurableEquiv.neg ℝ²) m from rfl,
-      integral_map_equiv]
-    congr 1; funext y
-    simp [hweven, inner_neg_left, inner_neg_right]
-  rw [aux_pre_fourierscaling_fourier α β m w hw f₀ f₁ g]
-  congr 1; funext ξ; congr 1; funext η
-  rw [show -ξ - aux_MT α β η = -(ξ + aux_MT α β η) by abel, hev]
-
 /-- Scaling of `L^p` norms under `y ↦ λ y` in the plane
 (auxiliary for `\label{lem:fourier-form}`). -/
 lemma aux_s2a_eLpNorm_comp_smul (f : ℝ² → ℂ) (lam : ℝ) (hlam : lam ≠ 0) (p : ℝ≥0∞) :
@@ -948,59 +379,6 @@ lemma aux_s2a_eLpNorm_comp_smul (f : ℝ² → ℂ) (lam : ℝ) (hlam : lam ≠ 
   · rw [← smul_eq_mul, h1]; rfl
   · simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le, inv_pos, abs_pos]
     exact pow_ne_zero 2 hlam
-
-/-- Auxiliary (adapted from the reference formalization; used for `lem:fourier-form`) (`pre:eq:scale`). For $F_j(y)=f_j(\lambda y)$ and
-$H(y)=g(\lambda y)$, $\Lambda_{\nu_\lambda}(f_0,f_1,g)=\lambda^2\Lambda_\nu(F_0,F_1,H)$,
-$\|F_j\|_2=\lambda^{-1}\|f_j\|_2$, $\|H\|_\infty=\|g\|_\infty$. -/
-theorem aux_pre_fourierscaling_scale (α β : ℝ) (m : Measure ℝ²) [SFinite m] (w : ℝ² → ℂ)
-    (lam : ℝ) (hlam : 0 < lam) (f₀ f₁ g : ℝ² → ℂ) :
-    aux_formW α β (aux_dil lam m) (fun y => w (lam⁻¹ • y)) f₀ f₁ g =
-        (lam ^ 2 : ℝ) * aux_formW α β m w (fun y => f₀ (lam • y)) (fun y => f₁ (lam • y))
-          (fun y => g (lam • y)) ∧
-      eLpNorm (fun y => f₀ (lam • y)) 2 = ENNReal.ofReal lam⁻¹ * eLpNorm f₀ 2 ∧
-      eLpNorm (fun y => f₁ (lam • y)) 2 = ENNReal.ofReal lam⁻¹ * eLpNorm f₁ 2 ∧
-      eLpNorm (fun y => g (lam • y)) ⊤ = eLpNorm g ⊤ := by
-  have hl0 : lam ≠ 0 := hlam.ne'
-  have hc2 : ENNReal.ofReal (|lam ^ 2|⁻¹) ^ (1 / (2 : ℝ≥0∞)).toReal = ENNReal.ofReal lam⁻¹ := by
-    rw [show |lam ^ 2|⁻¹ = lam⁻¹ ^ 2 by rw [abs_of_nonneg (by positivity), inv_pow],
-      ENNReal.ofReal_pow (by positivity)]
-    simp only [one_div, ENNReal.toReal_inv, ENNReal.toReal_ofNat]
-    rw [← ENNReal.rpow_natCast, ← ENNReal.rpow_mul]
-    norm_num
-  refine ⟨?_, ?_, ?_, ?_⟩
-  · unfold aux_formW aux_dil
-    have hin : ∀ x, ∫ y, f₀ x * f₁ (x + y) * g (x + M α β y) * w (lam⁻¹ • y)
-          ∂(Measure.map (fun y => lam • y) m) =
-        ∫ y, f₀ x * f₁ (x + lam • y) * g (x + lam • M α β y) * w y ∂m := by
-      intro x
-      rw [show Measure.map (fun y : ℝ² => lam • y) m =
-        Measure.map (MeasurableEquiv.smul₀ lam hl0 (α := ℝ²)) m from rfl, integral_map_equiv]
-      congr 1; funext y
-      simp [MeasurableEquiv.smul₀, inv_smul_smul₀ hl0, map_smul]
-    simp_rw [hin]
-    have hcv := Measure.integral_comp_smul (μ := (volume : Measure ℝ²))
-      (fun x => ∫ y, f₀ x * f₁ (x + lam • y) * g (x + lam • M α β y) * w y ∂m) lam
-    rw [finrank_euclideanSpace_fin] at hcv
-    have hrhs : ∀ x, ∫ y, f₀ (lam • x) * f₁ (lam • x + lam • y) *
-          g (lam • x + lam • M α β y) * w y ∂m =
-        ∫ y, f₀ (lam • x) * f₁ (lam • (x + y)) * g (lam • (x + M α β y)) * w y ∂m := by
-      intro x; simp only [smul_add]
-    simp only [hrhs] at hcv
-    rw [hcv, abs_of_nonneg (by positivity), Complex.real_smul, ← mul_assoc]
-    push_cast
-    rw [mul_inv_cancel₀ (by exact_mod_cast pow_ne_zero 2 hl0), one_mul]
-  · rw [aux_s2a_eLpNorm_comp_smul f₀ lam hl0, hc2]
-  · rw [aux_s2a_eLpNorm_comp_smul f₁ lam hl0, hc2]
-  · rw [aux_s2a_eLpNorm_comp_smul g lam hl0]
-    simp
-
-/-! ### Relative frequency (`pre:def:relative`) -/
-
-/-- The relative frequency `b = ξ + Mᵀη` of the pair of input frequencies `(ξ, η)`; the
-remaining frequency is `-ξ-η` (`\label{pre:def:relative}`).  A cutoff in relative frequency is
-a factor `m(b)` in the Fourier representation `aux_pre_fourierscaling_fourier`; for even `m` it is
-the aux_form `aux_formK α β (𝓕⁻ m)` with kernel `m̌`. -/
-def aux_relFreq (α β : ℝ) (ξ η : ℝ²) : ℝ² := ξ + aux_MT α β η
 
 /-! ### The local Loomis–Whitney bound -/
 
@@ -1119,9 +497,11 @@ lemma aux_lw_DH_apply (α β : ℝ) (p w : ℝ²) :
 /-- `aux_Hpair` has derivative `aux_lw_DH` (auxiliary for `lem:triple-l2`). -/
 lemma aux_lw_hasFDerivAt (α β : ℝ) (p : ℝ²) :
     HasFDerivAt (aux_Hpair α β) (aux_lw_DH α β p) p := by
-  have h1 := (aux_lw_uR_hasDerivAt ((EuclideanSpace.proj (1 : Fin 2) : ℝ² →L[ℝ] ℝ) p)).hasFDerivAt.comp
+  have h1 :=
+    (aux_lw_uR_hasDerivAt ((EuclideanSpace.proj (1 : Fin 2) : ℝ² →L[ℝ] ℝ) p)).hasFDerivAt.comp
     p (EuclideanSpace.proj (1 : Fin 2) : ℝ² →L[ℝ] ℝ).hasFDerivAt
-  have h0 := (aux_lw_uR_hasDerivAt ((EuclideanSpace.proj (0 : Fin 2) : ℝ² →L[ℝ] ℝ) p)).hasFDerivAt.comp
+  have h0 :=
+    (aux_lw_uR_hasDerivAt ((EuclideanSpace.proj (0 : Fin 2) : ℝ² →L[ℝ] ℝ) p)).hasFDerivAt.comp
     p (EuclideanSpace.proj (0 : Fin 2) : ℝ² →L[ℝ] ℝ).hasFDerivAt
   have := ((M α β).hasFDerivAt.comp p h1).sub h0
   refine this.congr_fderiv ?_
@@ -1141,7 +521,8 @@ lemma aux_lw_Hpair_contDiff (α β : ℝ) {n : WithTop ℕ∞} : ContDiff ℝ n 
 /-- The determinant of `aux_lw_DH` in coordinates (auxiliary for `lem:triple-l2`). -/
 lemma aux_lw_det_DH (α β : ℝ) (p : ℝ²) :
     LinearMap.det (aux_lw_DH α β p : ℝ² →ₗ[ℝ] ℝ²) =
-      -(J (aux_uR (p 0)) 0 * M α β (J (aux_uR (p 1))) 1 - J (aux_uR (p 0)) 1 * M α β (J (aux_uR (p 1))) 0) := by
+      -(J (aux_uR (p 0)) 0 * M α β (J (aux_uR (p 1))) 1 -
+        J (aux_uR (p 0)) 1 * M α β (J (aux_uR (p 1))) 0) := by
   rw [← LinearMap.det_toMatrix (EuclideanSpace.basisFun (Fin 2) ℝ).toBasis, Matrix.det_fin_two]
   simp only [LinearMap.toMatrix_apply, OrthonormalBasis.coe_toBasis,
     OrthonormalBasis.coe_toBasis_repr_apply, EuclideanSpace.basisFun_repr,
@@ -1199,7 +580,8 @@ lemma aux_lw_DH_sub_le (α β : ℝ) (p q : ℝ²) (h : ℝ)
   rw [sub_apply, aux_lw_DH_apply, aux_lw_DH_apply]
   have e : w 1 • M α β (J (aux_uR (p 1))) - w 0 • J (aux_uR (p 0)) -
       (w 1 • M α β (J (aux_uR (q 1))) - w 0 • J (aux_uR (q 0))) =
-      w 1 • M α β (J (aux_uR (p 1)) - J (aux_uR (q 1))) - w 0 • (J (aux_uR (p 0)) - J (aux_uR (q 0))) := by
+      w 1 • M α β (J (aux_uR (p 1)) - J (aux_uR (q 1))) -
+        w 0 • (J (aux_uR (p 0)) - J (aux_uR (q 0))) := by
     rw [map_sub, smul_sub, smul_sub]; abel
   rw [e]
   have hm := aux_lw_mM_nonneg α β
@@ -1215,7 +597,8 @@ lemma aux_lw_DH_sub_le (α β : ℝ) (p q : ℝ²) (h : ℝ)
       nlinarith [sq_nonneg (aux_mM α β * |w 0| - |w 1|), aux_lw_mM_sq α β, sq_abs (w 0),
         sq_abs (w 1)]
     exact (pow_le_pow_iff_left₀ (by positivity) (by positivity) two_ne_zero).1 hs
-  calc ‖w 1 • M α β (J (aux_uR (p 1)) - J (aux_uR (q 1))) - w 0 • (J (aux_uR (p 0)) - J (aux_uR (q 0)))‖
+  calc ‖w 1 • M α β (J (aux_uR (p 1)) - J (aux_uR (q 1))) -
+        w 0 • (J (aux_uR (p 0)) - J (aux_uR (q 0)))‖
       ≤ |w 1| * (aux_mM α β * h) + |w 0| * h := (norm_sub_le _ _).trans (add_le_add b1 b0)
     _ = (|w 1| * aux_mM α β + |w 0|) * h := by ring
     _ ≤ aux_AM α β * ‖w‖ * h := by gcongr
@@ -1231,15 +614,18 @@ lemma aux_lw_Isq_convex (α β tstar : ℝ) : Convex ℝ (aux_Isq α β tstar) :
 
 /-- The square `I_{t*}²` is open (auxiliary for `lem:triple-l2`). -/
 lemma aux_lw_Isq_open (α β tstar : ℝ) : IsOpen (aux_Isq α β tstar) := by
-  have c0 : Continuous fun p : ℝ² => p 0 := (EuclideanSpace.proj (0 : Fin 2) : ℝ² →L[ℝ] ℝ).continuous
-  have c1 : Continuous fun p : ℝ² => p 1 := (EuclideanSpace.proj (1 : Fin 2) : ℝ² →L[ℝ] ℝ).continuous
+  have c0 : Continuous fun p : ℝ² => p 0 :=
+    (EuclideanSpace.proj (0 : Fin 2) : ℝ² →L[ℝ] ℝ).continuous
+  have c1 : Continuous fun p : ℝ² => p 1 :=
+    (EuclideanSpace.proj (1 : Fin 2) : ℝ² →L[ℝ] ℝ).continuous
   exact (isOpen_Ioo.preimage c0).inter (isOpen_Ioo.preimage c1)
 
 /-- The square `I_{t*}²` is measurable (auxiliary for `lem:triple-l2`). -/
 lemma aux_lw_Isq_meas (α β tstar : ℝ) : MeasurableSet (aux_Isq α β tstar) :=
   (aux_lw_Isq_open α β tstar).measurableSet
 
-/-- Auxiliary (adapted from the reference formalization; used for `lem:triple-l2`) (`lem:triple-l2`). For all $p,q\in I_{t_*}^2$,
+/-- Auxiliary (adapted from the reference formalization; used for `lem:triple-l2`)
+(`lem:triple-l2`). For all $p,q\in I_{t_*}^2$,
 $|H_{t_*}(p)-H_{t_*}(q)|\ge\frac{3|\beta|}{4A_M}|p-q|$. -/
 theorem aux_sc_lw_pairmap_injectivity (α β : ℝ) (hβ : β ≠ 0) (tstar : ℝ) (p q : ℝ²)
     (hp : p ∈ aux_Isq α β tstar) (hq : q ∈ aux_Isq α β tstar) :
@@ -1248,7 +634,8 @@ theorem aux_sc_lw_pairmap_injectivity (α β : ℝ) (hβ : β ≠ 0) (tstar : �
   have hc0 : c 0 = tstar := by simp [hc]
   have hc1 : c 1 = tstar := by simp [hc]
   have hA := aux_lw_AM_pos α β
-  have hbound : ∀ x ∈ aux_Isq α β tstar, ‖aux_lw_DH α β x - aux_lw_DH α β c‖ ≤ aux_AM α β * aux_hM α β := by
+  have hbound : ∀ x ∈ aux_Isq α β tstar,
+      ‖aux_lw_DH α β x - aux_lw_DH α β c‖ ≤ aux_AM α β * aux_hM α β := by
     intro x hx
     simp only [aux_Isq, aux_Iint, mem_ofPred_eq, mem_Ioo] at hx
     refine aux_lw_DH_sub_le α β x c _ ?_ ?_
@@ -1274,12 +661,14 @@ theorem aux_sc_lw_pairmap_injectivity (α β : ℝ) (hβ : β ≠ 0) (tstar : �
     field_simp; ring
   rw [e, sub_mul]; linarith
 
-/-- Auxiliary (adapted from the reference formalization; used for `lem:triple-l2`) (`lem:triple-l2`). Throughout the square,
+/-- Auxiliary (adapted from the reference formalization; used for `lem:triple-l2`)
+(`lem:triple-l2`). Throughout the square,
 $|\det DH_{t_*}(t,s)|=|\det(v_t,Mv_s)|\ge\frac{|\beta|}{2}$. -/
-theorem aux_sc_lw_pairmap_jacobian (α β : ℝ) (hβ : β ≠ 0) (tstar : ℝ) (p : ℝ²)
+theorem aux_sc_lw_pairmap_jacobian (α β : ℝ) (_hβ : β ≠ 0) (tstar : ℝ) (p : ℝ²)
     (hp : p ∈ aux_Isq α β tstar) :
     |LinearMap.det (fderiv ℝ (aux_Hpair α β) p : ℝ² →ₗ[ℝ] ℝ²)| =
-        |J (aux_uR (p 0)) 0 * M α β (J (aux_uR (p 1))) 1 - J (aux_uR (p 0)) 1 * M α β (J (aux_uR (p 1))) 0| ∧
+        |J (aux_uR (p 0)) 0 * M α β (J (aux_uR (p 1))) 1 -
+          J (aux_uR (p 0)) 1 * M α β (J (aux_uR (p 1))) 0| ∧
       |β| / 2 ≤ |LinearMap.det (fderiv ℝ (aux_Hpair α β) p : ℝ² →ₗ[ℝ] ℝ²)| := by
   rw [(aux_lw_hasFDerivAt α β p).fderiv, aux_lw_det_DH, abs_neg]
   refine ⟨rfl, ?_⟩
@@ -1328,7 +717,8 @@ lemma aux_lw_DH_equiv (α β : ℝ) (hβ : β ≠ 0) (tstar : ℝ) (p : ℝ²) (
   ext w : 1
   rfl
 
-/-- Auxiliary (adapted from the reference formalization; used for `lem:triple-l2`) (diffeomorphism). The map $H_{t_*}:I_{t_*}^2\to\R^2$ is a smooth
+/-- Auxiliary (adapted from the reference formalization; used for `lem:triple-l2`) (diffeomorphism).
+The map $H_{t_*}:I_{t_*}^2\to\R^2$ is a smooth
 diffeomorphism onto its open image. -/
 theorem aux_sc_lw_pairmap_diffeo (α β : ℝ) (hβ : β ≠ 0) (tstar : ℝ) :
     ContDiff ℝ ⊤ (aux_Hpair α β) ∧ InjOn (aux_Hpair α β) (aux_Isq α β tstar) ∧
@@ -1366,7 +756,8 @@ theorem aux_sc_lw_pairmap_diffeo (α β : ℝ) (hβ : β ≠ 0) (tstar : ℝ) :
     refine (hL.congr_of_eventuallyEq ?_).contDiffWithinAt
     have hs := hf.hasStrictFDerivAt' he (by simp)
     have h1 := hs.eventually_right_inverse
-    have h2 : ∀ᶠ y in 𝓝 (aux_Hpair α β p), hs.localInverse (aux_Hpair α β) e p y ∈ aux_Isq α β tstar := by
+    have h2 : ∀ᶠ y in 𝓝 (aux_Hpair α β p),
+        hs.localInverse (aux_Hpair α β) e p y ∈ aux_Isq α β tstar := by
       have := hs.localInverse_continuousAt
       apply this.preimage_mem_nhds
       rw [hs.localInverse_apply_image]
@@ -1431,7 +822,8 @@ lemma aux_lw_cov_bound (α β : ℝ) (hβ : β ≠ 0) (tstar : ℝ) (g : ℝ² �
     _ = ENNReal.ofReal (2 / |β|) * ∫⁻ y in aux_Hpair α β '' aux_Isq α β tstar, g y := by rw [hcov]
     _ ≤ ENNReal.ofReal (2 / |β|) * ∫⁻ y, g y := mul_le_mul_right (setLIntegral_le_lintegral _ _) _
 
-/-- Auxiliary (adapted from the reference formalization; used for `lem:triple-l2`) (`lem:triple-l2`). For nonnegative $a,b$ and every real $t_*$,
+/-- Auxiliary (adapted from the reference formalization; used for `lem:triple-l2`)
+(`lem:triple-l2`). For nonnegative $a,b$ and every real $t_*$,
 $$\int_{\R^2}\int_{I_{t_*}}\int_{I_{t_*}} a(x+u_t)b(x+Mu_s)\,ds\,dt\,dx
 \le\frac{2}{|\beta|}\|a\|_1\|b\|_1.$$ -/
 theorem aux_sc_lw_product (α β : ℝ) (hβ : β ≠ 0) (tstar : ℝ) (a b : ℝ² → ℝ≥0∞)
@@ -1503,7 +895,7 @@ lemma aux_lw_qmp {Y : Type*} [MeasurableSpace Y] (ν : Measure Y) [SFinite ν] (
     rw [measure_preimage_add_right]; exact h0
   simp [this]
 
-/-- Core of `lem:triple-l2` for measurable nonnegative inputs, in `ℝ≥0∞` aux_form
+/-- Core of `lem:triple-l2` for measurable nonnegative inputs, in `ℝ≥0∞` form
 (auxiliary for `aux_pre_standardLW`). -/
 lemma aux_lw_standardLW_core (α β : ℝ) (hβ : β ≠ 0) (tstar : ℝ) (F0 F1 F2 : ℝ² → ℝ≥0∞)
     (h0 : Measurable F0) (h1 : Measurable F1) (h2 : Measurable F2) :
@@ -1516,7 +908,8 @@ lemma aux_lw_standardLW_core (α β : ℝ) (hβ : β ≠ 0) (tstar : ℝ) (F0 F1
   set A1 : ℝ² → ℝ≥0∞ := fun x => ∫⁻ t in I, F1 (x + aux_uR t) ^ (2 : ℝ) with hA1
   set A2 : ℝ² → ℝ≥0∞ := fun x => ∫⁻ t in I, F2 (x + M α β (aux_uR t)) ^ (2 : ℝ) with hA2
   have mA1 : Measurable A1 :=
-    (show Measurable fun q : ℝ² × ℝ => F1 (q.1 + aux_uR q.2) ^ (2 : ℝ) by fun_prop).lintegral_prod_right'
+    (show Measurable fun q : ℝ² × ℝ => F1 (q.1 + aux_uR q.2) ^ (2 : ℝ) by
+      fun_prop).lintegral_prod_right'
   have mA2 : Measurable A2 :=
     (show Measurable fun q : ℝ² × ℝ => F2 (q.1 + M α β (aux_uR q.2)) ^ (2 : ℝ) by
       fun_prop).lintegral_prod_right'
@@ -1565,14 +958,15 @@ lemma aux_lw_standardLW_core (α β : ℝ) (hβ : β ≠ 0) (tstar : ℝ) (F0 F1
           ENNReal.mul_rpow_of_nonneg _ _ (by norm_num), hC]
         ring
 
-/-- Auxiliary (adapted from the reference formalization; used for `lem:triple-l2`) (`lem:triple-l2`). For every real $t_*$ and all
+/-- Auxiliary (adapted from the reference formalization; used for `lem:triple-l2`)
+(`lem:triple-l2`). For every real $t_*$ and all
 $f_0,f_1,f_2\in L^2(\R^2)$, and every measurable subset $S$ of $\R^2\times I_{t_*}$,
 $$\int_{\R^2}\int_{I_{t_*}}|f_0(x)f_1(x+u_t)f_2(x+Mu_t)|\,dt\,dx
 \le \left(\frac{2}{|\beta|}\right)^{1/2}\prod_{j=0}^2\|f_j\|_2.$$
 (The case of the full set is `S = univ`.) -/
 theorem aux_pre_standardLW (α β : ℝ) (hβ : β ≠ 0) (tstar : ℝ) (f : Fin 3 → ℝ² → ℂ)
     (hf : ∀ j, AEStronglyMeasurable (f j) volume)
-    (S : Set (ℝ² × ℝ)) (hS : MeasurableSet S) :
+    (S : Set (ℝ² × ℝ)) (_hS : MeasurableSet S) :
     ∫⁻ p in S ∩ (univ ×ˢ aux_Iint α β tstar),
         ‖f 0 p.1‖ₑ * ‖f 1 (p.1 + aux_uR p.2)‖ₑ * ‖f 2 (p.1 + M α β (aux_uR p.2))‖ₑ ≤
       ENNReal.ofReal (Real.sqrt (2 / |β|)) * eLpNorm (f 0) 2 * eLpNorm (f 1) 2 *
@@ -1674,7 +1068,7 @@ lemma aux_lw_NM_spec (α β : ℝ) (hβ : β ≠ 0) : 2 * π / aux_NM α β < 2 
   rw [div_lt_iff₀ hh] at h1
   linarith
 
-/-- The bound of a single angular window: `aux_pre_standardLW` in iterated aux_form for measurable
+/-- The bound of a single angular window: `aux_pre_standardLW` in iterated form for measurable
 inputs (auxiliary for `aux_pre_LW`). -/
 lemma aux_lw_window (α β : ℝ) (hβ : β ≠ 0) (tstar : ℝ) (g : Fin 3 → ℝ² → ℂ)
     (hg : ∀ j, StronglyMeasurable (g j)) :
@@ -1750,7 +1144,8 @@ lemma aux_lw_LW_meas (α β : ℝ) (hβ : β ≠ 0) (g : Fin 3 → ℝ² → ℂ
     ring
   exact (e1.trans_le e2).trans (e3.trans_le e4) |>.trans_eq e5
 
-/-- Auxiliary (adapted from the reference formalization; used for `lem:triple-l2`) (`lem:triple-l2eq`). For all $f_j\in L^2(\R^2)$,
+/-- Auxiliary (adapted from the reference formalization; used for `lem:triple-l2`)
+(`lem:triple-l2eq`). For all $f_j\in L^2(\R^2)$,
 $$\int\!\int\prod_{j=0}^2|f_j(\pi_j(x,\theta))|\,d\sigma(\theta)\,dx\le C_M\prod_{j=0}^2\|f_j\|_2,$$
 with $C_M=\frac{N_M}{2\pi}(2/|\beta|)^{1/2}$, $N_M=\lceil\pi/h_M\rceil+1$. -/
 theorem aux_pre_LW (α β : ℝ) (hβ : β ≠ 0) (f : Fin 3 → ℝ² → ℂ)
@@ -1780,31 +1175,8 @@ theorem aux_pre_LW (α β : ℝ) (hβ : β ≠ 0) (f : Fin 3 → ℝ² → ℂ)
 
 /-! ### The operator bound -/
 
-/-- `θ ↦ u_θ` is injective on `ℝ/(2πℤ)` (auxiliary for `lem:triple-l2`). -/
-lemma aux_lw_u_injective : Function.Injective u := by
-  intro a b h
-  induction a using QuotientAddGroup.induction_on
-  induction b using QuotientAddGroup.induction_on
-  rename_i a b
-  simp only [aux_u_coe] at h
-  have hc : Real.cos a = Real.cos b := by
-    have := congrArg (fun x : ℝ² => x 0) h; simpa [aux_uR] using this
-  have hs : Real.sin a = Real.sin b := by
-    have := congrArg (fun x : ℝ² => x 1) h; simpa [aux_uR] using this
-  have h1 : Real.cos (b - a) = 1 := by
-    rw [Real.cos_sub, ← hc, ← hs]; nlinarith [Real.sin_sq_add_cos_sq a]
-  obtain ⟨n, hn⟩ := (Real.cos_eq_one_iff _).1 h1
-  rw [QuotientAddGroup.eq]
-  simp_rw [AddSubgroup.mem_zmultiples_iff, zsmul_eq_mul]
-  exact ⟨n, by linarith⟩
-
-/-- `θ ↦ u_θ` is a measurable embedding of the circle into the plane, so that `σ`-integrals and
-`aux_sigmaS`-integrals correspond without measurability assumptions (auxiliary for `lem:triple-l2`). -/
-lemma aux_lw_u_measEmb : MeasurableEmbedding u :=
-  (aux_lw_u_continuous.isClosedEmbedding aux_lw_u_injective).measurableEmbedding
-
-/-- `L²` duality in `ℝ≥0∞` aux_form: if `∫ h A ≤ K ‖h‖₂` for every finite measurable `h ≥ 0`,
-then `‖A‖₂ ≤ K` (truncation argument of `lem:triple-l2`; auxiliary for `aux_pre_LW_op`, `aux_pre_LW_kernel`). -/
+/-- `L²` duality in `ℝ≥0∞` form: if `∫ h A ≤ K ‖h‖₂` for every finite measurable `h ≥ 0`,
+then `‖A‖₂ ≤ K` (truncation argument of `lem:triple-l2`; auxiliary for `lem_triple_l2`). -/
 lemma aux_lw_duality (A : ℝ² → ℝ≥0∞) (hA : Measurable A) (K : ℝ≥0∞)
     (hK : ∀ h : ℝ² → ℝ≥0∞, Measurable h → (∀ x, h x ≠ ⊤) →
       ∫⁻ x, h x * A x ≤ K * (∫⁻ x, h x ^ (2 : ℝ)) ^ (1 / 2 : ℝ)) :
@@ -1892,325 +1264,6 @@ lemma aux_lw_duality (A : ℝ² → ℝ≥0∞) (hA : Measurable A) (K : ℝ≥0
         ENNReal.rpow_le_rpow hsup (by norm_num)
     _ = K := by rw [← ENNReal.rpow_mul]; norm_num
 
-/-- `‖(a.toReal : ℂ)‖ₑ = a` for finite `a` (auxiliary for `aux_pre_LW_op`, `aux_pre_LW_kernel`). -/
-lemma aux_lw_enorm_toReal (a : ℝ≥0∞) (ha : a ≠ ⊤) : ‖((a.toReal : ℝ) : ℂ)‖ₑ = a := by
-  rw [← ofReal_norm, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg ENNReal.toReal_nonneg,
-    ENNReal.ofReal_toReal ha]
-
-/-- The `L²` norm of a finite nonnegative function viewed as complex-valued
-(auxiliary for `aux_pre_LW_op`, `aux_pre_LW_kernel`). -/
-lemma aux_lw_eLpNorm_ofENNReal (h : ℝ² → ℝ≥0∞) (hh : ∀ x, h x ≠ ⊤) :
-    eLpNorm (fun x => (((h x).toReal : ℝ) : ℂ)) 2 = (∫⁻ x, h x ^ (2 : ℝ)) ^ (1 / 2 : ℝ) := by
-  rw [aux_lw_eLpNorm_two]
-  simp only [aux_lw_enorm_toReal _ (hh _)]
-
-/-- The operator bound of `lem:triple-l2` for a single `L²` input `f`, together with the almost-everywhere
-absolute convergence of the defining integral (auxiliary for `aux_pre_LW_op`). -/
-lemma aux_lw_op_core (α β : ℝ) (hβ : β ≠ 0) (f g : ℝ² → ℂ) (hf : MemLp f 2) (hg : MemLp g 2) :
-    (∀ᵐ x ∂volume, Integrable (fun y => f (x + y) * g (x + M α β y)) aux_sigmaS) ∧
-      eLpNorm (aux_Sop α β aux_sigmaS g f) 2 ≤
-        ENNReal.ofReal (aux_C_pre_LW α β) * eLpNorm g 2 * eLpNorm f 2 := by
-  set f' := hf.1.mk f with hf'
-  set g' := hg.1.mk g with hg'
-  have mf' : StronglyMeasurable f' := hf.1.stronglyMeasurable_mk
-  have mg' : StronglyMeasurable g' := hg.1.stronglyMeasurable_mk
-  have hu := aux_lw_u_meas
-  have hMm : Measurable (M α β) := (M α β).continuous.measurable
-  set A' : ℝ² → ℝ≥0∞ := fun x => ∫⁻ θ, ‖f' (x + u θ)‖ₑ * ‖g' (x + M α β (u θ))‖ₑ ∂σ with hA'
-  have mA' : Measurable A' := by
-    have h1 := mf'.measurable.enorm; have h2 := mg'.measurable.enorm
-    exact (show Measurable fun q : ℝ² × Ang => ‖f' (q.1 + u q.2)‖ₑ * ‖g' (q.1 + M α β (u q.2))‖ₑ
-      by fun_prop).lintegral_prod_right'
-  set K := ENNReal.ofReal (aux_C_pre_LW α β) * eLpNorm g 2 * eLpNorm f 2 with hK
-  have hKfin : K ≠ ⊤ := ENNReal.mul_ne_top (ENNReal.mul_ne_top ENNReal.ofReal_ne_top
-    hg.eLpNorm_lt_top.ne) hf.eLpNorm_lt_top.ne
-  have hdual : (∫⁻ x, A' x ^ (2 : ℝ)) ^ (1 / 2 : ℝ) ≤ K := by
-    refine aux_lw_duality A' mA' K fun h hh htop => ?_
-    set F : Fin 3 → ℝ² → ℂ := ![fun x => (((h x).toReal : ℝ) : ℂ), f', g'] with hF
-    have hFm : ∀ j, AEStronglyMeasurable (F j) volume := by
-      intro j; fin_cases j
-      · exact (Complex.measurable_ofReal.comp (hh.ennreal_toReal)).aestronglyMeasurable
-      · exact mf'.aestronglyMeasurable
-      · exact mg'.aestronglyMeasurable
-    have hLW := aux_pre_LW α β hβ F hFm
-    have eL : ∫⁻ x, ∫⁻ θ, ∏ j : Fin 3, ‖F j (proj α β j (x, θ))‖ₑ ∂σ = ∫⁻ x, h x * A' x := by
-      refine lintegral_congr fun x => ?_
-      rw [hA', ← lintegral_const_mul _ (by
-        have h1 := mf'.measurable.enorm; have h2 := mg'.measurable.enorm
-        fun_prop)]
-      refine lintegral_congr fun θ => ?_
-      simp [Fin.prod_univ_three, hF, proj, Lv, aux_lw_enorm_toReal _ (htop x), mul_assoc]
-    have eR : ∏ j : Fin 3, eLpNorm (F j) 2 =
-        (∫⁻ x, h x ^ (2 : ℝ)) ^ (1 / 2 : ℝ) * eLpNorm f 2 * eLpNorm g 2 := by
-      rw [Fin.prod_univ_three]
-      simp only [hF, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
-        Matrix.head_cons, Matrix.tail_cons]
-      rw [aux_lw_eLpNorm_ofENNReal h htop, eLpNorm_congr_ae hf.1.ae_eq_mk.symm,
-        eLpNorm_congr_ae hg.1.ae_eq_mk.symm]
-    rw [eL, eR] at hLW
-    refine hLW.trans_eq ?_
-    rw [hK]; ring
-  have hA'fin : ∀ᵐ x ∂volume, A' x < ⊤ := by
-    have hint : ∫⁻ x, A' x ^ (2 : ℝ) ≠ ⊤ := by
-      have : ∫⁻ x, A' x ^ (2 : ℝ) = ((∫⁻ x, A' x ^ (2 : ℝ)) ^ (1 / 2 : ℝ)) ^ (2 : ℝ) := by
-        rw [← ENNReal.rpow_mul]; norm_num
-      rw [this]
-      exact ENNReal.rpow_ne_top_of_nonneg (by norm_num) (ne_top_of_le_ne_top hKfin hdual)
-    filter_upwards [ae_lt_top (mA'.pow_const _) hint] with x hx
-    by_contra hcon
-    rw [not_lt, top_le_iff] at hcon
-    rw [hcon] at hx; simp at hx
-  have hrep : ∀ᵐ x ∂volume, ∀ᵐ θ ∂σ,
-      f (x + u θ) = f' (x + u θ) ∧ g (x + M α β (u θ)) = g' (x + M α β (u θ)) := by
-    have e1 := (aux_lw_qmp σ u hu).ae_eq_comp hf.1.ae_eq_mk
-    have e2 := (aux_lw_qmp σ (fun θ => M α β (u θ)) (hMm.comp hu)).ae_eq_comp hg.1.ae_eq_mk
-    exact Measure.ae_ae_of_ae_prod (e1.and e2)
-  have hSop : ∀ᵐ x ∂volume, aux_Sop α β aux_sigmaS g f x =
-      ∫ θ, f' (x + u θ) * g' (x + M α β (u θ)) ∂σ := by
-    filter_upwards [hrep] with x hx
-    simp only [aux_Sop, aux_SW, Pi.one_apply, mul_one, aux_sigmaS]
-    rw [aux_lw_u_measEmb.integral_map]
-    exact integral_congr_ae (hx.mono fun θ hθ => by simp only [hθ.1, hθ.2])
-  refine ⟨?_, ?_⟩
-  · filter_upwards [hrep, hA'fin] with x hx hfin
-    simp only [aux_sigmaS]
-    rw [aux_lw_u_measEmb.integrable_map_iff]
-    refine Integrable.congr (f := fun θ => f' (x + u θ) * g' (x + M α β (u θ))) ⟨?_, ?_⟩
-      (hx.mono fun θ hθ => by simp only [Function.comp_apply, hθ.1, hθ.2])
-    · exact ((mf'.comp_measurable (measurable_const.add hu)).mul
-        (mg'.comp_measurable (measurable_const.add (hMm.comp hu)))).aestronglyMeasurable
-    · simp only [HasFiniteIntegral, enorm_mul]
-      exact hfin
-  · rw [eLpNorm_congr_ae hSop, aux_lw_eLpNorm_two]
-    refine le_trans (ENNReal.rpow_le_rpow (lintegral_mono fun x => ?_) (by norm_num)) hdual
-    refine ENNReal.rpow_le_rpow ((enorm_integral_le_lintegral_enorm _).trans ?_) (by norm_num)
-    simp only [enorm_mul]; rfl
-
-/-- Auxiliary (adapted from the reference formalization; used for `lem:triple-l2`) (operator bound). Consequently $\|S_g\|\le C_M\|g\|_2$ for
-$g\in L^2(\R^2)$; the defining integral of $S_gf$ converges absolutely almost everywhere. -/
-theorem aux_pre_LW_op (α β : ℝ) (hβ : β ≠ 0) (g : ℝ² → ℂ) (hg : MemLp g 2) :
-    (∀ f, MemLp f 2 → ∀ᵐ x ∂volume,
-        Integrable (fun y => f (x + y) * g (x + M α β y)) aux_sigmaS) ∧
-      aux_opNorm2 volume (aux_Sop α β aux_sigmaS g) ≤ ENNReal.ofReal (aux_C_pre_LW α β) * eLpNorm g 2 :=
-  ⟨fun f hf => (aux_lw_op_core α β hβ f g hf hg).1,
-    sInf_le fun f hf => (aux_lw_op_core α β hβ f g hf hg).2⟩
-
-/-! ### Kernels -/
-
-/-- The density of `σ * k`, `(σ * k)(y) = ∫ k(y - u_θ) dσ(θ)`. -/
-def aux_circConv (k : ℝ² → ℂ) (y : ℝ²) : ℂ := ∫ θ, k (y - u θ) ∂σ
-
-/-- Substitution `y = w + u_θ` in the kernel integral (auxiliary for `aux_pre_LW_kernel`). -/
-lemma aux_lw_kernel_subst (a κ : ℝ² → ℝ≥0∞) (ha : Measurable a) (hκ : Measurable κ) :
-    ∫⁻ y, a y * ∫⁻ θ, κ (y - u θ) ∂σ = ∫⁻ θ, (∫⁻ w, a (w + u θ) * κ w) ∂σ := by
-  have hu := aux_lw_u_meas
-  have e : ∀ y, a y * ∫⁻ θ, κ (y - u θ) ∂σ = ∫⁻ θ, a y * κ (y - u θ) ∂σ := fun y =>
-    (lintegral_const_mul _ (hκ.comp (measurable_const.sub hu))).symm
-  simp_rw [e]
-  rw [lintegral_lintegral_swap ((ha.comp measurable_fst).mul
-    (hκ.comp (measurable_fst.sub (hu.comp measurable_snd)))).aemeasurable]
-  refine lintegral_congr fun θ => ?_
-  rw [← lintegral_add_right_eq_self (μ := volume) (fun y => a y * κ (y - u θ)) (u θ)]
-  simp only [add_sub_cancel_right]
-
-/-- `lem:triple-l2` applied to the translates `f₁(· + w)`, `f₂(· + Mw)` (auxiliary for
-`aux_pre_LW_kernel`). -/
-lemma aux_lw_kernel_translate (α β : ℝ) (hβ : β ≠ 0) (F : Fin 3 → ℝ² → ℂ)
-    (hF : ∀ j, StronglyMeasurable (F j)) (w : ℝ²) :
-    ∫⁻ x, ∫⁻ θ, ‖F 0 x‖ₑ * ‖F 1 (x + (w + u θ))‖ₑ * ‖F 2 (x + M α β (w + u θ))‖ₑ ∂σ ≤
-      ENNReal.ofReal (aux_C_pre_LW α β) * ∏ j : Fin 3, eLpNorm (F j) 2 := by
-  set G : Fin 3 → ℝ² → ℂ := ![F 0, fun z => F 1 (z + w), fun z => F 2 (z + M α β w)] with hG
-  have hGm : ∀ j, AEStronglyMeasurable (G j) volume := by
-    intro j; fin_cases j
-    · exact (hF 0).aestronglyMeasurable
-    · exact ((hF 1).comp_measurable (measurable_add_const w)).aestronglyMeasurable
-    · exact ((hF 2).comp_measurable (measurable_add_const _)).aestronglyMeasurable
-  have hLW := aux_pre_LW α β hβ G hGm
-  have eP : ∀ x θ, ‖F 0 x‖ₑ * ‖F 1 (x + (w + u θ))‖ₑ * ‖F 2 (x + M α β (w + u θ))‖ₑ =
-      ∏ j : Fin 3, ‖G j (proj α β j (x, θ))‖ₑ := by
-    intro x θ
-    rw [Fin.prod_univ_three]
-    simp only [hG, proj, Lv, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
-      Matrix.head_cons, Matrix.tail_cons, map_add]
-    rw [show x + (w + u θ) = x + u θ + w by abel,
-      show x + (M α β w + M α β (u θ)) = x + M α β (u θ) + M α β w by abel]
-    simp
-  have eN : ∏ j : Fin 3, eLpNorm (G j) 2 = ∏ j : Fin 3, eLpNorm (F j) 2 := by
-    rw [Fin.prod_univ_three, Fin.prod_univ_three]
-    simp only [hG, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
-      Matrix.head_cons, Matrix.tail_cons]
-    have t1 := eLpNorm_comp_measurePreserving (p := 2) (hF 1).aestronglyMeasurable
-      (measurePreserving_add_right (volume : Measure ℝ²) w)
-    have t2 := eLpNorm_comp_measurePreserving (p := 2) (hF 2).aestronglyMeasurable
-      (measurePreserving_add_right (volume : Measure ℝ²) (M α β w))
-    simp only [Function.comp_def] at t1 t2
-    rw [t1, t2]
-  simp_rw [eP]
-  rw [← eN]
-  exact hLW
-
-/-- The kernel aux_form bound of `lem:triple-l2` for measurable inputs, with `|σ * k|` dominated by
-`σ * |k|` (auxiliary for `aux_pre_LW_kernel`). -/
-lemma aux_lw_kernel_core (α β : ℝ) (hβ : β ≠ 0) (k' : ℝ² → ℂ) (hk' : StronglyMeasurable k')
-    (F : Fin 3 → ℝ² → ℂ) (hF : ∀ j, StronglyMeasurable (F j)) :
-    ∫⁻ x, ∫⁻ y, ‖F 0 x‖ₑ * ‖F 1 (x + y)‖ₑ * ‖F 2 (x + M α β y)‖ₑ *
-        ∫⁻ θ, ‖k' (y - u θ)‖ₑ ∂σ ≤
-      ENNReal.ofReal (aux_C_pre_LW α β) * (∫⁻ w, ‖k' w‖ₑ) * ∏ j : Fin 3, eLpNorm (F j) 2 := by
-  have hu := aux_lw_u_meas
-  have hMm : Measurable (M α β) := (M α β).continuous.measurable
-  have m0 : Measurable fun x => ‖F 0 x‖ₑ := (hF 0).measurable.enorm
-  have m1 : Measurable fun x => ‖F 1 x‖ₑ := (hF 1).measurable.enorm
-  have m2 : Measurable fun x => ‖F 2 x‖ₑ := (hF 2).measurable.enorm
-  have mk : Measurable fun x => ‖k' x‖ₑ := hk'.measurable.enorm
-  have step1 : ∀ x, ∫⁻ y, ‖F 0 x‖ₑ * ‖F 1 (x + y)‖ₑ * ‖F 2 (x + M α β y)‖ₑ *
-      ∫⁻ θ, ‖k' (y - u θ)‖ₑ ∂σ = ∫⁻ θ, (∫⁻ w, ‖F 0 x‖ₑ * ‖F 1 (x + (w + u θ))‖ₑ *
-        ‖F 2 (x + M α β (w + u θ))‖ₑ * ‖k' w‖ₑ) ∂σ := fun x =>
-    aux_lw_kernel_subst (fun y => ‖F 0 x‖ₑ * ‖F 1 (x + y)‖ₑ * ‖F 2 (x + M α β y)‖ₑ)
-      (fun w => ‖k' w‖ₑ) (by fun_prop) mk
-  simp_rw [step1]
-  have mP : Measurable fun q : (ℝ² × ℝ²) × Ang => ‖F 0 q.1.1‖ₑ *
-      ‖F 1 (q.1.1 + (q.1.2 + u q.2))‖ₑ * ‖F 2 (q.1.1 + M α β (q.1.2 + u q.2))‖ₑ := by
-    fun_prop
-  have step2 : ∀ x, ∫⁻ θ, (∫⁻ w, ‖F 0 x‖ₑ * ‖F 1 (x + (w + u θ))‖ₑ *
-        ‖F 2 (x + M α β (w + u θ))‖ₑ * ‖k' w‖ₑ) ∂σ =
-      ∫⁻ w, (∫⁻ θ, ‖F 0 x‖ₑ * ‖F 1 (x + (w + u θ))‖ₑ *
-        ‖F 2 (x + M α β (w + u θ))‖ₑ ∂σ) * ‖k' w‖ₑ := by
-    intro x
-    rw [lintegral_lintegral_swap (by fun_prop)]
-    refine lintegral_congr fun w => ?_
-    rw [lintegral_mul_const _ (by fun_prop)]
-  simp_rw [step2]
-  rw [lintegral_lintegral_swap ((mP.lintegral_prod_right'.comp measurable_id).mul
-    (mk.comp measurable_snd)).aemeasurable]
-  have e3 : ∀ w, ∫⁻ x, (∫⁻ θ, ‖F 0 x‖ₑ * ‖F 1 (x + (w + u θ))‖ₑ *
-        ‖F 2 (x + M α β (w + u θ))‖ₑ ∂σ) * ‖k' w‖ₑ =
-      (∫⁻ x, ∫⁻ θ, ‖F 0 x‖ₑ * ‖F 1 (x + (w + u θ))‖ₑ *
-        ‖F 2 (x + M α β (w + u θ))‖ₑ ∂σ) * ‖k' w‖ₑ := fun w =>
-    lintegral_mul_const _ ((mP.lintegral_prod_right').comp
-      (measurable_id.prodMk measurable_const))
-  simp_rw [e3]
-  refine (lintegral_mono fun w => mul_le_mul_left
-    (aux_lw_kernel_translate α β hβ F hF w) _).trans_eq ?_
-  rw [lintegral_const_mul _ mk]; ring
-
-/-- The density of `σ * k` is dominated by `σ * |k'|` for any representative `k'` of `k`
-(auxiliary for `aux_pre_LW_kernel`). -/
-lemma aux_lw_circConv_le (k k' : ℝ² → ℂ) (hkk : k =ᵐ[volume] k') :
-    ∀ᵐ y ∂volume, ‖aux_circConv k y‖ₑ ≤ ∫⁻ θ, ‖k' (y - u θ)‖ₑ ∂σ := by
-  have hu := aux_lw_u_meas
-  have q := (aux_lw_qmp σ (fun θ => -u θ) hu.neg).ae_eq_comp hkk
-  filter_upwards [Measure.ae_ae_of_ae_prod q] with y hy
-  refine (enorm_integral_le_lintegral_enorm _).trans (le_of_eq (lintegral_congr_ae ?_))
-  filter_upwards [hy] with θ hθ
-  simp only [Function.comp_apply] at hθ
-  rw [sub_eq_add_neg, hθ]
-
-/-- Changing `f₁, f₂` on null sets does not affect `f₁(x+y)`, `f₂(x+My)` for almost every
-`(x, y)` (auxiliary for `aux_pre_LW_kernel`). -/
-lemma aux_lw_pair_ae (α β : ℝ) (f1 f2 F1 F2 : ℝ² → ℂ) (h1 : f1 =ᵐ[volume] F1)
-    (h2 : f2 =ᵐ[volume] F2) :
-    ∀ᵐ x ∂volume, ∀ᵐ y ∂volume, f1 (x + y) = F1 (x + y) ∧
-      f2 (x + M α β y) = F2 (x + M α β y) := by
-  have e1 := (aux_lw_qmp volume (fun y : ℝ² => y) measurable_id).ae_eq_comp h1
-  have e2 := (aux_lw_qmp volume (M α β) (M α β).continuous.measurable).ae_eq_comp h2
-  exact Measure.ae_ae_of_ae_prod (e1.and e2)
-
-/-- Auxiliary (adapted from the reference formalization; used for `lem:triple-l2`) (kernels). For $k\in L^1(\R^2)$, the analogous aux_form and operator bounds for
-$\sigma*k$ hold with constant $C_M\|k\|_1$. -/
-theorem aux_pre_LW_kernel (α β : ℝ) (hβ : β ≠ 0) (k : ℝ² → ℂ) (hk : Integrable k)
-    (f : Fin 3 → ℝ² → ℂ) (hf : ∀ j, AEStronglyMeasurable (f j) volume)
-    (g : ℝ² → ℂ) (hg : MemLp g 2) :
-    ∫⁻ x, ∫⁻ y, ‖f 0 x‖ₑ * ‖f 1 (x + y)‖ₑ * ‖f 2 (x + M α β y)‖ₑ * ‖aux_circConv k y‖ₑ ≤
-        ENNReal.ofReal (aux_C_pre_LW α β) * eLpNorm k 1 * ∏ j : Fin 3, eLpNorm (f j) 2 ∧
-      aux_opNorm2 volume (aux_SW α β volume (aux_circConv k) g) ≤
-        ENNReal.ofReal (aux_C_pre_LW α β) * eLpNorm k 1 * eLpNorm g 2 := by
-  set k' := hk.1.mk k with hk'
-  have mk' : StronglyMeasurable k' := hk.1.stronglyMeasurable_mk
-  have hkk : k =ᵐ[volume] k' := hk.1.ae_eq_mk
-  have hcc := aux_lw_circConv_le k k' hkk
-  have hknorm : eLpNorm k 1 = ∫⁻ w, ‖k' w‖ₑ := by
-    rw [eLpNorm_congr_ae hkk, eLpNorm_one_eq_lintegral_enorm]
-  have hu := aux_lw_u_meas
-  have hMm : Measurable (M α β) := (M α β).continuous.measurable
-  have mKk : Measurable fun y => ∫⁻ θ, ‖k' (y - u θ)‖ₑ ∂σ := by
-    have := mk'.measurable.enorm
-    exact (show Measurable fun q : ℝ² × Ang => ‖k' (q.1 - u q.2)‖ₑ by fun_prop).lintegral_prod_right'
-  refine ⟨?_, ?_⟩
-  · -- the aux_form bound
-    set F : Fin 3 → ℝ² → ℂ := fun j => (hf j).mk (f j)
-    have hF : ∀ j, StronglyMeasurable (F j) := fun j => (hf j).stronglyMeasurable_mk
-    have hfF : ∀ j, f j =ᵐ[volume] F j := fun j => (hf j).ae_eq_mk
-    have hpair := aux_lw_pair_ae α β (f 1) (f 2) (F 1) (F 2) (hfF 1) (hfF 2)
-    have hpt : ∀ᵐ x ∂volume, ∀ᵐ y ∂volume,
-        ‖f 0 x‖ₑ * ‖f 1 (x + y)‖ₑ * ‖f 2 (x + M α β y)‖ₑ * ‖aux_circConv k y‖ₑ ≤
-          ‖F 0 x‖ₑ * ‖F 1 (x + y)‖ₑ * ‖F 2 (x + M α β y)‖ₑ * ∫⁻ θ, ‖k' (y - u θ)‖ₑ ∂σ := by
-      filter_upwards [hfF 0, hpair] with x hx0 hxp
-      filter_upwards [hxp, hcc] with y hy hyc
-      rw [hx0, hy.1, hy.2]
-      exact mul_le_mul_right hyc _
-    refine (lintegral_mono_ae (hpt.mono fun x hx => lintegral_mono_ae hx)).trans ?_
-    refine (aux_lw_kernel_core α β hβ k' mk' F hF).trans_eq ?_
-    rw [hknorm]
-    congr 1
-    exact Finset.prod_congr rfl fun j _ => (eLpNorm_congr_ae (hfF j)).symm
-  · -- the operator bound
-    refine sInf_le fun f hf => ?_
-    set f' := hf.1.mk f with hf'
-    set g' := hg.1.mk g with hg'
-    have mf' : StronglyMeasurable f' := hf.1.stronglyMeasurable_mk
-    have mg' : StronglyMeasurable g' := hg.1.stronglyMeasurable_mk
-    have m1 := mf'.measurable.enorm
-    have m2 := mg'.measurable.enorm
-    set B' : ℝ² → ℝ≥0∞ := fun x => ∫⁻ y, ‖f' (x + y)‖ₑ * ‖g' (x + M α β y)‖ₑ *
-      ∫⁻ θ, ‖k' (y - u θ)‖ₑ ∂σ with hB'
-    have mB' : Measurable B' :=
-      (show Measurable fun q : ℝ² × ℝ² => ‖f' (q.1 + q.2)‖ₑ * ‖g' (q.1 + M α β q.2)‖ₑ *
-        ∫⁻ θ, ‖k' (q.2 - u θ)‖ₑ ∂σ from
-          ((m1.comp measurable_add).mul (m2.comp (measurable_fst.add
-            (hMm.comp measurable_snd)))).mul (mKk.comp measurable_snd)).lintegral_prod_right'
-    set K := ENNReal.ofReal (aux_C_pre_LW α β) * eLpNorm k 1 * eLpNorm g 2 * eLpNorm f 2 with hK
-    have hdual : (∫⁻ x, B' x ^ (2 : ℝ)) ^ (1 / 2 : ℝ) ≤ K := by
-      refine aux_lw_duality B' mB' K fun h hh htop => ?_
-      set F : Fin 3 → ℝ² → ℂ := ![fun x => (((h x).toReal : ℝ) : ℂ), f', g'] with hF
-      have hFm : ∀ j, StronglyMeasurable (F j) := by
-        intro j; fin_cases j
-        · exact (Complex.measurable_ofReal.comp hh.ennreal_toReal).stronglyMeasurable
-        · exact mf'
-        · exact mg'
-      have hcore := aux_lw_kernel_core α β hβ k' mk' F hFm
-      have eL : ∫⁻ x, ∫⁻ y, ‖F 0 x‖ₑ * ‖F 1 (x + y)‖ₑ * ‖F 2 (x + M α β y)‖ₑ *
-          ∫⁻ θ, ‖k' (y - u θ)‖ₑ ∂σ = ∫⁻ x, h x * B' x := by
-        refine lintegral_congr fun x => ?_
-        rw [hB', ← lintegral_const_mul _ (by
-          have := mKk
-          fun_prop)]
-        refine lintegral_congr fun y => ?_
-        simp only [hF, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
-          Matrix.head_cons, Matrix.tail_cons, aux_lw_enorm_toReal _ (htop x)]
-        ring
-      have eR : ∏ j : Fin 3, eLpNorm (F j) 2 =
-          (∫⁻ x, h x ^ (2 : ℝ)) ^ (1 / 2 : ℝ) * eLpNorm f 2 * eLpNorm g 2 := by
-        rw [Fin.prod_univ_three]
-        simp only [hF, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
-          Matrix.head_cons, Matrix.tail_cons]
-        rw [aux_lw_eLpNorm_ofENNReal h htop, eLpNorm_congr_ae hf.1.ae_eq_mk.symm,
-          eLpNorm_congr_ae hg.1.ae_eq_mk.symm]
-      rw [eL, eR, ← hknorm] at hcore
-      refine hcore.trans_eq ?_
-      rw [hK]; ring
-    have hpair := aux_lw_pair_ae α β f g f' g' hf.1.ae_eq_mk hg.1.ae_eq_mk
-    have hpt : ∀ᵐ x ∂volume, ‖aux_SW α β volume (aux_circConv k) g f x‖ₑ ≤ B' x := by
-      filter_upwards [hpair] with x hx
-      refine (enorm_integral_le_lintegral_enorm _).trans (lintegral_mono_ae ?_)
-      filter_upwards [hx, hcc] with y hy hyc
-      simp only [enorm_mul]
-      rw [hy.1, hy.2]
-      exact mul_le_mul_right hyc _
-    rw [aux_lw_eLpNorm_two]
-    refine le_trans (ENNReal.rpow_le_rpow (lintegral_mono_ae (hpt.mono fun x hx =>
-      ENNReal.rpow_le_rpow hx (by norm_num))) (by norm_num)) hdual
-
-
 /-! ### Measure preservation of the vertex maps (`lem:geometry`, part 4) -/
 
 /-- **Lemma `lem:geometry`** (part 4). For each $j$ the map
@@ -2251,7 +1304,8 @@ def form (α β : ℝ) (ν : FCMeasure) (f₀ f₁ f₂ : ℝ² → ℂ) : ℂ :
   ∫ z, (∫ x, f₀ x * f₁ (x + ν.φ z) * f₂ (x + M α β (ν.φ z))) * ν.w z ∂ν.m
 
 /-- The endpoint norm (`\label{def:form}`)
-$\|\Lambda_\nu\|_i=\sup\{|\Lambda_\nu(f_0,f_1,f_2)| : \|f_i\|_\infty\le1,\ \|f_j\|_2\le1\ (j\ne i)\}$,
+$\|\Lambda_\nu\|_i=\sup\{|\Lambda_\nu(f_0,f_1,f_2)| : \|f_i\|_\infty\le1,\ \|f_j\|_2\le1\ (j\ne
+i)\}$,
 valued in `ℝ≥0∞`. -/
 def endNorm (α β : ℝ) (ν : FCMeasure) (i : Fin 3) : ℝ≥0∞ :=
   ⨆ (f : Fin 3 → ℝ² → ℂ) (_ : ∀ j, AEStronglyMeasurable (f j) volume)
@@ -2493,6 +1547,8 @@ theorem lem_form_basic_scaling (α β : ℝ) (ν : FCMeasure) (i : Fin 3) (s : �
   simp only [FCMeasure.dil, smul_smul, inv_mul_cancel₀ hs.ne', one_smul]
   rfl
 
+-- The hypothesis hβ belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `lem:form-basic`** (versions). The form does not depend on the choice of
 almost-everywhere versions of its inputs. -/
 theorem lem_form_basic_ae (α β : ℝ) (hβ : β ≠ 0) (ν : FCMeasure) (f g : Fin 3 → ℝ² → ℂ)
@@ -2501,7 +1557,8 @@ theorem lem_form_basic_ae (α β : ℝ) (hβ : β ≠ 0) (ν : FCMeasure) (f g :
   unfold form
   congr 1; funext z; congr 1
   refine integral_congr_ae ?_
-  have hmp := fun c : ℝ² => (measurePreserving_add_right (volume : Measure ℝ²) c).quasiMeasurePreserving
+  have hmp := fun c : ℝ² =>
+    (measurePreserving_add_right (volume : Measure ℝ²) c).quasiMeasurePreserving
   filter_upwards [hfg 0, (hmp (ν.φ z)).ae_eq (hfg 1), (hmp (M α β (ν.φ z))).ae_eq (hfg 2)]
     with x h0 h1 h2
   simp only [Function.comp] at h1 h2
@@ -2524,11 +1581,13 @@ theorem lem_form_basic_translate (α β : ℝ) (ν : FCMeasure) (f : Fin 3 → �
 
 /-- **Lemma `lem:convolution-translate`** (identity). For finite measures $\nu,\kappa$ and
 endpoint inputs,
-$$\Lambda_{\nu*\kappa}(f_0,f_1,f_2)=\int\Lambda_\nu\big(f_0,f_1(\cdot+w),f_2(\cdot+Mw)\big)\,d\kappa(w).$$ -/
+$$\Lambda_{\nu*\kappa}(f_0,f_1,f_2)=
+\int\Lambda_\nu\big(f_0,f_1(\cdot+w),f_2(\cdot+Mw)\big)\,d\kappa(w).$$ -/
 theorem lem_convolution_translate (α β : ℝ) (ν κ : FCMeasure) (i : Fin 3) (f : Fin 3 → ℝ² → ℂ)
     (hf : ∀ j, MemLp (f j) (aux_slotExp i j) volume) :
     form α β (ν.conv κ) (f 0) (f 1) (f 2) =
-      κ.integral (fun w => form α β ν (f 0) (fun x => f 1 (x + w)) (fun x => f 2 (x + M α β w))) := by
+      κ.integral (fun w =>
+        form α β ν (f 0) (fun x => f 1 (x + w)) (fun x => f 2 (x + M α β w))) := by
   have hI := (lem_form_basic_integrable α β (ν.conv κ) i f hf).integral_prod_left
   have hI' : Integrable (fun z : ν.Z × κ.Z =>
       (∫ x, f 0 x * f 1 (x + (ν.φ z.1 + κ.φ z.2)) * f 2 (x + M α β (ν.φ z.1 + κ.φ z.2))) *
@@ -2537,7 +1596,7 @@ theorem lem_convolution_translate (α β : ℝ) (ν κ : FCMeasure) (i : Fin 3) 
     exact integral_mul_const (ν.w z.1 * κ.w z.2)
       (fun x => f 0 x * f 1 (x + (ν.φ z.1 + κ.φ z.2)) * f 2 (x + M α β (ν.φ z.1 + κ.φ z.2)))
   unfold form FCMeasure.integral
-  show ∫ z : ν.Z × κ.Z,
+  change ∫ z : ν.Z × κ.Z,
       (∫ x, f 0 x * f 1 (x + (ν.φ z.1 + κ.φ z.2)) * f 2 (x + M α β (ν.φ z.1 + κ.φ z.2))) *
         (ν.w z.1 * κ.w z.2) ∂(ν.m.prod κ.m) = _
   rw [integral_prod_symm _ hI']
@@ -2672,7 +1731,7 @@ lemma aux_ff_conv_fourier (ν κ : FCMeasure) (ζ : ℝ²) :
     (ν.conv κ).fourier ζ = ν.fourier ζ * κ.fourier ζ := by
   rw [aux_ff_fourier_e, aux_ff_fourier_e, aux_ff_fourier_e]
   rw [← integral_prod_mul (μ := ν.m) (ν := κ.m)]
-  show ∫ p : ν.Z × κ.Z, e (-⟪ν.φ p.1 + κ.φ p.2, ζ⟫_ℝ) * (ν.w p.1 * κ.w p.2) ∂(ν.m.prod κ.m) = _
+  change ∫ p : ν.Z × κ.Z, e (-⟪ν.φ p.1 + κ.φ p.2, ζ⟫_ℝ) * (ν.w p.1 * κ.w p.2) ∂(ν.m.prod κ.m) = _
   congr 1; funext p
   rw [inner_add_left, neg_add, ← aux_s2a_e_add]; ring
 
@@ -2686,7 +1745,7 @@ lemma aux_ff_u_add_pi (θ : Ang) : u (θ + (π : Ang)) = -u θ := by
 /-- Auxiliary for `lem:fourier-form`: `σ` is symmetric, so `σ̂(-b) = σ̂(b)`. -/
 lemma aux_ff_sigma_even (b : ℝ²) : FCMeasure.sigma.fourier (-b) = FCMeasure.sigma.fourier b := by
   rw [aux_ff_fourier_e, aux_ff_fourier_e]
-  show ∫ θ, e (-⟪u θ, -b⟫_ℝ) * 1 ∂σ = ∫ θ, e (-⟪u θ, b⟫_ℝ) * 1 ∂σ
+  change ∫ θ, e (-⟪u θ, -b⟫_ℝ) * 1 ∂σ = ∫ θ, e (-⟪u θ, b⟫_ℝ) * 1 ∂σ
   have h := integral_add_left_eq_self (μ := (AddCircle.haarAddCircle : Measure Ang))
     (fun θ => e (-⟪u θ, b⟫_ℝ) * 1) (π : Ang)
   rw [show σ = AddCircle.haarAddCircle from rfl, ← h]
@@ -2713,7 +1772,7 @@ lemma aux_ff_kernel_fourier (ψ : ℝ² → ℂ) (hψ : ContDiff ℝ (⊤ : ℕ�
   have hw : (FCMeasure.ofDensity (scaleR R (𝓕⁻ ψ))).w = scaleR R (𝓕⁻ ψ) := by
     simp [FCMeasure.ofDensity, hk]
   rw [hw]
-  show ∫ y, e (-⟪y, ζ⟫_ℝ) * scaleR R (𝓕⁻ ψ) y = ψ (R⁻¹ • ζ)
+  change ∫ y, e (-⟪y, ζ⟫_ℝ) * scaleR R (𝓕⁻ ψ) y = ψ (R⁻¹ • ζ)
   set G : ℝ² → ℂ := fun v => e (-⟪v, R⁻¹ • ζ⟫_ℝ) * 𝓕⁻ ψ v
   have hG : ∀ y : ℝ², e (-⟪y, ζ⟫_ℝ) * scaleR R (𝓕⁻ ψ) y = ((R ^ 2 : ℝ) : ℂ) * G (R • y) := by
     intro y
@@ -2809,8 +1868,6 @@ theorem aux_cd_lintegral_sigma_add (F : Ang → ℝ≥0∞) (a : Ang) :
     ∫⁻ θ, F (θ + a) ∂σ = ∫⁻ θ, F θ ∂σ := by
   unfold σ; exact lintegral_add_right_eq_self _ _
 
-
-
 /-! ### The circle-chord density (`lem:circle-difference`) -/
 
 /-- The circle-chord density
@@ -2851,7 +1908,8 @@ theorem aux_cd_lintegral_polar (H : ℝ² → ℝ≥0∞) (hH : Measurable H) :
     ∫⁻ x, H x = ENNReal.ofReal (2 * π) *
       ∫⁻ t in Ioi (0 : ℝ), ENNReal.ofReal t * ∫⁻ θ, H (t • u θ) ∂σ := by
   have hsm : Measurable fun p : ℝ × ℝ => H (p.1 • aux_uR p.2) :=
-    hH.comp (continuous_fst.smul ((aux_lw_uR_contDiff (n := 0)).continuous.comp continuous_snd)).measurable
+    hH.comp (continuous_fst.smul
+      ((aux_lw_uR_contDiff (n := 0)).continuous.comp continuous_snd)).measurable
   have hmeas : Measurable fun q : ℝ × ℝ => H (aux_cd_coord.symm q) :=
     hH.comp aux_cd_coord.symm.measurable
   have h1 : ∫⁻ x, H x = ∫⁻ q : ℝ × ℝ, H (aux_cd_coord.symm q) := by
@@ -2906,11 +1964,11 @@ theorem aux_cd_u_sub (r d : ℝ) (θ : Ang) :
       linarith
     ext i
     fin_cases i
-    · show r * Real.cos t - r * Real.cos (t - d) =
+    · change r * Real.cos t - r * Real.cos (t - d) =
         2 * r * Real.sin (d / 2) * Real.cos (t + (π / 2 - d / 2))
       rw [Real.cos_add, Real.cos_sub, Real.cos_pi_div_two_sub, Real.sin_pi_div_two_sub, hc, hs]
       ring
-    · show r * Real.sin t - r * Real.sin (t - d) =
+    · change r * Real.sin t - r * Real.sin (t - d) =
         2 * r * Real.sin (d / 2) * Real.sin (t + (π / 2 - d / 2))
       rw [Real.sin_add, Real.sin_sub, Real.cos_pi_div_two_sub, Real.sin_pi_div_two_sub, hc, hs]
       ring
@@ -3029,7 +2087,7 @@ theorem aux_cd_image_sin (r : ℝ) (hr : 0 < r) :
             rw [h] at this; simpa using this.symm
           linarith
       linarith
-    · show 2 * r * Real.sin (2 * Real.arcsin (t / (2 * r)) / 2) = t
+    · change 2 * r * Real.sin (2 * Real.arcsin (t / (2 * r)) / 2) = t
       rw [show 2 * Real.arcsin (t / (2 * r)) / 2 = Real.arcsin (t / (2 * r)) by ring,
         Real.sin_arcsin (by linarith) (le_of_lt hq2)]
       field_simp
@@ -3251,7 +2309,8 @@ theorem aux_cd_chord_rhs (r : ℝ) (hr : 0 < r) (F : ℝ² → ℝ≥0∞) (hF :
           ∫⁻ θ, F (t • u θ) ∂σ from by ring, hscal, mul_assoc]
 
 /-- Auxiliary (adapted from the reference formalization; used for `lem:circle-difference`,
-see `Auto.lem_circle_difference`): the chord density. The measure $\sigma_r*\widetilde\sigma_r$, where
+see `Auto.lem_circle_difference`): the chord density. The measure $\sigma_r*\widetilde\sigma_r$,
+where
 $\widetilde\sigma_r(E)=\sigma_r(-E)$, has density
 $$w_r(h)=\frac{\mathbf 1_{\{0<|h|<2r\}}}{\pi^2|h|\sqrt{4r^2-|h|^2}},\qquad h\in\mathbb R^2.$$ -/
 theorem aux_cd_chorddensity (r : ℝ) (hr : 0 < r) :
@@ -3261,8 +2320,6 @@ theorem aux_cd_chorddensity (r : ℝ) (hr : 0 < r) :
   have hm : Measurable (s.indicator (1 : ℝ² → ℝ≥0∞)) := measurable_const.indicator hs
   have h := (aux_cd_chord_lhs r hr _ hm).trans (aux_cd_chord_rhs r hr _ hm).symm
   rwa [lintegral_indicator_one hs, lintegral_indicator_one hs] at h
-
-
 
 /-- Auxiliary for `lem:circle-difference`: an invertible planar similarity `N` with
 `|Nx| = c|x|` acts on the unit circle as `N u_θ = c u_{a ± θ}`. -/
@@ -3395,7 +2452,7 @@ lemma aux_cd_chordDensity_mass (c : ℝ) (hc : 0 < c) :
     ∫⁻ y, ENNReal.ofReal (aux_chordDensity c y) = 1 := by
   have h1 := congrArg (fun μ : Measure ℝ² => μ univ)
     (aux_cd_diff_eq (c • ContinuousLinearMap.id ℝ ℝ²) c hc fun x => by
-      rw [ContinuousLinearMap.smul_apply, ContinuousLinearMap.id_apply, norm_smul,
+      rw [smul_apply, ContinuousLinearMap.id_apply, norm_smul,
         Real.norm_of_nonneg hc.le])
   have hu := aux_lw_u_meas
   rw [withDensity_apply _ MeasurableSet.univ, Measure.restrict_univ,
@@ -3497,7 +2554,8 @@ lemma aux_cc_sq_avg (N : ℝ² →L[ℝ] ℝ²) (c : ℝ) (hc : 0 < c) (hNc : �
     _ = ∫⁻ p, (∫⁻ y, a (y - N (u p.1)) * a (y - N (u p.2))) ∂(σ.prod σ) := by
         refine lintegral_lintegral_swap ?_
         exact ((ha.comp (measurable_fst.sub (hNu.comp (measurable_fst.comp measurable_snd)))).mul
-          (ha.comp (measurable_fst.sub (hNu.comp (measurable_snd.comp measurable_snd))))).aemeasurable
+          (ha.comp (measurable_fst.sub
+            (hNu.comp (measurable_snd.comp measurable_snd))))).aemeasurable
     _ = ∫⁻ p, (∫⁻ z, a z * a (z + N (u p.1 - u p.2))) ∂(σ.prod σ) := by
         refine lintegral_congr fun p => ?_
         rw [← lintegral_add_right_eq_self _ (N (u p.1))]
@@ -3682,7 +2740,7 @@ lemma aux_cc_small_H (N : ℝ² →L[ℝ] ℝ²) (c : ℝ) (hc : 0 < c) (hNc : �
             refine lintegral_congr fun z => ?_
             have hFz : Measurable fun θ : Ang => F (z + N (u θ)) :=
               hF.comp (measurable_const.add hNu)
-            show h z * (s z * ∫⁻ θ, F (z + N (u θ)) ∂σ) = _
+            change h z * (s z * ∫⁻ θ, F (z + N (u θ)) ∂σ) = _
             rw [← lintegral_const_mul _ hFz, ← lintegral_const_mul _ (hFz.const_mul _)]
             refine lintegral_congr fun θ => ?_
             ring
@@ -3720,7 +2778,8 @@ lemma aux_cc_small_H (N : ℝ² →L[ℝ] ℝ²) (c : ℝ) (hc : 0 < c) (hNc : �
     calc ∫⁻ z, h z * A z = ∫⁻ y, F y * G y := e1
       _ ≤ (∫⁻ y, F y ^ 2) ^ (1 / 2 : ℝ) * (∫⁻ y, G y ^ 2) ^ (1 / 2 : ℝ) :=
           aux_cc_holder2 volume F G hF.aemeasurable
-            (hsh.comp (measurable_fst.sub (hNu.comp measurable_snd))).lintegral_prod_right'.aemeasurable
+            (hsh.comp (measurable_fst.sub
+              (hNu.comp measurable_snd))).lintegral_prod_right'.aemeasurable
       _ ≤ (∫⁻ y, F y ^ 2) ^ (1 / 2 : ℝ) * (B * ∫⁻ z, h z ^ 2) ^ (1 / 2 : ℝ) := by
           gcongr
       _ = (∫⁻ y, F y ^ 2) ^ (1 / 2 : ℝ) * B ^ (1 / 2 : ℝ) *
@@ -3957,7 +3016,7 @@ lemma aux_gop_integrable (K : ℝ² → P → ℂ) (hK : Measurable (Function.un
   have hmeas : Measurable fun p => K z p * g' (z + D p) :=
     (hK.comp (measurable_const.prodMk measurable_id)).mul (hg'm.comp (measurable_const.add hD))
   refine Integrable.congr (f := fun p => K z p * g' (z + D p)) ?_
-    (hz'.mono fun p hp => by show K z p * g' (z + D p) = K z p * g (z + D p); rw [hp])
+    (hz'.mono fun p hp => by change K z p * g' (z + D p) = K z p * g (z + D p); rw [hp])
   refine ⟨hmeas.aestronglyMeasurable, ?_⟩
   refine lt_of_le_of_lt (lintegral_mono fun p => ?_) hz2
   rw [enorm_mul]
@@ -3991,7 +3050,8 @@ def aux_gopL (K : ℝ² → P → ℂ) (hK : Measurable (Function.uncurry K))
     { toFun := fun f => (aux_gop_memLp ρ K hK hK1 D hD f (Lp.memLp f)).toLp _
       map_add' := fun f g => by
         apply Lp.ext
-        filter_upwards [MemLp.coeFn_toLp (aux_gop_memLp ρ K hK hK1 D hD ⇑(f + g) (Lp.memLp (f + g))),
+        filter_upwards [
+          MemLp.coeFn_toLp (aux_gop_memLp ρ K hK hK1 D hD ⇑(f + g) (Lp.memLp (f + g))),
           MemLp.coeFn_toLp (aux_gop_memLp ρ K hK hK1 D hD f (Lp.memLp f)),
           MemLp.coeFn_toLp (aux_gop_memLp ρ K hK hK1 D hD g (Lp.memLp g)),
           Lp.coeFn_add ((aux_gop_memLp ρ K hK hK1 D hD f (Lp.memLp f)).toLp _)
@@ -4001,7 +3061,8 @@ def aux_gopL (K : ℝ² → P → ℂ) (hK : Measurable (Function.uncurry K))
         rw [h4, Pi.add_apply, h1, h5, h6, Pi.add_apply, h2, h3]
       map_smul' := fun c f => by
         apply Lp.ext
-        filter_upwards [MemLp.coeFn_toLp (aux_gop_memLp ρ K hK hK1 D hD ⇑(c • f) (Lp.memLp (c • f))),
+        filter_upwards [
+          MemLp.coeFn_toLp (aux_gop_memLp ρ K hK hK1 D hD ⇑(c • f) (Lp.memLp (c • f))),
           MemLp.coeFn_toLp (aux_gop_memLp ρ K hK hK1 D hD f (Lp.memLp f)),
           Lp.coeFn_smul c ((aux_gop_memLp ρ K hK hK1 D hD f (Lp.memLp f)).toLp _),
           aux_gop_congr ρ K D hD (Lp.coeFn_smul c f)] with x h1 h2 h3 h4
@@ -4122,7 +3183,8 @@ lemma aux_gop_comp {Q : Type*} [MeasurableSpace Q] (τ : Measure Q) [IsProbabili
     aux_gop ρ K₁ D₁ (aux_gop τ K₂ D₂ g) =ᵐ[volume]
       aux_gop (ρ.prod τ) (fun z pq => K₁ z pq.1 * K₂ (z + D₁ pq.1) pq.2)
         (fun pq => D₁ pq.1 + D₂ pq.2) g := by
-  have hK3 : Measurable (Function.uncurry fun z (pq : P × Q) => K₁ z pq.1 * K₂ (z + D₁ pq.1) pq.2) :=
+  have hK3 :
+      Measurable (Function.uncurry fun z (pq : P × Q) => K₁ z pq.1 * K₂ (z + D₁ pq.1) pq.2) :=
     (hK₁.comp (measurable_fst.prodMk (measurable_fst.comp measurable_snd))).mul
       (hK₂.comp ((measurable_fst.add (hD₁.comp (measurable_fst.comp measurable_snd))).prodMk
         (measurable_snd.comp measurable_snd)))
@@ -4199,7 +3261,6 @@ theorem aux_hs_orthonormal_cons {𝕜 E : Type*} [RCLike 𝕜] [NormedAddCommGro
     rw [← inner_conj_symm, hge j]; simp [(Fin.succ_ne_zero j).symm]
   · simp only [Fin.cons_zero, Fin.cons_succ, hge i]; simp [Fin.succ_ne_zero i]
   · simp only [Fin.cons_succ, he i j, Fin.succ_inj]
-
 
 /-- Auxiliary: the `L²` class of a finite sum is almost everywhere the pointwise sum
 (used for `lem:circle-compact`). -/
@@ -4300,7 +3361,6 @@ theorem aux_hs_bessel {α E : Type*} [MeasurableSpace α] {μ : Measure α}
   · have hsM : s ≤ M := by nlinarith
     nlinarith
 
-
 /-- Auxiliary for `lem:circle-compact`: if `∑ ‖T eᵢ‖² ≤ C < ∞` for every finite orthonormal
 family, then for every `ε > 0` there is a finite orthonormal family `(eᵢ)` with
 `‖T f‖ ≤ ε ‖f‖` whenever `f ⊥ eᵢ` (the greedy argument for Hilbert–Schmidt operators). -/
@@ -4382,7 +3442,8 @@ theorem aux_hs_compact {E F : Type*} [NormedAddCommGroup E] [InnerProductSpace �
 
 /-- Auxiliary for `lem:circle-compact`: an operator on `L²(ℝ²)` with a uniform pointwise bound
 `|U h(x)| ≤ M ‖h‖` whose outputs vanish outside a bounded set is compact (Hilbert–Schmidt). -/
-theorem aux_hs_compact_of_pointwise (U : Lp ℂ 2 (volume : Measure ℝ²) →L[ℂ] Lp ℂ 2 (volume : Measure ℝ²))
+theorem aux_hs_compact_of_pointwise
+    (U : Lp ℂ 2 (volume : Measure ℝ²) →L[ℂ] Lp ℂ 2 (volume : Measure ℝ²))
     (M : ℝ) (hM : 0 ≤ M) (hU : ∀ h, ∀ᵐ x ∂(volume : Measure ℝ²), ‖(U h : ℝ² → ℂ) x‖ ≤ M * ‖h‖)
     (X : Set ℝ²) (hX : Bornology.IsBounded X)
     (hsupp : ∀ h, ∀ᵐ x ∂(volume : Measure ℝ²), x ∉ X → (U h : ℝ² → ℂ) x = 0) :
@@ -4583,7 +3644,7 @@ lemma aux_cc_main (N : ℝ² →L[ℝ] ℝ²) (c : ℝ) (hc : 0 < c) (hNc : ∀ 
           refine lintegral_mono fun v => ?_
           by_cases h : v ∈ S
           · simp [b, h]
-          · show (Sᶜ.indicator (fun v => ENNReal.ofReal (w v)) v) ^ 2 ≤ _
+          · change (Sᶜ.indicator (fun v => ENNReal.ofReal (w v)) v) ^ 2 ≤ _
             rw [Set.indicator_of_mem (show v ∈ Sᶜ from h), sq]
             gcongr
             exact not_lt.1 h
@@ -4889,7 +3950,7 @@ theorem lem_triple_l2_sigma (α β : ℝ) (hβ : β ≠ 0) :
     · exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top (ENNReal.prod_lt_top fun j _ => (hf j).2)
   · refine le_trans ?_ (aux_tl_sig α β hβ f fun j => (hf j).1)
     refine (enorm_integral_le_lintegral_enorm _).trans (lintegral_mono fun z => ?_)
-    show ‖(∫ x, f 0 x * f 1 (x + u z) * f 2 (x + M α β (u z))) * 1‖ₑ ≤ _
+    change ‖(∫ x, f 0 x * f 1 (x + u z) * f 2 (x + M α β (u z))) * 1‖ₑ ≤ _
     rw [mul_one]
     refine (enorm_integral_le_lintegral_enorm _).trans (le_of_eq ?_)
     simp [enorm_mul]
@@ -4940,7 +4001,7 @@ lemma aux_ss_sigma (α β : ℝ) (i j k : Fin 3) (hij : i ≠ j) (hik : i ≠ k)
   have h1 : ‖form α β FCMeasure.sigma (f 0) (f 1) (f 2)‖ₑ ≤
       ∫⁻ θ, ∫⁻ x, ∏ l : Fin 3, ‖f l (x + L l (u θ))‖ₑ ∂volume ∂σ := by
     refine (enorm_integral_le_lintegral_enorm _).trans (lintegral_mono fun θ => ?_)
-    show ‖(∫ x, f 0 x * f 1 (x + u θ) * f 2 (x + M α β (u θ))) * 1‖ₑ ≤ _
+    change ‖(∫ x, f 0 x * f 1 (x + u θ) * f 2 (x + M α β (u θ))) * 1‖ₑ ≤ _
     rw [mul_one]
     refine (enorm_integral_le_lintegral_enorm _).trans (le_of_eq ?_)
     refine lintegral_congr fun x => ?_
@@ -4950,7 +4011,8 @@ lemma aux_ss_sigma (α β : ℝ) (i j k : Fin 3) (hij : i ≠ j) (hik : i ≠ k)
       I * ∫⁻ z, ‖f j z‖ₑ * ‖f k (z + N (u θ))‖ₑ := by
     intro θ
     have hb : ∀ᵐ x ∂(volume : Measure ℝ²), ‖f i (x + L i (u θ))‖ₑ ≤ I := by
-      have := (measurePreserving_add_right (volume : Measure ℝ²) (L i (u θ))).quasiMeasurePreserving.ae
+      have :=
+        (measurePreserving_add_right (volume : Measure ℝ²) (L i (u θ))).quasiMeasurePreserving.ae
         (ae_le_eLpNormEssSup (f := f i) (μ := volume))
       rw [show I = eLpNormEssSup (f i) volume from eLpNorm_exponent_top]
       exact this
@@ -5007,7 +4069,8 @@ lemma aux_ss_sigma (α β : ℝ) (i j k : Fin 3) (hij : i ≠ j) (hik : i ≠ k)
     · rw [hsupp z hzA]; simp
   -- step 4: assemble
   have hhm : AEStronglyMeasurable h volume :=
-    ((Complex.measurable_ofReal.comp (Real.continuous_sqrt.measurable.comp hem)).aestronglyMeasurable).mul
+    ((Complex.measurable_ofReal.comp
+      (Real.continuous_sqrt.measurable.comp hem)).aestronglyMeasurable).mul
       (aux_gop_aesm σ (fun _ _ => (1 : ℂ)) hW _ hNu g hg2.1)
   have hωle : ω (∫ z, e z) ≤ ω (max s 0) := by
     rw [heint]

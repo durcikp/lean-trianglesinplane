@@ -1377,7 +1377,9 @@ theorem aux_rig_scalar (N : ℝ² →L[ℝ] ℝ²) (q : ℝ → ℝ) (hq : ∀ s
   simp only [hN, aux_inner_two, aux_J_apply_zero, aux_J_apply_one, aux_uR] at hA hB hC
   simp only [Real.cos_zero, Real.sin_zero, Real.cos_pi_div_two, Real.sin_pi_div_two,
     Real.cos_pi_div_four, Real.sin_pi_div_four] at hA hB hC
-  simp at hA hB hC
+  simp only [Fin.isValue, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_fin_one,
+    neg_zero, mul_zero, mul_one, zero_add, one_mul, zero_mul, add_zero, mul_neg, neg_mul]
+    at hA hB hC
   have hk : Real.sqrt 2 / 2 * (Real.sqrt 2 / 2) = 1 / 2 := by
     rw [← sq, div_pow, Real.sq_sqrt (by norm_num)]; norm_num
   have hb : b' = 0 := by linarith
@@ -1503,7 +1505,10 @@ theorem rig_analytic_rigidity (α β : ℝ) (hβ : β ≠ 0) (a : Fin 3 → ℝ�
     simp only [ContinuousLinearMap.comp_apply] at h1 h2
     rw [h2, map_smul, ← hl] at h1
     have h3 := congrArg (fun w : ℝ² => w 1) h1
-    simp [hMTdef, hMmdef, simil, he0] at h3
+    simp only [Fin.isValue, hMTdef, simil, neg_smul, he0, add_apply, smul_apply,
+      ContinuousLinearMap.id_apply, neg_apply, smul_add, smul_neg, PiLp.add_apply, PiLp.smul_apply,
+      ne_eq, one_ne_zero, not_false_eq_true, PiLp.single_eq_of_ne, smul_eq_mul, mul_zero,
+      PiLp.neg_apply, aux_J_apply_one, PiLp.single_eq_same, mul_one, zero_add, hMmdef] at h3
     have : l₁ * β = 0 := by linarith
     exact (mul_eq_zero.mp this).resolve_right hβ
   rw [aux_u_coe, hW x s₀, hτ1 s₀, hl0, zero_smul]

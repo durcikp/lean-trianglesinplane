@@ -153,7 +153,8 @@ theorem aux_pd_double_integral_nonneg {d : ℝ² → ℂ} (hd : IsPositiveDefini
   by_contra hneg; rw [not_le] at hneg
   obtain ⟨N, hN⟩ := exists_nat_gt ((d 0).re / (-I.re) + 1)
   have := (Complex.nonneg_iff.1 (key N)).1
-  simp at this
+  simp only [Complex.add_re, Complex.mul_re, Complex.natCast_re, Complex.natCast_im, zero_mul,
+    sub_zero, Complex.sub_re, mul_zero, Complex.sub_im, Complex.mul_im, add_zero, sub_self] at this
   have hN1 : (1 : ℝ) < N := by
     have : 0 ≤ (d 0).re / (-I.re) := div_nonneg hd0.1 (by linarith)
     linarith
@@ -1130,6 +1131,8 @@ theorem aux_spectral_measurable_integral {Z : Type*} [MeasurableSpace Z] (c : Z 
   exact measurable_of_tendsto_metrizable (fun n => hmeas _ (by positivity))
     (tendsto_pi_nhds.2 hlim)
 
+-- The hypotheses hpd, h1 belong to the manuscript statement but are not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `ext:measurable-spectral`**.  (The measures `ν_z` supplied by `ext_bochner` are
 characterized, by its uniqueness part, as the finite measures representing `c_z`.)
 Suppose $z\mapsto c_z(s)$ is measurable for each $s\in\mathbb R^2$, and every $c_z$ is
@@ -1195,10 +1198,6 @@ underlying a measurable kernel family `ν` (`IsMeasurableKernel ν`). -/
 def aux_toKernel {X E : Type*} [MeasurableSpace X] [MeasurableSpace E] {ν : X → Measure E}
     (hν : IsMeasurableKernel ν) : Kernel X E :=
   ⟨ν, Measure.measurable_of_measurable_coe _ hν.2⟩
-
-/-- Auxiliary: evaluation of `aux_toKernel`. -/
-theorem aux_toKernel_apply {X E : Type*} [MeasurableSpace X] [MeasurableSpace E]
-    {ν : X → Measure E} (hν : IsMeasurableKernel ν) (z : X) : aux_toKernel hν z = ν z := rfl
 
 /-- Auxiliary (for `ext:kernel-integration`): a measurable kernel all of whose measures are finite
 is an s-finite Mathlib kernel (sum of the finite kernels obtained by restricting to `{z : n ≤ ν_z(E)
@@ -1366,6 +1365,7 @@ theorem ext_kernel_integration_prod {X : Type*} [MeasurableSpace X] {q r : ℕ}
   refine ⟨fun z => ?_, fun B hB => ?_⟩
   · have := hν.1 z; have := hη.1 z; infer_instance
   · have := Kernel.measurable_coe (aux_toKernel hν ×ₖ aux_toKernel hη) hB
-    simpa [Kernel.prod_apply, aux_toKernel_apply] using this
+    simp only [Kernel.prod_apply] at this
+    exact this
 
 end Auto

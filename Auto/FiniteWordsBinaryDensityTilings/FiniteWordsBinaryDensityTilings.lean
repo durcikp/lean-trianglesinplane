@@ -277,6 +277,8 @@ theorem aux_card_le_of_lineFree {n : ℕ} (A : Finset (Fin n → Fin 2)) (hA : �
   have := hanti.sperner
   rwa [card_image_of_injective _ (aux_twoSet_injective n), Fintype.card_fin] at this
 
+-- The hypothesis hα1 belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `cj:binary`** (Binary density theorem).
 For $0<\alpha\le1$, set $H_2(\alpha)=2\lceil\alpha^{-2}\rceil$.
 If $n\ge H_2(\alpha)$ and $A\subseteq[2]^n$ has $\mu_{2,n}(A)\ge\alpha$, then $A$ contains a
@@ -482,7 +484,8 @@ theorem cj_binary_multi {m : ℕ} (hm : 1 ≤ m) {α : ℝ} (hα0 : 0 < α) (hα
 
 /-! ### Uniform lower bounds for prefix fibers (`cj:fiber`) -/
 
-/-- The constant $P(k,m,\varepsilon)=m\left(\left\lceil\frac{k^m-1}{\varepsilon}\right\rceil+2\right)$
+/-- The constant
+$P(k,m,\varepsilon)=m\left(\left\lceil\frac{k^m-1}{\varepsilon}\right\rceil+2\right)$
 of `\label{cj:fiber}` (see `cj_fiber`). -/
 def C_cj_fiber (k m : ℕ) (ε : ℝ) : ℕ := m * (⌈((k : ℝ) ^ m - 1) / ε⌉₊ + 2)
 

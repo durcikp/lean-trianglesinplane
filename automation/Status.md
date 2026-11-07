@@ -256,16 +256,3 @@ Lean file: Auto/FromSmoothingTriangles/FromSmoothingTriangles.lean
 \label{den:weighted-lower}: [Proof completed] (Lean: Auto.den_weighted_lower) (2026-11-06T14:05:18-08:00)
 \label{den:select-scales}: [Proof completed] (Lean: Auto.den_select_scales) (2026-11-06T17:01:48-08:00)
 \label{den:main}: [Proof completed] (Lean: Auto.den_main, Auto.den_main_general) (2026-11-06T17:01:48-08:00)
-
-## The Fourier inverse consequence
-
-Lean file: (out of scope: not needed for Theorems A and B)
-
-#### Definitions
-
-
-#### Theorems
-
-\label{inv:smooth}: [Todo] (Lean: ) (2026-11-06T12:17:37-08:00)
-\label{inv:consequence}: [Todo] (Lean: ) (2026-11-06T12:17:37-08:00)
-

@@ -39,7 +39,6 @@ The manuscript is `blueprint/triangles_in_the_plane_blueprint.tex` (the "bluepri
 9. Summation over frequency annuli → `Auto/SummationFrequencyAnnuli/SummationFrequencyAnnuli.lean`
 10. Approximation of the counting form → `Auto/ApproximationCountingForm/ApproximationCountingForm.lean`
 11. From smoothing to triangles → `Auto/FromSmoothingTriangles/FromSmoothingTriangles.lean`
-12. The Fourier inverse consequence: not needed for Theorems A and B; out of scope.
 
 ## Core objects (in Section 4's file)
 - Plane: `ℝ²` is scoped notation for `EuclideanSpace ℝ (Fin 2)`. Coordinates `x 0, x 1`.

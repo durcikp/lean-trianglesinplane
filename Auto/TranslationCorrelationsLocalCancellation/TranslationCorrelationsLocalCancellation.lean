@@ -292,6 +292,7 @@ section Extend
 variable {Sh : Type*} [MetricSpace Sh] [SecondCountableTopology Sh] [MeasurableSpace Sh]
   [BorelSpace Sh]
 
+omit [SecondCountableTopology Sh] [MeasurableSpace Sh] [BorelSpace Sh] in
 /-- Auxiliary (`ann:extract`): points of a dense sequence near a given shift. -/
 theorem aux_ann_exists_near (D : ℕ → Sh) (hD : DenseRange D) (m : ℕ) (s : Sh) :
     ∃ i, dist (D i) s < 1 / ((m : ℝ) + 1) := by
@@ -304,17 +305,20 @@ open Classical in
 def aux_ann_idx (D : ℕ → Sh) (hD : DenseRange D) (m : ℕ) (s : Sh) : ℕ :=
   Nat.find (aux_ann_exists_near D hD m s)
 
+omit [SecondCountableTopology Sh] [MeasurableSpace Sh] [BorelSpace Sh] in
 theorem aux_ann_idx_spec (D : ℕ → Sh) (hD : DenseRange D) (m : ℕ) (s : Sh) :
     dist (D (aux_ann_idx D hD m s)) s < 1 / ((m : ℝ) + 1) := by
   classical
   exact Nat.find_spec (aux_ann_exists_near D hD m s)
 
+omit [SecondCountableTopology Sh] [MeasurableSpace Sh] [BorelSpace Sh] in
 theorem aux_ann_idx_tendsto (D : ℕ → Sh) (hD : DenseRange D) (s : Sh) :
     Tendsto (fun m => D (aux_ann_idx D hD m s)) atTop (𝓝 s) := by
   rw [tendsto_iff_dist_tendsto_zero]
   exact squeeze_zero (fun _ => dist_nonneg) (fun m => (aux_ann_idx_spec D hD m s).le)
     tendsto_one_div_add_atTop_nhds_zero_nat
 
+omit [SecondCountableTopology Sh] in
 theorem aux_ann_idx_measurable (D : ℕ → Sh) (hD : DenseRange D) (m : ℕ) :
     Measurable (aux_ann_idx D hD m) := by
   classical
@@ -330,6 +334,7 @@ theorem aux_ann_idx_measurable (D : ℕ → Sh) (hD : DenseRange D) (m : ℕ) :
   rw [this]
   exact (hop i).inter (MeasurableSet.iInter fun j => MeasurableSet.iInter fun _ => (hop j).compl)
 
+omit [SecondCountableTopology Sh] [MeasurableSpace Sh] [BorelSpace Sh] in
 /-- Auxiliary: continuity of the modulus `w` along converging sequences. -/
 theorem aux_ann_tendsto_w {w : Sh → Sh → ℝ} (hw : Continuous (Function.uncurry w))
     {ι : Type*} {l : Filter ι} {a b : ι → Sh} {s t : Sh} (ha : Tendsto a l (𝓝 s))
@@ -338,6 +343,7 @@ theorem aux_ann_tendsto_w {w : Sh → Sh → ℝ} (hw : Continuous (Function.unc
 
 variable {X : Type*} [MeasurableSpace X] {μ : Measure X} [SigmaFinite μ]
 
+omit [SigmaFinite μ] in
 /-- Auxiliary: bounded measurable functions times integrable functions are integrable. -/
 theorem aux_ann_integrable_mul {f ψ : X → ℂ} (hf : AEStronglyMeasurable f μ)
     (hb : ∀ x, ‖f x‖ ≤ 1) (hψ : Integrable ψ μ) : Integrable (fun x => f x * ψ x) μ :=
@@ -1307,7 +1313,8 @@ theorem aux_ann_norm_integral_mul_le {X : Type*} [MeasurableSpace X] {μ : Measu
   have hfin : eLpNorm a 2 μ * eLpNorm b 2 μ ≠ ⊤ := ENNReal.mul_ne_top ha.2.ne hb.2.ne
   calc ‖∫ x, a x * b x ∂μ‖ ≤ ∫ x, ‖a x * b x‖ ∂μ := norm_integral_le_integral_norm _
     _ = (eLpNorm (fun x => a x * b x) 1 μ).toReal := by
-        rw [integral_norm_eq_lintegral_enorm (f := fun x => a x * b x) (ha.1.mul hb.1), eLpNorm_one_eq_lintegral_enorm]
+        rw [integral_norm_eq_lintegral_enorm (f := fun x => a x * b x) (ha.1.mul hb.1),
+          eLpNorm_one_eq_lintegral_enorm]
     _ ≤ (eLpNorm a 2 μ * eLpNorm b 2 μ).toReal := ENNReal.toReal_mono hfin h1
     _ = _ := ENNReal.toReal_mul
 
@@ -1318,9 +1325,6 @@ theorem aux_ann_memLp_two_indicator {Y : Set ℝ²} (hY : MeasurableSet Y) (hYf 
   rw [memLp_indicator_iff_restrict hY]
   have : IsFiniteMeasure (volume.restrict Y) := ⟨by rw [Measure.restrict_apply_univ]; exact hYf⟩
   exact (memLp_top_of_bound hb.restrict 1 (ae_of_all _ hb1)).mono_exponent le_top
-
-@[simp] theorem aux_ann_shearEquiv_apply (φ : Ang → ℝ²) (hφ : Measurable φ) (p : ℝ² × Ang) :
-    aux_ann_shearEquiv φ hφ p = (p.1 + φ p.2, p.2) := rfl
 
 /-- Auxiliary: indicators of bounded sets times `σ` are integrable. -/
 theorem aux_ann_ball_integrable (r : ℝ) :
@@ -1351,7 +1355,8 @@ theorem aux_ann_pair_integral (α β : ℝ) {a b : ℝ² → ℂ} (ha : Measurab
       g (aux_ann_shearEquiv u aux_lw_u_meas p) := by
     intro p
     have h1 : proj α β 1 p = p.1 + u p.2 := by simp [proj, Lv]
-    simp only [hg, aux_ann_shearEquiv_apply, aux_ann_proj_two, h1, add_sub_cancel_right]
+    change _ = g (p.1 + u p.2, p.2)
+    simp only [hg, aux_ann_proj_two, h1, add_sub_cancel_right]
     ring
   simp_rw [hrw]
   rw [hmp.integral_comp' g]
@@ -1557,7 +1562,7 @@ theorem aux_ann_weakStar_of_local {F : ℕ → ℝ² × Ang → ℂ} {F0 : ℝ²
       rw [norm_div, hcn, div_le_one (by positivity)]
       simp only [hψmdef]; split_ifs with h
       · exact h.1
-      · simp; positivity) ((m : ℝ) + 1) (fun p hp => by
+      · simp only [norm_zero]; positivity) ((m : ℝ) + 1) (fun p hp => by
         simp only [hψmdef]
         rw [if_neg (fun h => absurd h.2 (not_le.2 hp)), zero_div])
     have e : ∀ G : ℝ² × Ang → ℂ, ∫ p, G p * ψm m p ∂μinc = c * ∫ p, G p * (ψm m p / c) ∂μinc :=
@@ -1652,7 +1657,8 @@ theorem aux_ann_pair_weakStar (α β : ℝ) (hβ : β ≠ 0) {A B : ℕ → ℝ�
     rw [h1, h2]
   have hp := fun j => (aux_ann_proj_continuous α β j).measurable
   refine aux_ann_weakStar_congr (aux_ann_weakStar_of_local
-    (F0 := fun p => A1 (proj α β 1 p) * B1 (proj α β 2 p)) (fun n => ((hAm n).comp (hp 1)).mul ((hBm n).comp (hp 2)))
+    (F0 := fun p => A1 (proj α β 1 p) * B1 (proj α β 2 p))
+    (fun n => ((hAm n).comp (hp 1)).mul ((hBm n).comp (hp 2)))
     (fun n p => ?_) ((hA1m.comp (hp 1)).mul (hB1m.comp (hp 2))) (fun p => ?_)
     (fun φ hφm hφb ρ hφs => aux_ann_pair_tendsto_bounded α β hβ hAm hBm hAb hBb hA1m hB1m hA1b
       hB1b hA' hB' hφm hφb hφs)) hae.symm
@@ -1689,6 +1695,9 @@ theorem aux_ann_integral_normSq_tensorPoly (μ₁ μ₂ : Measure ℝ²) [IsFini
 
 end AnnFactorAux
 
+-- The hypothesis hβ belongs to the manuscript statement but is not needed by the proof.
+-- The hypothesis hQ belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `ann:factor`** (first assertion).  For the notation of Definition `ann:polynomials`,
 $$|F_{0,n}[a](\pi_0p)|^2\stackrel{*}{\rightharpoonup}\int|a|^2\,d\nu_0,\qquad
 |G_n(p)|^2\stackrel{*}{\rightharpoonup}\int|G|^2\,d(\nu_1\otimes\nu_2).$$ -/
@@ -1713,6 +1722,8 @@ theorem ann_factor_one (α β : ℝ) (hβ : β ≠ 0) (Q : Set ℝ²) (hQ : Born
   rw [norm_mul]
   exact mul_le_of_le_one_right (norm_nonneg _) (aux_ann_annT_le_one hadm _ _ _ _)
 
+-- The hypothesis hQ belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `ann:factor`** (second assertion).  For the notation of Definition
 `ann:polynomials`,
 $$|F_{0,n}[a](\pi_0p)|^2\stackrel{*}{\rightharpoonup}\int|a|^2\,d\nu_0,\qquad
@@ -1816,6 +1827,7 @@ variable {E1 E2 H1 H2 : Type*} [AddCommGroup E1] [Module ℂ E1] [AddCommGroup E
   [NormedAddCommGroup H1] [InnerProductSpace ℂ H1] [CompleteSpace H1]
   [NormedAddCommGroup H2] [InnerProductSpace ℂ H2] [CompleteSpace H2]
 
+omit [CompleteSpace H1] in
 /-- Auxiliary: corestriction of a linear map to the closure of its range has dense range. -/
 theorem aux_ann_denseRange_codRestrict (e : E1 →ₗ[ℂ] H1) :
     DenseRange (e.codRestrict (LinearMap.range e).topologicalClosure
@@ -2190,7 +2202,8 @@ theorem aux_ann_ineq_ae (hβ : β ≠ 0) (hQ : Bornology.IsBounded Q)
   simp_rw [aux_ann_trigPoly_aOf, aux_ann_Aq_eq] at hA
   simp_rw [aux_ann_tensorPoly_GOf, aux_ann_Bq_eq] at hB
   simp_rw [aux_ann_Λ_of] at hL
-  set Fn : ℕ → ℝ² × Ang → ℂ := fun n p => polyTranslate R f 0 n (aux_ann_aOf D N c) (proj α β 0 p) with hFn
+  set Fn : ℕ → ℝ² × Ang → ℂ := fun n p => polyTranslate R f 0 n (aux_ann_aOf D N c) (proj α β 0 p)
+    with hFn
   set Gn : ℕ → ℝ² × Ang → ℂ := fun n p => tensorTranslate α β R f n (aux_ann_GOf D N d) p with hGn
   have hc := fun j n => aux_ann_continuous hadm j n
   have hp := fun j => aux_ann_proj_continuous α β j
@@ -2505,6 +2518,7 @@ theorem aux_ann_exists_range (x : ℕ →₀ ℂ) (y : ℕ × ℕ →₀ ℂ) :
     omega
 
 set_option maxHeartbeats 2000000 in
+-- The proof of `ann:form` is long and needs a raised heartbeat limit.
 /-- **Lemma `ann:form`** (The limiting bilinear correlation form).
 For almost every configuration $p$, there is a complex bilinear form
 $$\ell_p:L^2(\nu_0)\times L^2(\nu_1\otimes\nu_2)\longrightarrow\mathbb C$$
@@ -2716,7 +2730,9 @@ theorem ann_form (α β : ℝ) (hβ : β ≠ 0) (Q : Set ℝ²) (hQ : Bornology.
       rw [h2 s hs, Pi.smul_apply, smul_eq_mul, h3 s hs]
     have h2 : htG.toLp (tensorPoly G) = ∑ t ∈ G.support, G t • c2 p t.1 t.2 := by
       refine Lp.ext (htG.coeFn_toLp.trans ?_)
-      have hs2 : ∀ t ∈ G.support, ⇑(G t • c2 p t.1 t.2) =ᵐ[(ν 1 (proj α β 1 p)).prod (ν 2 (proj α β 2 p))] G t • ⇑(c2 p t.1 t.2) :=
+      have hs2 : ∀ t ∈ G.support,
+          ⇑(G t • c2 p t.1 t.2) =ᵐ[(ν 1 (proj α β 1 p)).prod (ν 2 (proj α β 2 p))]
+            G t • ⇑(c2 p t.1 t.2) :=
         fun t _ => Lp.coeFn_smul _ _
       have hs3 : ∀ t ∈ G.support, ⇑(c2 p t.1 t.2) =ᵐ[(ν 1 (proj α β 1 p)).prod (ν 2 (proj α β 2 p))]
           fun ξ : ℝ² × ℝ² => charE t.1 ξ.1 * charE t.2 ξ.2 :=
@@ -2729,7 +2745,7 @@ theorem ann_form (α β : ℝ) (hβ : β ≠ 0) (Q : Set ℝ²) (hQ : Bornology.
       rw [h2 t ht, Pi.smul_apply, smul_eq_mul, h3 t ht, mul_assoc]
     simp only [dif_pos hp, dif_pos (And.intro hta htG)]
     rw [h1, h2, map_sum, aux_ann_Λ, Finsupp.sum]
-    simp only [ContinuousLinearMap.sum_apply, map_smul, ContinuousLinearMap.smul_apply,
+    simp only [sum_apply, map_smul, smul_apply,
       map_sum, smul_eq_mul]
     simp_rw [Finset.mul_sum]
     rw [Finset.sum_comm]
@@ -3191,6 +3207,9 @@ theorem aux_ann_shift_all (hadm : IsAdmissibleSeq Q C R f)
 
 end Inv2
 
+-- The hypothesis hβ belongs to the manuscript statement but is not needed by the proof.
+-- The hypothesis hQ belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `ann:invariance`** (Infinitesimal translation and rotation invariance).
 Outside a fixed null set of configurations, for every $s\in\mathbb R^2$, $h\in\mathbb R$,
 $a\in L^2(\nu_0)$, and $G\in L^2(\nu_1\otimes\nu_2)$,
@@ -3375,7 +3394,7 @@ theorem aux_ann_angle_null_N (N : ℝ² →L[ℝ] ℝ²) (hN : IsUnit N) (w : �
     have h1 : ⟪(U : ℝ² →L[ℝ] ℝ²) ((↑U⁻¹ : ℝ² →L[ℝ] ℝ²) w), w⟫_ℝ = 0 := by
       rw [← ContinuousLinearMap.adjoint_inner_right, h0, inner_zero_right]
     have h2 : (U : ℝ² →L[ℝ] ℝ²) ((↑U⁻¹ : ℝ² →L[ℝ] ℝ²) w) = w := by
-      show ((U : ℝ² →L[ℝ] ℝ²) * ↑U⁻¹) w = w
+      change ((U : ℝ² →L[ℝ] ℝ²) * ↑U⁻¹) w = w
       rw [Units.mul_inv]; rfl
     rw [h2, real_inner_self_eq_norm_sq] at h1
     exact hw (norm_eq_zero.1 (pow_eq_zero_iff two_ne_zero |>.1 h1))
@@ -3386,6 +3405,8 @@ theorem aux_ann_angle_null_N (N : ℝ² →L[ℝ] ℝ²) (hN : IsUnit N) (w : �
 
 end AnnFibersAux
 
+-- The hypothesis hν1 belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `ann:fibers`** (first assertion).
 Let $z\mapsto\nu_z$ be a measurable kernel of finite positive measures on $\mathbb R^2$, of mass
 at most one, and let $N$ be invertible.  For almost every $(z,\theta)$, every positive-mass fiber
@@ -3399,8 +3420,10 @@ theorem ann_fibers (ν : ℝ² → Measure ℝ²) (hν : IsMeasurableKernel ν) 
       ∃ ξ₀ : ℝ², ν q.1 ({ξ | ⟪N (v q.2), ξ⟫_ℝ = t} \ {ξ₀}) = 0 := by
   have hfin := hν.1
   have hprod := ext_kernel_integration_prod hν hν
-  have : ProbabilityTheory.IsSFiniteKernel (aux_toKernel hprod) := aux_toKernel_isSFiniteKernel hprod
-  set κ : ProbabilityTheory.Kernel (ℝ² × Ang) (ℝ² × ℝ²) := (aux_toKernel hprod).comap Prod.fst measurable_fst
+  have : ProbabilityTheory.IsSFiniteKernel (aux_toKernel hprod) :=
+    aux_toKernel_isSFiniteKernel hprod
+  set κ : ProbabilityTheory.Kernel (ℝ² × Ang) (ℝ² × ℝ²) :=
+    (aux_toKernel hprod).comap Prod.fst measurable_fst
   have hκ : ∀ q, κ q = (ν q.1).prod (ν q.1) := fun q => rfl
   have hvc : Continuous v := J.continuous.comp aux_lw_u_continuous
   set W : Set ((ℝ² × Ang) × (ℝ² × ℝ²)) :=
@@ -3554,7 +3577,7 @@ theorem ann_fibers_hyperplane (α β : ℝ) (hβ : β ≠ 0) (ν₁ ν₂ : ℝ�
     · refine measure_mono_null (fun x hx => ?_) measure_empty
       exact hx.2 (by rw [show a x = -b y by linarith [hx.1]]; exact hy)
     · refine measure_mono_null (fun x hx => ?_) (not_lt.1 hy |> nonpos_iff_eq_zero.1)
-      show a x = -b y
+      change a x = -b y
       linarith [hx.1]
   have hN₂ : (μ₁.prod μ₂) N₂ = 0 := by
     rw [Measure.prod_apply hN₂m]
@@ -3563,7 +3586,7 @@ theorem ann_fibers_hyperplane (α β : ℝ) (hβ : β ≠ 0) (ν₁ ν₂ : ℝ�
     · refine measure_mono_null (fun y hy => ?_) measure_empty
       exact hy.2 (by rw [show b y = -a x by linarith [hy.1]]; exact hx)
     · refine measure_mono_null (fun y hy => ?_) (not_lt.1 hx |> nonpos_iff_eq_zero.1)
-      show b y = -a x
+      change b y = -a x
       linarith [hy.1]
   have hA : (μ₁.prod μ₂) (⋃ t ∈ T₁, ({ξ | a ξ = t} \ {x₁ t}) ×ˢ (univ : Set ℝ²)) = 0 :=
     (measure_biUnion_null_iff hT₁).2 fun t ht => by
@@ -3630,7 +3653,7 @@ theorem aux_ann_qset_bdd (ν : ℝ² → Measure ℝ²) (hfin : ∀ z, IsFiniteM
       intro n n' h ξ hξ
       have h1 : ξ k ≤ (n : ℝ) := hξ
       have : (n : ℝ) ≤ n' := by exact_mod_cast h
-      show ξ k ≤ (n' : ℝ)
+      change ξ k ≤ (n' : ℝ)
       linarith
     have := tendsto_measure_iUnion_atTop (μ := ν z) hmono
     have hU : ⋃ n : ℕ, {ξ : ℝ² | ξ k ≤ n} = univ := by
@@ -3643,7 +3666,7 @@ theorem aux_ann_qset_bdd (ν : ℝ² → Measure ℝ²) (hfin : ∀ z, IsFiniteM
       intro n n' h ξ hξ
       have : (n : ℝ) ≤ n' := by exact_mod_cast h
       have h1 : ξ k ≤ -(n' : ℝ) := hξ
-      show ξ k ≤ -(n : ℝ)
+      change ξ k ≤ -(n : ℝ)
       linarith
     have := tendsto_measure_iInter_atTop (μ := ν z) (fun n => (hmeas _).nullMeasurableSet)
       hanti ⟨0, measure_ne_top _ _⟩
@@ -3736,7 +3759,7 @@ theorem aux_ann_quantile_atom (ν : ℝ² → Measure ℝ²) (hfin : ∀ z, IsFi
     rw [ENNReal.ofReal_mul hr0.le, hmdef, ENNReal.ofReal_toReal hm]
   have hleast : IsLeast (aux_ann_qset ν k r z) (ξ k) := by
     refine ⟨?_, fun t ht => ?_⟩
-    · show ENNReal.ofReal r * ν z univ ≤ ν z {η : ℝ² | η k ≤ ξ k}
+    · change ENNReal.ofReal r * ν z univ ≤ ν z {η : ℝ² | η k ≤ ξ k}
       rw [hc, ← ENNReal.ofReal_toReal (measure_ne_top (ν z) {η : ℝ² | η k ≤ ξ k})]
       refine ENNReal.ofReal_le_ofReal ?_
       have := (lt_div_iff₀ hmpos).1 hr2
@@ -3867,6 +3890,8 @@ theorem aux_ann_rigidity_fields (α β : ℝ) (hβ : β ≠ 0) (a : Fin 3 → �
     exact MemLp.of_bound (ha j).aestronglyMeasurable n
       ((ae_restrict_iff' (hY j).1).2 (ae_of_all _ fun z hz => ((hY j).2 hz).2))
 
+-- The hypothesis hν1 belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `ann:atomic-rigidity`** (Rigidity for all contributing atomic triples; stated for
 arbitrary measurable kernels $\nu_{j,\cdot}$ of mass at most one, in particular for the spectral
 kernels of `ann:spectral`).
@@ -4093,7 +4118,7 @@ theorem aux_ann_cesaro_zero [IsFiniteMeasure μ] (hc : c ≠ ∞)
     constructor
     · rintro ⟨⟨m, hm⟩, ⟨n, hn⟩⟩
       by_contra h0
-      have hn0 : n ≠ 0 := by rintro rfl; simp at hn; exact h0 hn
+      have hn0 : n ≠ 0 := by rintro rfl; simp only [Int.cast_zero] at hn; exact h0 hn
       rw [hn] at hm
       exact (irrational_sqrt_two.mul_intCast hn0).ne_int m hm
     · intro h0

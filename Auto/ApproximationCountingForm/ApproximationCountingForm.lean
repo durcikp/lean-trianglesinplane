@@ -49,7 +49,8 @@ theorem aux_appr_form_assoc (α β : ℝ) (ν κ l : FCMeasure) (f₀ f₁ f₂ 
     form α β ((ν.conv κ).conv l) f₀ f₁ f₂ = form α β (ν.conv (κ.conv l)) f₀ f₁ f₂ :=
   aux_appr_form_congr α β _ _ MeasurableEquiv.prodAssoc
     (measurePreserving_prodAssoc ν.m κ.m l.m)
-    (fun z => by simp [FCMeasure.conv, add_assoc]; rfl) (fun z => by simp [FCMeasure.conv, mul_assoc]; rfl) _ _ _
+    (fun z => by simp [FCMeasure.conv, add_assoc]; rfl)
+    (fun z => by simp [FCMeasure.conv, mul_assoc]; rfl) _ _ _
 
 /-- Auxiliary for `tail:exhaustion`, `tail:convolved-tail` (`Auto.tail_exhaustion`,
 `Auto.tail_convolved_tail`): the identity of `lem:convolution-translate`,
@@ -138,7 +139,8 @@ theorem aux_appr_translate_tendsto {f : ℝ² → ℂ} (hf : MemLp f 2 volume) (
   congr 2; abel
 
 /-- Auxiliary for `tail:exhaustion` and `tail:convolved-tail`: for `L²` inputs, the function
-$w\mapsto\Lambda_{\sigma*\kappa}(f_0,f_1(\cdot+w),f_2(\cdot+Mw))$ is continuous (by `lem:triple-l2`). -/
+$w\mapsto\Lambda_{\sigma*\kappa}(f_0,f_1(\cdot+w),f_2(\cdot+Mw))$ is continuous (by
+`lem:triple-l2`). -/
 theorem aux_appr_G_cont (α β : ℝ) (hβ : β ≠ 0) (κ : FCMeasure) (f : Fin 3 → ℝ² → ℂ)
     (hf : ∀ j, MemLp (f j) 2 volume) :
     Continuous (fun w => form α β (FCMeasure.sigma.conv κ) (f 0) (fun x => f 1 (x + w))
@@ -382,7 +384,8 @@ theorem aux_appr_tailQ_integrable (χ : ℝ² → ℝ) (hχ : aux_IsTailCutoff �
   exact (hqi.comp_smul hS.ne').const_mul ((S ^ 2 : ℝ) : ℂ)
 
 /-- Auxiliary for `tail:convolved-tail`, `tail:bounded-smoothing`: for an `L¹` density $h$,
-$\Lambda_{(\sigma*\kappa)*h}(f)=\int\Lambda_{\sigma*\kappa}(f_0,f_1(\cdot+w),f_2(\cdot+Mw))h(w)\,dw$,
+$\Lambda_{(\sigma*\kappa)*h}(f)=
+\int\Lambda_{\sigma*\kappa}(f_0,f_1(\cdot+w),f_2(\cdot+Mw))h(w)\,dw$,
 with integrable integrand (`L²` inputs). -/
 theorem aux_appr_density_rep (α β : ℝ) (hβ : β ≠ 0) (κ : FCMeasure) (h : ℝ² → ℂ)
     (hh : Integrable h) (f : Fin 3 → ℝ² → ℂ) (hf : ∀ j, MemLp (f j) 2 volume) :
@@ -548,8 +551,8 @@ theorem aux_appr_form_conv_dirac (α β : ℝ) (ν : FCMeasure) (f₀ f₁ f₂ 
   · change ν.w z.1 = ν.w z.1 * 1
     rw [mul_one]
 
-/-- Auxiliary for `tail:smoothing`: $\Lambda_{\nu*(a-b)}=\Lambda_{\nu*a}-\Lambda_{\nu*b}$ on endpoint
-inputs (via `lem:convolution-translate`). -/
+/-- Auxiliary for `tail:smoothing`: $\Lambda_{\nu*(a-b)}=\Lambda_{\nu*a}-\Lambda_{\nu*b}$ on
+endpoint inputs (via `lem:convolution-translate`). -/
 theorem aux_appr_form_conv_sub (α β : ℝ) (ν a b : FCMeasure) (i : Fin 3) (f : Fin 3 → ℝ² → ℂ)
     (hf : ∀ j, MemLp (f j) (aux_slotExp i j) volume) :
     form α β (ν.conv (a.sub b)) (f 0) (f 1) (f 2) =
@@ -583,8 +586,8 @@ theorem aux_appr_bothBounded_memLp_end {B : ℝ} {f : Fin 3 → ℝ² → ℂ}
   · exact ⟨(hf j).1, (hf j).2.2.trans_lt ENNReal.ofReal_lt_top⟩
   · exact aux_appr_bothBounded_memLp hf j
 
-/-- Auxiliary for `tail:bounded-smoothing`: $|\Lambda_\sigma(f_0,f_1,f_2)|\le B^3$ for inputs bounded
-in both norms by $B$ (total variation estimate of `lem:form-basic`). -/
+/-- Auxiliary for `tail:bounded-smoothing`: $|\Lambda_\sigma(f_0,f_1,f_2)|\le B^3$ for inputs
+bounded in both norms by $B$ (total variation estimate of `lem:form-basic`). -/
 theorem aux_appr_sigma_bound {B : ℝ} {f : Fin 3 → ℝ² → ℂ} (α β : ℝ)
     (hf : aux_IsBothBounded B f) :
     ‖form α β FCMeasure.sigma (f 0) (f 1) (f 2)‖ ≤ max B 0 ^ 3 := by
@@ -692,7 +695,8 @@ theorem aux_appr_Tq (q : ℝ² → ℂ) (hq : Integrable q) (η : ℝ) (hη : 0 
 
 /-- Auxiliary for `tail:bounded-smoothing` (`Auto.tail_bounded_smoothing`): the low-frequency
 estimate $|\Lambda_{\sigma*\rho_\varepsilon*q}-\Lambda_{\sigma*q}|\le B^3\int\rho(y)
-\|q(\cdot-\varepsilon y)-q\|_1\,dy$, in the explicit form $B^3(\eta+2\|q\|_1\int_{\varepsilon|y|\ge\delta}\rho)$. -/
+\|q(\cdot-\varepsilon y)-q\|_1\,dy$,
+in the explicit form $B^3(\eta+2\|q\|_1\int_{\varepsilon|y|\ge\delta}\rho)$. -/
 theorem aux_appr_lowfreq (α β : ℝ) (q : ℝ² → ℂ) (hq : Integrable q) (ρ : ℝ² → ℝ)
     (hρ0 : ∀ x, 0 ≤ ρ x) (hρ : Integrable ρ) (hρ1 : ∫ x, ρ x = 1) (B η : ℝ) (hη : 0 < η) :
     ∃ δ > 0, ∀ ε : ℝ, 0 < ε → ∀ f : Fin 3 → ℝ² → ℂ, aux_IsBothBounded B f →
@@ -816,7 +820,8 @@ theorem aux_appr_tailCutoff_exists : ∃ χ : ℝ² → ℝ, aux_IsTailCutoff χ
     apply div_nonpos_of_nonpos_of_nonneg _ (by norm_num)
     nlinarith [norm_nonneg b]
 
-/-- Auxiliary for `tail:bounded-smoothing`, `tail:smoothing`: $\|\rho_\varepsilon\|_{\mathrm{TV}}=1$. -/
+/-- Auxiliary for `tail:bounded-smoothing`, `tail:smoothing`:
+$\|\rho_\varepsilon\|_{\mathrm{TV}}=1$. -/
 theorem aux_appr_tv_rho (ρ : ℝ² → ℝ) (hρ0 : ∀ x, 0 ≤ ρ x) (hρ : Integrable ρ)
     (hρ1 : ∫ x, ρ x = 1) (ε : ℝ) (hε : 0 < ε) :
     (FCMeasure.ofDensity (fun x => (((ε ^ 2)⁻¹ * ρ (ε⁻¹ • x) : ℝ) : ℂ))).tv = 1 := by
@@ -955,15 +960,16 @@ theorem tail_bounded_smoothing (α β : ℝ) (hβ : β ≠ 0) (ρ : ℝ² → �
 
 /-! ### Uniform smoothing in the endpoint form norm (`tail:smoothing`) -/
 
-/-- Auxiliary for `tail:smoothing`: convolution with $\delta_0$ is the identity ($P_n=\mathrm{id}$ in
-`ann:localize`). -/
+/-- Auxiliary for `tail:smoothing`: convolution with $\delta_0$ is the identity ($P_n=\mathrm{id}$
+in `ann:localize`). -/
 theorem aux_appr_convFun_dirac (f : ℝ² → ℂ) : (FCMeasure.dirac 0).convFun f = f := by
   funext x
   simp only [FCMeasure.convFun, FCMeasure.integral, FCMeasure.dirac]
   change ∫ (z : Unit), f (x - 0) * 1 ∂(Measure.dirac ()) = f x
   rw [integral_dirac]; simp
 
-/-- Auxiliary for `tail:smoothing`: $\|\nu-\mu\|_{\mathrm{TV}}=\|\nu\|_{\mathrm{TV}}+\|\mu\|_{\mathrm{TV}}$ for
+/-- Auxiliary for `tail:smoothing`:
+$\|\nu-\mu\|_{\mathrm{TV}}=\|\nu\|_{\mathrm{TV}}+\|\mu\|_{\mathrm{TV}}$ for
 the presentation of a difference (so $\|\kappa_n\|_{\mathrm{TV}}\le2$). -/
 theorem aux_appr_tv_sub (ν μ : FCMeasure) : (ν.sub μ).tv = ν.tv + μ.tv := by
   have hl : MeasurableEmbedding (Sum.inl : ν.Z → ν.Z ⊕ μ.Z) :=
@@ -1039,8 +1045,8 @@ theorem aux_appr_varOn_bound (ρ : ℝ² → ℝ) (hρ0 : ∀ x, 0 ≤ ρ x) (h�
           (Eventually.of_forall fun y => Set.indicator_nonneg (fun v _ => h0 v) y),
           aux_appr_rho_tail_eq ρ ε 1 hε]
 
-/-- Auxiliary for `tail:smoothing`: $\Lambda_{\sigma*(a-\delta_0)}=\Lambda_{\sigma*a-\sigma}$ on endpoint
-inputs. -/
+/-- Auxiliary for `tail:smoothing`: $\Lambda_{\sigma*(a-\delta_0)}=\Lambda_{\sigma*a-\sigma}$ on
+endpoint inputs. -/
 theorem aux_appr_form_kappa (α β : ℝ) (a : FCMeasure) (i : Fin 3) (f : Fin 3 → ℝ² → ℂ)
     (hf : ∀ j, MemLp (f j) (aux_slotExp i j) volume) :
     form α β (FCMeasure.sigma.conv (a.sub (FCMeasure.dirac 0))) (f 0) (f 1) (f 2) =
@@ -1055,7 +1061,8 @@ theorem aux_appr_endNorm_dil (α β : ℝ) (ν : FCMeasure) (i : Fin 3) :
   refine le_antisymm (iSup₂_le fun s hs => (lem_form_basic_scaling α β ν i s hs).le) ?_
   exact le_iSup₂_of_le (1 : ℝ) one_pos (lem_form_basic_scaling α β ν i 1 one_pos).ge
 
-/-- Auxiliary for `tail:smoothing`: for fixed cutoffs $\chi_j\in C_c^\infty$ and $\|f_j\|_\infty\le1$,
+/-- Auxiliary for `tail:smoothing`: for fixed cutoffs $\chi_j\in C_c^\infty$ and
+$\|f_j\|_\infty\le1$,
 the inputs $\chi_jf_j$ are bounded in both norms by a constant depending only on the cutoffs. -/
 theorem aux_appr_cutoff_bounded (χ : Fin 3 → ℝ² → ℝ)
     (hχ : ∀ j, ContDiff ℝ (⊤ : ℕ∞) (χ j) ∧ HasCompactSupport (χ j)) :
@@ -1096,8 +1103,8 @@ theorem aux_appr_cutoff_bounded (χ : Fin 3 → ℝ² → ℝ)
   · exact (eLpNorm_mono_ae hae).trans (hle ⊤ (Or.inr rfl))
 
 /-- Auxiliary for `tail:smoothing` (`Auto.tail_smoothing`): the conclusion along a positive sequence
-$\varepsilon_n\downarrow0$, from `ann:localize` with $\kappa_n=\rho_{\varepsilon_n}-\delta_0$, $P_n=\mathrm{id}$
-and `tail:bounded-smoothing`. -/
+$\varepsilon_n\downarrow0$, from `ann:localize` with $\kappa_n=\rho_{\varepsilon_n}-\delta_0$,
+$P_n=\mathrm{id}$ and `tail:bounded-smoothing`. -/
 theorem aux_appr_smoothing_seq (α β : ℝ) (hβ : β ≠ 0) (ρ : ℝ² → ℝ) (hρ0 : ∀ x, 0 ≤ ρ x)
     (hρ : Integrable ρ) (hρ1 : ∫ x, ρ x = 1) (i : Fin 3) (e : ℕ → ℝ) (he0 : ∀ n, 0 < e n)
     (he : Tendsto e atTop (𝓝[>] 0)) :

@@ -133,3 +133,6 @@ formalization from the blueprint. Each entry records the date/time and the bluep
 - (2026-11-06T17:01:57-08:00) `ann:global` (tex ~3316–3377): proof route changed (no error). The R-dependent kernel q_R is replaced, for each η, by
   a fixed C_c^∞ function g with ‖p − g‖₁ ≤ η, so that the Lipschitz bound O(R) follows from g's fixed Lipschitz constant;
   the cost O(η) is uniform in R. The limit is taken by contradiction along R_n → ∞ via `ann:localize` and `ann:local`.
+- (2026-11-06T17:04:53-08:00) Resolution of the scope entry above: at the user's request (P8) Section `sec:inverse` ("The Fourier inverse
+  consequence", former tex lines 4267–4344, labels `inv:smooth`, `inv:consequence`) was removed from the blueprint, since
+  neither Theorem A nor Theorem B uses it; its Status.md entries were removed with it.

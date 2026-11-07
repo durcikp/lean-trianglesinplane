@@ -120,7 +120,7 @@ These override conflicting instructions above (recorded 2026-11-06T12:53-08:00).
 
 - Targets: Theorem A (`intro:density`) and Theorem B (`intro:smoothing`) of
   `blueprint/triangles_in_the_plane_blueprint.tex` and their prerequisites; do not stop until Theorem A is
-  proven (P1). Section `sec:inverse` is out of scope.
+  proven (P1). Section `sec:inverse` was not needed and has been removed from the blueprint (P8).
 - Prove one by one in manuscript / `automation/Status.md` order; local parallelism only for independent pieces;
   at most 3 agents at a time (P1, P2).
 - Reuse code from https://github.com/durcikp/lean-triangles.git where possible (P1).
@@ -146,4 +146,11 @@ These override conflicting instructions above (recorded 2026-11-06T12:53-08:00).
   `lake build` succeeds (no "declaration uses sorry"). `#print axioms` on all 155 public theorems: 153 use exactly
   [propext, Classical.choice, Quot.sound], 2 (`cj_bookkeeping_comp`, `cj_bookkeeping_concat`) a subset. Theorem A
   (`intro_density`) and Theorem B (`intro_smoothing`) depend only on [propext, Classical.choice, Quot.sound].
-- Out of scope / not formalized: Section `sec:inverse` (`inv:smooth`, `inv:consequence`), as recorded in ErrorReport.md.
+- Section `sec:inverse` (`inv:smooth`, `inv:consequence`) was removed from the blueprint at the user's request (P8,
+  2026-11-06T17:04:53-08:00); the blueprint now consists exactly of Theorems A, B and their prerequisites.
+- Cleanup (P9, completed 2026-11-06T18:09:23-08:00): 62 unreachable `aux_` declarations removed; all lint warnings fixed; unused manuscript
+  hypotheses of public theorems kept and silenced locally with `set_option linter.unusedVariables false in` plus a
+  comment. Verification after a forced rebuild of all `Auto` modules: `lake build` succeeds with 0 warnings / 0 errors;
+  no `sorry`/`admit`/`axiom`/`native_decide` in `Auto/`; all 257 public declaration statements identical to the
+  last commit; `#print axioms` on all 155 public theorems: 153 exactly [propext, Classical.choice, Quot.sound],
+  2 a subset; `intro_density` and `intro_smoothing`: [propext, Classical.choice, Quot.sound].

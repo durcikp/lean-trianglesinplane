@@ -521,12 +521,6 @@ theorem aux_extLp_coe (S : Set ℝ²) (hS : MeasurableSet S) (f : Lp ℝ 2 (volu
     ⇑(aux_extLp S hS f) =ᵐ[volume] S.indicator ⇑f :=
   MemLp.coeFn_toLp (aux_memLp_indicator S hS f)
 
-/-- Auxiliary: the zero extension `aux_extLp` is isometric. -/
-theorem aux_extLp_norm (S : Set ℝ²) (hS : MeasurableSet S) (f : Lp ℝ 2 (volume.restrict S)) :
-    ‖aux_extLp S hS f‖ = ‖f‖ := by
-  rw [Lp.norm_def, Lp.norm_def, eLpNorm_congr_ae (aux_extLp_coe S hS f),
-    eLpNorm_indicator_eq_eLpNorm_restrict hS]
-
 /-- Auxiliary: one vertex block `g ↦ (1_{X_j} g) ∘ π_j` of `D_E`, as a continuous linear map
 `L²(X_j) → L²(E, μ)` (used for `Auto.incidenceOp`, `rig:def-kernel`). -/
 def aux_incBlock (α β : ℝ) (E : Set (ℝ² × Ang)) (S : Set ℝ²) (hS : MeasurableSet S) (j : Fin 3) :
@@ -571,7 +565,8 @@ theorem aux_incidenceOp_exists_of_measurable (α β : ℝ) (E : Set (ℝ² × An
 
 /-- Auxiliary: the map `f ↦ incidenceFun α β X f` induces a continuous linear map
 `HE X →L[ℝ] Lp ℝ 2 (μinc.restrict E)` whenever the vertex sets are measurable (as they are for
-every core, `\label{rig:def-core}`).  Used to define `Auto.incidenceOp` (`\label{rig:def-kernel}`). -/
+every core, `\label{rig:def-core}`).  Used to define `Auto.incidenceOp`
+(`\label{rig:def-kernel}`). -/
 theorem aux_incidenceOp_exists (α β : ℝ) (E : Set (ℝ² × Ang)) (X : Fin 3 → Set ℝ²) :
     ∃ D : HE X →L[ℝ] Lp ℝ 2 (μinc.restrict E), (∀ j, MeasurableSet (X j)) →
       ∀ f, (D f : ℝ² × Ang → ℝ) =ᵐ[μinc.restrict E] incidenceFun α β X f := by

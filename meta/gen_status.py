@@ -19,7 +19,6 @@ files = {
  'Summation over frequency annuli': 'Auto/SummationFrequencyAnnuli/SummationFrequencyAnnuli.lean',
  'Approximation of the counting form': 'Auto/ApproximationCountingForm/ApproximationCountingForm.lean',
  'From smoothing to triangles': 'Auto/FromSmoothingTriangles/FromSmoothingTriangles.lean',
- 'The Fourier inverse consequence': '(out of scope: not needed for Theorems A and B)',
 }
 out = ['# Formalization status', '',
  'Definitions use `Todo` or `Completed`. Theorems use `Todo`, `Statement completed`, or `Proof completed`; '

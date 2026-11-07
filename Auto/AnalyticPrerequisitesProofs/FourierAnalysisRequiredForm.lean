@@ -24,7 +24,8 @@ namespace Auto
 /-- The Euclidean plane `ℝ²`. -/
 scoped notation "ℝ²" => EuclideanSpace ℝ (Fin 2)
 
-/-- A finite complex Borel measure on `ℝ²` (part of `\label{ext:fourier-convention}`; used throughout, e.g. in `\label{def:form}`).
+/-- A finite complex Borel measure on `ℝ²` (part of `\label{ext:fourier-convention}`; used
+throughout, e.g. in `\label{def:form}`).
 
 It is presented as the image `ν = φ_*(w · m)` of a complex density `w ∈ L¹(m)` on an auxiliary
 s-finite measure space `(Z, m)` under a measurable map `φ : Z → ℝ²`; integration is
@@ -127,8 +128,12 @@ def add (ν κ : FCMeasure) : FCMeasure where
   measurable_φ := ν.measurable_φ.sumElim κ.measurable_φ
   integrable_w := by
     refine Integrable.add_measure ?_ ?_
-    · exact (MeasurableEmbedding.integrable_map_iff ⟨Sum.inl_injective, measurable_inl, fun _ hs => hs.inl_image⟩).2 (by simpa using ν.integrable_w)
-    · exact (MeasurableEmbedding.integrable_map_iff ⟨Sum.inr_injective, measurable_inr, fun _ hs => hs.inr_image⟩).2 (by simpa using κ.integrable_w)
+    · exact (MeasurableEmbedding.integrable_map_iff
+        ⟨Sum.inl_injective, measurable_inl, fun _ hs => hs.inl_image⟩).2
+        (by simpa using ν.integrable_w)
+    · exact (MeasurableEmbedding.integrable_map_iff
+        ⟨Sum.inr_injective, measurable_inr, fun _ hs => hs.inr_image⟩).2
+        (by simpa using κ.integrable_w)
 
 /-- The difference `ν - κ` (part of `\label{def:form}`). -/
 def sub (ν κ : FCMeasure) : FCMeasure := add ν (smul (-1) κ)
@@ -1026,7 +1031,7 @@ theorem ext_fourier_uniqueness_dense (ν : Measure ℝ²) [IsFiniteMeasure ν] {
       simp only [E, RCLike.inner_apply, e]
       simp only at hx
       rw [hx, ← Complex.exp_conj, mul_comm]
-      show h x * Complex.exp (-(↑(2 * π * ⟪x, s⟫_ℝ)) * Complex.I) = h x * _
+      change h x * Complex.exp (-(↑(2 * π * ⟪x, s⟫_ℝ)) * Complex.I) = h x * _
       congr 2
       simp [Complex.conj_ofReal, real_inner_comm, map_ofNat]
     have hzero : ∀ ξ, η.fourier ξ = 0 := by
@@ -1267,7 +1272,7 @@ theorem aux_repro_core {K : Set ℝ²} (p : 𝓢(ℝ², ℂ)) (hp : ∀ᶠ ξ in
     simp only [F, norm_mul]
     rw [← norm_mul, ← integral_const_mul]
     refine (norm_integral_le_integral_norm _).trans (le_of_eq ?_)
-    congr 1; funext z; simp [norm_mul, mul_assoc]
+    congr 1; funext z; simp [mul_assoc]
   -- the key identity
   have hkey : ∀ u : 𝓢(ℝ², ℂ), ∫ x, u x * F x = ∫ x, u x * g x := by
     intro u
@@ -1306,8 +1311,8 @@ theorem aux_repro_core {K : Set ℝ²} (p : 𝓢(ℝ², ℂ)) (hp : ∀ᶠ ξ in
     rw [integral_sub (by simpa [SchwartzMap.fourier_coe] using hi1) hi2, sub_eq_zero] at h3
     rw [h1]
     simp_rw [h2]
-    rw [← integral_congr_ae (hgg'.mono fun z hz => by
-      show g z * 𝓕 (⇑q) z = g' z * 𝓕 (⇑q) z; rw [hz]), h3]
+    rw [← integral_congr_ae (hgg'.mono fun z hz =>
+      (by rw [hz] : g z * 𝓕 (⇑q) z = g' z * 𝓕 (⇑q) z)), h3]
     congr 1; funext x; ring
   -- conclude
   have hFl : LocallyIntegrable F volume := by
@@ -1338,6 +1343,8 @@ theorem aux_repro_core {K : Set ℝ²} (p : 𝓢(ℝ², ℂ)) (hp : ∀ᶠ ξ in
         congr 1; funext x; simp [hu, Complex.real_smul, mul_sub]
     _ = 0 := by rw [integral_sub hi1 hi2, this, sub_self]
 
+-- The hypothesis hK belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `ext:reproduction`** (case `g ∈ L²`).
 Suppose $p\in\mathcal S(\mathbb R^2)$ and $\widehat p=1$ on a neighborhood of a compact set $K$.
 If $g\in L^2$ or $g\in L^\infty$ has Fourier support in $K$, then $p*g=g$ almost everywhere.
@@ -1347,7 +1354,6 @@ theorem ext_reproduction_L2 {K : Set ℝ²} (hK : IsCompact K) (p : 𝓢(ℝ², 
     (hp : ∀ᶠ ξ in 𝓝ˢ K, 𝓕 (⇑p) ξ = 1) {g : ℝ² → ℂ} (hg : MemLp g 2 volume)
     (hsupp : HasL2FourierSupportIn K (hg.toLp g)) :
     (fun x => ∫ y, p y * g (x - y)) =ᵐ[volume] g := by
-  clear hK
   have hh : Integrable (fun x => ‖g x‖ ^ 2) volume :=
     (memLp_two_iff_integrable_sq_norm hg.aestronglyMeasurable).1 hg
   refine aux_repro_core p hp hg.aestronglyMeasurable (hg.locallyIntegrable (by norm_num))
@@ -1535,6 +1541,8 @@ theorem aux_bounded_support_ext {K : Set ℝ²} {g : ℝ² → ℂ} (hg : MemLp 
   rw [hT] at this
   rw [← this, SchwartzMap.fourier_coe]
 
+-- The hypothesis hK belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `ext:reproduction`** (case `g ∈ L^∞`).
 Suppose $p\in\mathcal S(\mathbb R^2)$ and $\widehat p=1$ on a neighborhood of a compact set $K$.
 If $g\in L^2$ or $g\in L^\infty$ has Fourier support in $K$, then $p*g=g$ almost everywhere.
@@ -1544,7 +1552,6 @@ theorem ext_reproduction_bounded {K : Set ℝ²} (hK : IsCompact K) (p : 𝓢(�
     (hp : ∀ᶠ ξ in 𝓝ˢ K, 𝓕 (⇑p) ξ = 1) {g : ℝ² → ℂ} (hg : MemLp g ⊤ volume)
     (hsupp : HasFourierSupportIn K g) :
     (fun x => ∫ y, p y * g (x - y)) =ᵐ[volume] g := by
-  clear hK
   have hfin : eLpNormEssSup g volume ≠ ⊤ := by
     have := hg.eLpNorm_lt_top; rw [eLpNorm_exponent_top] at this; exact this.ne
   refine aux_repro_core p hp hg.aestronglyMeasurable (hg.locallyIntegrable le_top)
@@ -1555,6 +1562,8 @@ theorem ext_reproduction_bounded {K : Set ℝ²} (hK : IsCompact K) (p : 𝓢(�
   have := ENNReal.toReal_mono hfin hz
   rwa [toReal_enorm] at this
 
+-- The hypothesis hgi belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `ext:reproduction`** (agreement of the two support notions on `L² ∩ L^∞`).
 Suppose $p\in\mathcal S(\mathbb R^2)$ and $\widehat p=1$ on a neighborhood of a compact set $K$.
 If $g\in L^2$ or $g\in L^\infty$ has Fourier support in $K$, then $p*g=g$ almost everywhere.
@@ -1563,7 +1572,6 @@ Definition `ext:bounded-support` agree. -/
 theorem ext_reproduction_agree {K : Set ℝ²} (hK : IsCompact K) {g : ℝ² → ℂ}
     (hg2 : MemLp g 2 volume) (hgi : MemLp g ⊤ volume) :
     HasFourierSupportIn K g ↔ HasL2FourierSupportIn K (hg2.toLp g) := by
-  clear hgi
   set G : Lp ℂ 2 (volume : Measure ℝ²) := 𝓕 (hg2.toLp g)
   constructor
   · intro h

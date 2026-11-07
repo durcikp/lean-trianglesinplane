@@ -334,7 +334,7 @@ theorem aux_tail_sigma_fourier_le (ξ : ℝ²) : ‖FCMeasure.sigma.fourier ξ�
       Complex.norm_exp_ofReal_mul_I]
     simp
   simp only [this]
-  show ∫ _ : Ang, (1 : ℝ) ∂σ ≤ 1
+  change ∫ _ : Ang, (1 : ℝ) ∂σ ≤ 1
   rw [integral_const]; simp
 
 /-- Auxiliary for `tail:fourier`: `σ̂` is continuous. -/
@@ -387,7 +387,8 @@ theorem aux_tail_mp_negsub (ξ₂ : ℝ²) :
 $\iint|G_0(-\xi_1-\xi_2)G_1(\xi_1)G_2(\xi_2)|\le\|G_0\|_2\|G_1\|_2\|G_2\|_1$. -/
 theorem aux_tail_triple_lintegral_le (G₀ G₁ G₂ : ℝ² → ℂ) (h₀ : AEStronglyMeasurable G₀ volume)
     (h₁ : AEStronglyMeasurable G₁ volume) (h₂ : AEStronglyMeasurable G₂ volume) :
-    ∫⁻ ξ : ℝ² × ℝ², ‖G₀ (-ξ.1 - ξ.2)‖ₑ * ‖G₁ ξ.1‖ₑ * ‖G₂ ξ.2‖ₑ ∂((volume : Measure ℝ²).prod volume) ≤
+    ∫⁻ ξ : ℝ² × ℝ², ‖G₀ (-ξ.1 - ξ.2)‖ₑ * ‖G₁ ξ.1‖ₑ * ‖G₂ ξ.2‖ₑ
+        ∂((volume : Measure ℝ²).prod volume) ≤
       eLpNorm G₀ 2 volume * eLpNorm G₁ 2 volume * eLpNorm G₂ 1 volume := by
   have hm : AEMeasurable (fun ξ : ℝ² × ℝ² => ‖G₀ (-ξ.1 - ξ.2)‖ₑ * ‖G₁ ξ.1‖ₑ * ‖G₂ ξ.2‖ₑ)
       ((volume : Measure ℝ²).prod volume) :=
@@ -634,8 +635,9 @@ theorem aux_tail_fourier_extend (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → �
   have htv : κ.tv ≠ ⊤ := κ.integrable_w.2.ne
   set K : ℝ≥0∞ := 3 * (ENNReal.ofReal C * κ.tv + ENNReal.ofReal Mψ) * S ^ 2 with hK
   have hKt : K ≠ ⊤ := by
-    refine ENNReal.mul_ne_top (ENNReal.mul_ne_top ENNReal.ofNat_ne_top (ENNReal.add_ne_top.2 ⟨ENNReal.mul_ne_top ENNReal.ofReal_ne_top htv,
-      ENNReal.ofReal_ne_top⟩)) (ENNReal.pow_ne_top hSt)
+    refine ENNReal.mul_ne_top (ENNReal.mul_ne_top ENNReal.ofNat_ne_top
+      (ENNReal.add_ne_top.2 ⟨ENNReal.mul_ne_top ENNReal.ofReal_ne_top htv,
+        ENNReal.ofReal_ne_top⟩)) (ENNReal.pow_ne_top hSt)
   have hev : ∀ᶠ n in atTop, d n ≤ 1 := hconv.eventually_le_const zero_lt_one
   have hε : Tendsto (fun n => K * d n) atTop (𝓝 0) := by
     simpa using ENNReal.Tendsto.const_mul hconv (Or.inr hKt)
@@ -769,7 +771,7 @@ theorem aux_tail_approx_l1 {f : ℝ² → ℂ} (hf : MemLp f 2 volume) {K : Set 
       · simp
       · have := hρ h
         simp only [Metric.mem_closedBall] at this ⊢
-        show dist ξ 0 ≤ max ρ 0 + 1
+        change dist ξ 0 ≤ max ρ 0 + 1
         linarith [le_max_left ρ 0]
     · simp [hξ h]
   set H : ℕ → ℝ² → ℂ := fun n ξ => (θ ξ : ℂ) * (aux_l2Fourier ⇑(t n) ξ - aux_l2Fourier f ξ)
@@ -907,7 +909,7 @@ def tailV (α β : ℝ) (w : ℝ²) : Fin 3 → ℝ² :=
 
 /-- Auxiliary for `tail:separation`: `simil 1 0 = 1`. -/
 theorem aux_tail_simil_one : simil 1 0 = 1 := by
-  apply aux_clm_ext; intro x; constructor <;> simp [aux_lw_simil0, aux_lw_simil1]
+  apply aux_clm_ext; intro x; constructor <;> simp
 
 /-- Auxiliary for `tail:separation`: the inverse of a nonzero similarity `aI + bJ`. -/
 theorem aux_tail_inverse_simil (a b : ℝ) (h : a ^ 2 + b ^ 2 ≠ 0) :
@@ -927,7 +929,7 @@ theorem aux_tail_A_eq (α β : ℝ) : tailA α β = simil α (-β) := aux_ff_adj
 theorem aux_tail_AI_eq (α β : ℝ) : tailA α β - 1 = simil (α - 1) (-β) := by
   rw [aux_tail_A_eq]
   apply aux_clm_ext; intro x
-  constructor <;> simp [aux_lw_simil0, aux_lw_simil1] <;> ring
+  constructor <;> simp <;> ring
 
 /-- Auxiliary for `tail:separation`: the coefficients of `T₀ = (A-I)⁻¹`. -/
 def aux_tailT0c (α β : ℝ) : ℝ × ℝ :=
@@ -942,7 +944,7 @@ theorem aux_tail_T0_eq (α β : ℝ) (hβ : β ≠ 0) :
   have : 0 < β ^ 2 := by positivity
   rw [aux_tail_AI_eq, aux_tail_inverse_simil (α - 1) (-β)
     (by rw [neg_sq]; exact ne_of_gt (add_pos_of_nonneg_of_pos (sq_nonneg _) this))]
-  simp [aux_tailT0c, neg_div]
+  simp [aux_tailT0c]
 
 /-- Auxiliary for `tail:separation`: `A⁻¹` as a similarity. -/
 theorem aux_tail_Ainv_eq (α β : ℝ) (hβ : β ≠ 0) :
@@ -950,12 +952,7 @@ theorem aux_tail_Ainv_eq (α β : ℝ) (hβ : β ≠ 0) :
   have : 0 < β ^ 2 := by positivity
   rw [aux_tail_A_eq, aux_tail_inverse_simil α (-β)
     (by rw [neg_sq]; exact ne_of_gt (add_pos_of_nonneg_of_pos (sq_nonneg _) this))]
-  simp [aux_tailAinvc, neg_div]
-
-/-- Auxiliary for `tail:separation`: the coordinates of `simil a b x`. -/
-theorem aux_tail_simil_coord (a b : ℝ) (x : ℝ²) :
-    simil a b x 0 = a * x 0 - b * x 1 ∧ simil a b x 1 = a * x 1 + b * x 0 :=
-  ⟨aux_lw_simil0 a b x, aux_lw_simil1 a b x⟩
+  simp [aux_tailAinvc]
 
 /-- **Lemma `tail:separation`** (the three identities).
 For the coordinates of Definition `tail:coordinates`,
@@ -980,10 +977,10 @@ theorem tail_separation_identities (α β : ℝ) (hβ : β ≠ 0) (ξ : Fin 3 �
   have hn1 : α ^ 2 + β ^ 2 ≠ 0 := ne_of_gt (add_pos_of_nonneg_of_pos (sq_nonneg _) hb2)
   simp only [tailT, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
     Matrix.head_cons, Matrix.tail_cons, neg_apply,
-    ContinuousLinearMap.one_apply, aux_tail_T0_eq α β hβ, aux_tail_Ainv_eq α β hβ, h0]
+    one_apply_eq_self, aux_tail_T0_eq α β hβ, aux_tail_Ainv_eq α β hβ, h0]
   rw [aux_tail_A_eq]
   refine ⟨aux_vec_ext ?_ ?_, aux_vec_ext ?_ ?_, aux_vec_ext ?_ ?_⟩ <;>
-    simp [aux_lw_simil0, aux_lw_simil1, aux_tailT0c, aux_tailAinvc] <;> field_simp <;> ring
+    simp [aux_tailT0c, aux_tailAinvc] <;> field_simp <;> ring
 
 /-- Auxiliary for `tail:separation`: `‖(aI+bJ)x‖ = √(a²+b²)‖x‖`. -/
 theorem aux_tail_norm_simil (a b : ℝ) (x : ℝ²) :
@@ -1080,8 +1077,8 @@ theorem tail_separation_modulation (α β : ℝ) (ν : FCMeasure) (w : ℝ²) (f
     have : -⟪tailV α β w 0, x⟫_ℝ + -⟪tailV α β w 1, x + ν.φ z⟫_ℝ +
         -⟪tailV α β w 2, x + M α β (ν.φ z)⟫_ℝ = 0 := by
       simp only [tailV, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
-        Matrix.head_cons, Matrix.tail_cons, ContinuousLinearMap.sub_apply,
-        ContinuousLinearMap.one_apply, inner_add_right, inner_sub_left, inner_neg_left, hA]
+        Matrix.head_cons, Matrix.tail_cons, sub_apply,
+        one_apply_eq_self, inner_add_right, inner_sub_left, inner_neg_left, hA]
       ring
     rw [this]; simp [e]
   calc e (-⟪tailV α β w 0, x⟫_ℝ) * f 0 x * (e (-⟪tailV α β w 1, x + ν.φ z⟫_ℝ) * f 1 (x + ν.φ z)) *
@@ -1103,11 +1100,11 @@ theorem tail_separation_translate (α β : ℝ) (hβ : β ≠ 0) (w : ℝ²) (j 
   fin_cases j <;>
     simp only [tailT, tailV, Fin.zero_eta, Fin.mk_one, Fin.reduceFinMk, Matrix.cons_val_zero,
       Matrix.cons_val_one, Matrix.cons_val_two, Matrix.head_cons, Matrix.tail_cons,
-      neg_apply, ContinuousLinearMap.one_apply] <;>
+      neg_apply, one_apply_eq_self] <;>
     simp only [aux_tail_T0_eq α β hβ, aux_tail_Ainv_eq α β hβ] <;>
-    simp only [aux_tail_AI_eq, aux_tail_A_eq] <;>
+    simp only [aux_tail_A_eq] <;>
     refine aux_vec_ext ?_ ?_ <;>
-    simp [aux_lw_simil0, aux_lw_simil1, aux_tailT0c, aux_tailAinvc] <;> field_simp <;> ring
+    simp [aux_tailT0c, aux_tailAinvc] <;> field_simp <;> ring
 
 /-! ### Smooth frequency partitions and spectral mass (`tail:partition-definition`) -/
 
@@ -1203,10 +1200,11 @@ theorem aux_tail_norm_le_of_coord (v : ℝ²) (l : ℝ) (hl : 0 ≤ l) (h : ∀ 
   exact (pow_le_pow_iff_left₀ (norm_nonneg _) (by positivity) two_ne_zero).1 this
 
 /-- Auxiliary for `tail:partition`: number of integer points of a box with side `L`. -/
-theorem aux_tail_lattice_count {ι : Type*} [Fintype ι] [DecidableEq ι] (a : ι → ℝ) (L : ℝ)
+theorem aux_tail_lattice_count {ι : Type*} [Fintype ι] (a : ι → ℝ) (L : ℝ)
     (hL : 0 ≤ L) :
     {q : ι → ℤ | ∀ i, a i ≤ q i ∧ (q i : ℝ) ≤ a i + L}.encard ≤
       ((⌊L⌋₊ + 1) ^ Fintype.card ι : ℕ) := by
+  classical
   set T := Fintype.piFinset fun i => Finset.Icc ⌈a i⌉ ⌊a i + L⌋
   have hsub : {q : ι → ℤ | ∀ i, a i ≤ q i ∧ (q i : ℝ) ≤ a i + L} ⊆ ↑T := by
     intro q hq
@@ -1235,7 +1233,7 @@ theorem aux_tail_lattice_count3 (a : Fin 3 → Fin 2 → ℝ) (L : ℝ) (hL : 0 
   have hsub : {q : Fin 3 → Fin 2 → ℤ | ∀ i k, a i k ≤ q i k ∧ (q i k : ℝ) ≤ a i k + L} ⊆ ↑T := by
     intro q hq
     simp only [Fintype.coe_piFinset, Set.mem_pi, Set.mem_univ, forall_const, T,
-      Finset.mem_coe, Fintype.mem_piFinset, Finset.mem_Icc]
+      Finset.mem_coe, Finset.mem_Icc]
     intro i k
     exact ⟨Int.ceil_le.2 (hq i k).1, Int.le_floor.2 (hq i k).2⟩
   refine (Set.encard_le_encard hsub).trans ?_
@@ -1546,16 +1544,17 @@ theorem aux_tail_VT (α β : ℝ) (hβ : β ≠ 0) (j : Fin 3) (ξ : ℝ²) :
   fin_cases j <;>
     simp only [tailT, aux_tailVmap, Fin.zero_eta, Fin.mk_one, Fin.reduceFinMk,
       Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two, Matrix.head_cons,
-      Matrix.tail_cons, neg_apply, ContinuousLinearMap.one_apply] <;>
+      Matrix.tail_cons, neg_apply, one_apply_eq_self] <;>
     simp only [aux_tail_T0_eq α β hβ, aux_tail_Ainv_eq α β hβ] <;>
-    simp only [aux_tail_AI_eq, aux_tail_A_eq] <;>
+    simp only [aux_tail_A_eq] <;>
     refine aux_vec_ext ?_ ?_ <;>
-    simp [aux_lw_simil0, aux_lw_simil1, aux_tailT0c, aux_tailAinvc] <;> field_simp <;> ring
+    simp [aux_tailT0c, aux_tailAinvc] <;> field_simp <;> ring
 
 /-- Auxiliary for `tail:partition`: smoothness and compact support of `Auto.aux_tailM`. -/
 theorem aux_tailM_smooth (α β : ℝ) (hβ : β ≠ 0) (φ : ℝ² → ℝ) (hφs : ContDiff ℝ (⊤ : ℕ∞) φ)
     (hφc : HasCompactSupport φ) (h : ℝ) (j : Fin 3) (q : Fin 2 → ℤ) (r : ℝ) (hhr : h * r ≠ 0) :
-    ContDiff ℝ (⊤ : ℕ∞) (aux_tailM α β φ h j q r) ∧ HasCompactSupport (aux_tailM α β φ h j q r) := by
+    ContDiff ℝ (⊤ : ℕ∞) (aux_tailM α β φ h j q r) ∧
+      HasCompactSupport (aux_tailM α β φ h j q r) := by
   constructor
   · refine Complex.ofRealCLM.contDiff.comp (hφs.comp ?_)
     exact ((contDiff_const_smul _).comp (tailT α β j).contDiff).sub contDiff_const
@@ -1622,7 +1621,7 @@ theorem aux_tailM_kernel_l1 (α β : ℝ) (hβ : β ≠ 0) (φ : ℝ² → ℝ) 
 theorem aux_tail_box_compact (c : ℝ²) (l : ℝ) :
     IsCompact {x : ℝ² | ∀ i, x i ∈ Icc (c i) (c i + l)} := by
   refine Metric.isCompact_of_isClosed_isBounded ?_ ?_
-  · simp only [Set.setOf_forall]
+  · simp only [Set.ofPred_forall]
     exact isClosed_iInter fun i => isClosed_Icc.preimage (by fun_prop)
   · refine (Metric.isBounded_closedBall (x := (0 : ℝ²)) (r := 2 * (‖c‖ + |l|))).subset ?_
     intro x hx
@@ -1707,7 +1706,7 @@ theorem aux_tail_bound_mass (α β : ℝ) (hβ : β ≠ 0) (φ : ℝ² → ℝ) 
   rw [lintegral_indicator hTQ, lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
   gcongr
   simp only [tailMu]
-  rw [Measure.coe_finset_sum, Finset.sum_apply]
+  rw [Measure.coe_finsetSum, Finset.sum_apply]
   refine le_trans (le_of_eq ?_) (Finset.single_le_sum (f := fun i : Fin 3 =>
     (((volume : Measure ℝ²).withDensity
       (fun ξ => ‖aux_l2Fourier (f i) ξ‖ₑ ^ 2)).map (tailT α β i)) Q)
@@ -1826,7 +1825,7 @@ theorem aux_tail_l2F_sum {ι : Type*} [Countable ι] (s : Finset ι) (g : ι →
     (hg : ∀ i, MemLp (g i) 2 volume) :
     aux_l2Fourier (fun x => ∑ i ∈ s, g i x) =ᵐ[volume]
       fun ξ => ∑ i ∈ s, aux_l2Fourier (g i) ξ := by
-  have hS : MemLp (fun x => ∑ i ∈ s, g i x) 2 volume := memLp_finset_sum s fun i _ => hg i
+  have hS : MemLp (fun x => ∑ i ∈ s, g i x) 2 volume := memLp_finsetSum s fun i _ => hg i
   have hL : hS.toLp _ = ∑ i ∈ s, (hg i).toLp (g i) := by
     apply Lp.ext
     filter_upwards [hS.coeFn_toLp, aux_hs_coeFn_sum s (fun i => (hg i).toLp (g i)),
@@ -1877,7 +1876,7 @@ theorem aux_tail_partial_tendsto (α β : ℝ) (hβ : β ≠ 0) (φ : ℝ² → 
   have hP := fun q => aux_tail_P_l2 α β hβ φ hφs hφc h r hhr j q hf
   choose hP2 hPF hPK using hP
   set S : ℕ → ℝ² → ℂ := fun N x => ∑ q ∈ aux_tailBox N, tailP α β φ h j q r f x
-  have hS2 : ∀ N, MemLp (S N) 2 volume := fun N => memLp_finset_sum _ fun q _ => hP2 q
+  have hS2 : ∀ N, MemLp (S N) 2 volume := fun N => memLp_finsetSum _ fun q _ => hP2 q
   set η : ℝ² → ℝ² := fun ξ => (h * r)⁻¹ • tailT α β j ξ
   set c : ℕ → ℝ² → ℂ := fun N ξ =>
     ((∑ q ∈ aux_tailBox N, φ (η ξ - latticePt q) : ℝ) : ℂ) - 1
@@ -1922,7 +1921,7 @@ theorem aux_tail_partial_tendsto (α β : ℝ) (hβ : β ≠ 0) (φ : ℝ² → 
   have hcm : ∀ N, Continuous (c N) := by
     intro N
     have := hφs.continuous
-    exact (Complex.continuous_ofReal.comp (continuous_finset_sum _ fun q _ =>
+    exact (Complex.continuous_ofReal.comp (continuous_finsetSum _ fun q _ =>
       this.comp ((continuous_const_smul _).comp (tailT α β j).continuous |>.sub
         continuous_const))).sub continuous_const
   have hI : Tendsto (fun N => ∫⁻ ξ, ‖c N ξ * F ξ‖ₑ ^ (2 : ℝ)) atTop (𝓝 0) := by
@@ -1998,8 +1997,8 @@ theorem aux_tail_form_tendsto (α β : ℝ) (hβ : β ≠ 0) (κ : FCMeasure) (f
       _ = S := add_comm _ _
   rw [tendsto_iff_edist_tendsto_0]
   refine tendsto_of_tendsto_of_tendsto_of_le_of_le' tendsto_const_nhds
-    (by simpa using ENNReal.Tendsto.const_mul hd (Or.inr hKt)) (Eventually.of_forall fun n => zero_le)
-    ?_
+    (by simpa using ENNReal.Tendsto.const_mul hd (Or.inr hKt))
+    (Eventually.of_forall fun n => zero_le) ?_
   filter_upwards [hev] with n hn
   rw [edist_eq_enorm_sub]
   refine (hC κ f (g n) hf (hg n)).trans ?_
@@ -2061,14 +2060,14 @@ theorem aux_tail_bound_two (α β : ℝ) (hβ : β ≠ 0) (φ : ℝ² → ℝ) (
 /-- Auxiliary for `tail:partition`: trilinear expansion of the form of `σ*κ` over finite sums of
 `L²` inputs. -/
 theorem aux_tail_form_finset_sum (α β : ℝ) (hβ : β ≠ 0) (κ : FCMeasure) {ι : Type*}
-    [DecidableEq ι] (B : Finset ι) (g : Fin 3 → ι → ℝ² → ℂ)
+    (B : Finset ι) (g : Fin 3 → ι → ℝ² → ℂ)
     (hg : ∀ j i, MemLp (g j i) 2 volume) :
     form α β (FCMeasure.sigma.conv κ) (fun x => ∑ i ∈ B, g 0 i x) (fun x => ∑ i ∈ B, g 1 i x)
         (fun x => ∑ i ∈ B, g 2 i x) =
       ∑ q ∈ Fintype.piFinset (fun _ : Fin 3 => B),
         form α β (FCMeasure.sigma.conv κ) (g 0 (q 0)) (g 1 (q 1)) (g 2 (q 2)) := by
   have hs : ∀ j, MemLp (fun x => ∑ i ∈ B, g j i x) 2 volume :=
-    fun j => memLp_finset_sum _ fun i _ => hg j i
+    fun j => memLp_finsetSum _ fun i _ => hg j i
   rw [(aux_tail_form_eq_prod α β hβ κ _ _ _ (hs 0) (hs 1) (hs 2)).2]
   have hI : ∀ q ∈ Fintype.piFinset (fun _ : Fin 3 => B), Integrable (fun p :
       (FCMeasure.sigma.conv κ).Z × ℝ² => g 0 (q 0) p.2 *
@@ -2078,7 +2077,7 @@ theorem aux_tail_form_finset_sum (α β : ℝ) (hβ : β ≠ 0) (κ : FCMeasure)
     fun q _ => (aux_tail_form_eq_prod α β hβ κ _ _ _ (hg 0 _) (hg 1 _) (hg 2 _)).1
   rw [Finset.sum_congr rfl fun q _ =>
     (aux_tail_form_eq_prod α β hβ κ _ _ _ (hg 0 (q 0)) (hg 1 (q 1)) (hg 2 (q 2))).2,
-    ← integral_finset_sum _ hI]
+    ← integral_finsetSum _ hI]
   congr 1; funext p
   have key := Finset.prod_univ_sum (fun _ : Fin 3 => B)
     (fun j i => g j i (![p.2, p.2 + (FCMeasure.sigma.conv κ).φ p.1,
@@ -2113,7 +2112,8 @@ theorem aux_tail_expansion (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (
   have hP2 : ∀ j q, MemLp (tailP α β φ h j q r (f j)) 2 volume :=
     fun j q => (aux_tail_P_l2 α β hβ φ hφs hφc h r hhr j q (hf j)).1
   obtain ⟨C, -, hC⟩ := lem_triple_l2 α β hβ
-  have ha : ∀ q : T, ‖a q‖ₑ ≤ ENNReal.ofReal C * κ.tv * (u 0 (q.1 0) * u 1 (q.1 1) * u 2 (q.1 2)) := by
+  have ha : ∀ q : T,
+      ‖a q‖ₑ ≤ ENNReal.ofReal C * κ.tv * (u 0 (q.1 0) * u 1 (q.1 1) * u 2 (q.1 2)) := by
     intro q
     have := (hC κ (fun j => tailP α β φ h j (q.1 j) r (f j)) fun j => hP2 j _).2
     simp only [Fin.prod_univ_three] at this
@@ -2137,8 +2137,8 @@ theorem aux_tail_expansion (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (
     calc ∑' q : T, ‖a q‖ₑ ≤ ∑' q : T, ENNReal.ofReal C * κ.tv *
           (ENNReal.ofReal C2 * eLpNorm (f 2) 2 volume * (u 0 (q.1 0) ^ 2 + u 1 (q.1 1) ^ 2)) := by
           refine ENNReal.tsum_le_tsum fun q => (ha q).trans (mul_le_mul' le_rfl ?_)
-          calc u 0 (q.1 0) * u 1 (q.1 1) * u 2 (q.1 2) = u 2 (q.1 2) * (u 0 (q.1 0) * u 1 (q.1 1)) :=
-                by ring
+          calc u 0 (q.1 0) * u 1 (q.1 1) * u 2 (q.1 2)
+              = u 2 (q.1 2) * (u 0 (q.1 0) * u 1 (q.1 1)) := by ring
             _ ≤ _ := mul_le_mul' (hu2 _) (aux_tail_mul_le_sq_add _ _)
       _ = ENNReal.ofReal C * κ.tv * (ENNReal.ofReal C2 * eLpNorm (f 2) 2 volume *
           (∑' q : T, u 0 (q.1 0) ^ 2 + ∑' q : T, u 1 (q.1 1) ^ 2)) := by
@@ -2155,7 +2155,7 @@ theorem aux_tail_expansion (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (
     have htv : κ.tv ≠ ⊤ := κ.integrable_w.2.ne
     simp only [ne_eq, ENNReal.mul_eq_top, ENNReal.add_eq_top, ENNReal.ofReal_ne_top,
       ENNReal.natCast_ne_top, htv, h0, h1, h2, ENNReal.pow_eq_top_iff, false_and, and_false,
-      or_false, or_self, not_false_eq_true]
+      or_self, not_false_eq_true]
   have hsn : Summable fun q : T => ‖a q‖ := by
     have : Summable fun q : T => ‖a q‖₊ := by
       rw [← ENNReal.tsum_coe_ne_top_iff_summable]
@@ -2198,11 +2198,12 @@ theorem aux_tail_expansion (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (
     refine Finset.sum_filter_of_ne fun q _ hb => ?_
     by_contra hc
     exact hb (aux_tail_noncontrib α β hβ χ hχ φ hφs hφc Qstar hφQ h r hh hr q hc f hf)
-  have hlim2 : Tendsto (fun N => ∑ x ∈ G N, a x) atTop (𝓝 (tailForm α β χ r (f 0) (f 1) (f 2))) := by
+  have hlim2 :
+      Tendsto (fun N => ∑ x ∈ G N, a x) atTop (𝓝 (tailForm α β χ r (f 0) (f 1) (f 2))) := by
     simp_rw [e]
     exact aux_tail_form_tendsto α β hβ κ f hf
       (fun N j x => ∑ q ∈ aux_tailBox N, tailP α β φ h j q r (f j) x)
-      (fun N j => memLp_finset_sum _ fun q _ => hP2 j q)
+      (fun N j => memLp_finsetSum _ fun q _ => hP2 j q)
       (fun j => aux_tail_partial_tendsto α β hβ φ hφs hφc hφ0 hφ1 h r hhr j (hf j))
   rw [tendsto_nhds_unique hlim2 hlim]
   exact hs
@@ -2278,12 +2279,12 @@ theorem aux_tail_med_max (x : Fin 3 → ℝ≥0∞) :
   rcases le_total (x 0) (x 1) with h01 | h01 <;> rcases le_total (x 1) (x 2) with h12 | h12 <;>
     rcases le_total (x 0) (x 2) with h02 | h02
   all_goals first
-    | (refine ⟨2, ?_, fun j hj => ?_⟩; · simp [h01, h12, h02, max_eq_left, max_eq_right, min_eq_left, min_eq_right]
-       fin_cases j <;> simp_all [max_le_iff, le_max_iff, le_min_iff, min_le_iff])
-    | (refine ⟨1, ?_, fun j hj => ?_⟩; · simp [h01, h12, h02, max_eq_left, max_eq_right, min_eq_left, min_eq_right]
-       fin_cases j <;> simp_all [max_le_iff, le_max_iff, le_min_iff, min_le_iff])
-    | (refine ⟨0, ?_, fun j hj => ?_⟩; · simp [h01, h12, h02, max_eq_left, max_eq_right, min_eq_left, min_eq_right]
-       fin_cases j <;> simp_all [max_le_iff, le_max_iff, le_min_iff, min_le_iff])
+    | (refine ⟨2, ?_, fun j hj => ?_⟩; · simp [h01, h12, h02]
+       fin_cases j <;> simp_all)
+    | (refine ⟨1, ?_, fun j hj => ?_⟩; · simp [h01, h12, h02]
+       fin_cases j <;> simp_all)
+    | (refine ⟨0, ?_, fun j hj => ?_⟩; · simp [h01, h02]
+       fin_cases j <;> simp_all)
 
 /-- Auxiliary for `tail:one-triple`: modulating a convolution by `𝓕⁻m` is convolution of the
 modulated input with `𝓕⁻` of the translated multiplier. -/
@@ -2536,7 +2537,8 @@ theorem tail_one_triple (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (hχ
   have L4 : L ^ 4 ≤ ENNReal.ofReal K1 * ENNReal.ofReal (a r ^ 2 * K2) * aux_med3 x ^ 4 *
       aux_max3 x := by
     fin_cases i
-    · exact aux_tail_combine L (x 0) (x 1) (x 2) _ _ _ _ A1 (A2' 0 1 2 hsp.1) hi.le (hoth 1 (by decide)) (hoth 2 (by decide))
+    · exact aux_tail_combine L (x 0) (x 1) (x 2) _ _ _ _ A1 (A2' 0 1 2 hsp.1) hi.le
+        (hoth 1 (by decide)) (hoth 2 (by decide))
     · exact aux_tail_combine L (x 1) (x 0) (x 2) _ _ _ _ (by rwa [mul_comm (x 1) (x 0)])
         (A2' 1 0 2 hsp.2.1) hi.le (hoth 0 (by decide))
         (hoth 2 (by decide))
@@ -2555,7 +2557,7 @@ theorem tail_one_triple (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (hχ
   rw [mul_pow, mul_pow, hm4, ← ENNReal.ofReal_pow (by positivity), mul_pow, hsq, hr4,
     ← ENNReal.ofReal_mul hK1]
   congr 2
-  ring
+  ring_nf
 
 /-! ### An increasing mass functional (`tail:mass-definition`) -/
 
@@ -2604,7 +2606,7 @@ theorem aux_tail_med3_le_add (x : Fin 3 → ℝ≥0∞) (i j : Fin 3) (hij : i �
 
 /-- Auxiliary for `tail:increment`: among three finite masses, at least two are at most half of
 their sum. -/
-theorem aux_tail_two_good (y : Fin 3 → ℝ≥0∞) (hs : y 0 + y 1 + y 2 ≠ ⊤) :
+theorem aux_tail_two_good (y : Fin 3 → ℝ≥0∞) (_hs : y 0 + y 1 + y 2 ≠ ⊤) :
     ∃ a b : Fin 3, a ≠ b ∧ 2 * y a ≤ y 0 + y 1 + y 2 ∧ 2 * y b ≤ y 0 + y 1 + y 2 := by
   set s := y 0 + y 1 + y 2
   have key : ∀ a b : Fin 3, y a + y b ≤ s → ¬ 2 * y a ≤ s → ¬ 2 * y b ≤ s → False := by
@@ -2641,7 +2643,7 @@ theorem aux_tail_measurable_ball (μ : Measure ℝ²) [SFinite μ] (t : ℝ) :
 theorem aux_tail_mu_finite (α β : ℝ) (f : Fin 3 → ℝ² → ℂ) (hf : ∀ j, MemLp (f j) 2 volume) :
     tailMu α β f univ ≠ ⊤ := by
   simp only [tailMu]
-  rw [Measure.coe_finset_sum, Finset.sum_apply]
+  rw [Measure.coe_finsetSum, Finset.sum_apply]
   refine (ENNReal.sum_lt_top.2 fun j _ => ?_).ne
   rw [Measure.map_apply (tailT α β j).continuous.measurable MeasurableSet.univ,
     preimage_univ, withDensity_apply _ MeasurableSet.univ, Measure.restrict_univ,
@@ -2761,6 +2763,9 @@ theorem aux_tail_increment_one (μ : Measure ℝ²) [IsFiniteMeasure μ] (Q : Fi
           ENNReal.ofReal_one, one_mul]
     _ ≤ _ := by gcongr
 
+-- The hypothesis hβ belongs to the manuscript statement but is not needed by the proof.
+-- The hypothesis hχ belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `tail:increment`** (Geometric mass increment).
 For the square families and contributing triples of Lemma `tail:partition`, there are fixed
 constants $0<c<C$ such that
@@ -2823,7 +2828,8 @@ theorem tail_increment (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (hχ 
     rw [e, ENNReal.tsum_set_const]
     gcongr
     have := hN r hr z
-    have h2 : (({q' : Fin 2 → ℤ | z ∈ tailSquare Qs h r q'}.encard : ℕ∞) : ℝ≥0∞) ≤ ((N : ℕ∞) : ℝ≥0∞) :=
+    have h2 : (({q' : Fin 2 → ℤ | z ∈ tailSquare Qs h r q'}.encard : ℕ∞) : ℝ≥0∞) ≤
+        ((N : ℕ∞) : ℝ≥0∞) :=
       ENat.toENNReal_le.2 this
     simpa using h2
   have hH : ∫⁻ z, G z ∂μ = tailH μ ((D + d) * r) - tailH μ (d / 4 * r) := by
@@ -2870,6 +2876,8 @@ theorem aux_tail_telescope (a : ℕ → ℝ≥0∞) (ha : Monotone a) (m n : ℕ
             simp [ht, this]
           · rw [add_comm, tsub_add_tsub_cancel (ha (by omega)) (ha (by omega))]
 
+-- The hypothesis hD belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `tail:telescoping`** (Dyadic telescoping of the mass increments; stated for
 $[0,\infty]$-valued $H$, which makes the boundedness hypothesis unnecessary).
 For $0<c<C$, every nondecreasing bounded function $H$ satisfies
@@ -2916,7 +2924,8 @@ theorem tail_telescoping (c C : ℝ) (hc : 0 < c) (hcC : c < C) (H : ℝ → ℝ
         refine Finset.sum_congr rfl fun i _ => Finset.sum_congr rfl fun k _ => ?_
         rw [add_comm k i]
     _ ≤ ∑ i ∈ Finset.range D, S :=
-        Finset.sum_le_sum fun i _ => (aux_tail_telescope a ha i n).trans (tsub_le_self.trans (haS _))
+        Finset.sum_le_sum fun i _ =>
+          (aux_tail_telescope a ha i n).trans (tsub_le_self.trans (haS _))
     _ = D * S := by simp
 
 /-! ### Uniform annular tails (`tail:bound`) -/
@@ -2964,7 +2973,7 @@ theorem aux_tailPhi1_hasSum (t : ℝ) : HasSum (fun n : ℤ => aux_tailPhi1 (t -
     push_cast
     rw [Real.smoothTransition.one_of_one_le (x := t - (⌊t⌋ - 1)) (by linarith),
       Real.smoothTransition.zero_of_nonpos (x := t - (⌊t⌋ - 1 + 2) - 1) (by linarith)]
-    ring
+    ring_nf
   rwa [hsum] at hs
 
 /-- Auxiliary for `tail:bound`: a smooth partition of unity as required in
@@ -3012,7 +3021,7 @@ theorem aux_tail_partition_data_exists : ∃ (φ : ℝ² → ℝ) (Qstar : Set �
 theorem aux_tail_mu_univ (α β : ℝ) (f : Fin 3 → ℝ² → ℂ) (hf : ∀ j, MemLp (f j) 2 volume) :
     tailMu α β f univ = ∑ j, eLpNorm (f j) 2 volume ^ 2 := by
   simp only [tailMu]
-  rw [Measure.coe_finset_sum, Finset.sum_apply]
+  rw [Measure.coe_finsetSum, Finset.sum_apply]
   refine Finset.sum_congr rfl fun j _ => ?_
   rw [Measure.map_apply (tailT α β j).continuous.measurable MeasurableSet.univ,
     preimage_univ, withDensity_apply _ MeasurableSet.univ, Measure.restrict_univ,
@@ -3107,7 +3116,8 @@ theorem tail_bound (α β : ℝ) (hβ : β ≠ 0) (χ : ℝ² → ℝ) (hχ : au
           simp only [X]
           gcongr
           exact le_max_left _ _
-  have hHsup : (⨆ (t : ℝ) (_ : 0 < t), tailH μ t) ≤ ENNReal.ofReal ((3 * B' ^ 2) ^ (5 / 4 : ℝ)) := by
+  have hHsup :
+      (⨆ (t : ℝ) (_ : 0 < t), tailH μ t) ≤ ENNReal.ofReal ((3 * B' ^ 2) ^ (5 / 4 : ℝ)) := by
     refine iSup₂_le fun t _ => (aux_tailH_le μ t).trans ?_
     rw [aux_tail_mu_univ α β f hf2, ← ENNReal.ofReal_rpow_of_nonneg (by positivity) (by norm_num)]
     gcongr

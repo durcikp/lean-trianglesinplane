@@ -123,6 +123,8 @@ theorem aux_oneParam_exp {𝔸 : Type*} [NormedRing 𝔸] [NormedAlgebra ℝ �
     _ = g h * NormedSpace.exp (h • T) := by simp only [g, mul_assoc]
     _ = NormedSpace.exp (h • T) := by rw [hconst, hg0, one_mul]
 
+-- The hypothesis hGL belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `ext:matrix-group`** (exponential form near zero).
 Let $U$ be a neighborhood of zero in $\mathbb R^2$.  Suppose $C:U\to\mathrm{GL}_d(\mathbb R)$ is
 continuous, $C(0)=I$, and $C(h+k)=C(h)C(k)$ whenever $h,k,h+k\in U$.
@@ -134,7 +136,6 @@ theorem ext_matrix_group {d : ℕ} {U : Set ℝ²} (hU : U ∈ 𝓝 (0 : ℝ²))
     (hC0 : C 0 = 1) (hmul : ∀ h k, h ∈ U → k ∈ U → h + k ∈ U → C (h + k) = C h * C k) :
     ∃ T₁ T₂ : Matrix (Fin d) (Fin d) ℝ, Commute T₁ T₂ ∧
       ∀ᶠ h in 𝓝 (0 : ℝ²), C h = NormedSpace.exp (h 0 • T₁ + h 1 • T₂) := by
-  have _ := hGL -- invertibility is automatic near zero and not needed below
   open scoped Matrix.Norms.Operator in
   obtain ⟨ε, hε, hball⟩ := Metric.mem_nhds_iff.mp hU
   set e : Fin 2 → ℝ² := fun i => EuclideanSpace.single i (1 : ℝ) with he
@@ -392,6 +393,8 @@ theorem aux_analyticZero_euclidean (d : ℕ) : aux_AnalyticZeroProp (EuclideanSp
   · intro x
     exact (PiLp.continuousLinearEquiv 2 ℝ (fun _ : Fin d => ℝ)).symm.analyticAt x
 
+-- The hypothesis hd belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `ext:analytic-zero`** (connected open subsets of `ℝ^d`, `d ≤ 3`).
 Let $F:U\to\mathbb R$ be real analytic on a connected open set $U\subset\mathbb R^d$, where
 $d=1,2,$ or $3$.  If $F$ vanishes on a set of positive Lebesgue measure, it vanishes
@@ -403,7 +406,6 @@ theorem ext_analytic_zero {d : ℕ} (hd : d = 1 ∨ d = 2 ∨ d = 3)
     (hUo : IsOpen U) (hUc : IsConnected U) {F : EuclideanSpace ℝ (Fin d) → ℝ}
     (hF : AnalyticOnNhd ℝ F U) (hpos : 0 < volume {x ∈ U | F x = 0}) :
     ∀ x ∈ U, F x = 0 := by
-  have _ := hd -- the argument works in every dimension
   exact aux_analyticZero_euclidean d U hUo hUc.isPreconnected F hF hpos
 
 /-- **Lemma `ext:analytic-zero`** (functions on `ℝ² × ℝ/(2πℤ)`).

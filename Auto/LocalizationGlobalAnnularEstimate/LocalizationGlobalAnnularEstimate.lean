@@ -283,7 +283,8 @@ lemma aux_loc_expand (α β : ℝ) (ν P : FCMeasure) (i l : Fin 3) (hl : l ≠ 
     measurable_snd.add ((Lv α β l).continuous.measurable.comp (ν.measurable_φ.comp measurable_fst))
   have hΨm : AEStronglyMeasurable (Function.uncurry Ψ) ((ν.m.prod volume).prod P.m) := by
     have h1 : Measurable (fun q : (ν.Z × ℝ²) × P.Z => (θ (Y q.1) : ℂ) * G (Y q.1 - P.φ q.2)) :=
-      (Complex.continuous_ofReal.measurable.comp (hθc.measurable.comp (hYm.comp measurable_fst))).mul
+      (Complex.continuous_ofReal.measurable.comp
+        (hθc.measurable.comp (hYm.comp measurable_fst))).mul
         (hGm.comp ((hYm.comp measurable_fst).sub (P.measurable_φ.comp measurable_snd)))
     have h2 : AEStronglyMeasurable (fun q : (ν.Z × ℝ²) × P.Z => E q.1)
         ((ν.m.prod volume).prod P.m) := (aux_fb_aesm α β ν _ hFm).comp_fst
@@ -622,7 +623,8 @@ lemma aux_loc_Phi_big (α β : ℝ) (ω : ℝ → ℝ) (hω : aux_loc_SmallSupp 
           rw [Finset.prod_mul_distrib]; simp
   calc P.tv * (κ.tv * ENNReal.ofReal (ω s) *
         ∏ m, eLpNorm (Function.update (aux_locIn P θ h) l (h l) m) (aux_slotExp i m) volume)
-      ≤ Bp * (κ.tv * ENNReal.ofReal (ω s) * (Bp ^ 3 * ∏ m, eLpNorm (h m) (aux_slotExp i m) volume)) := by
+      ≤ Bp * (κ.tv * ENNReal.ofReal (ω s) *
+          (Bp ^ 3 * ∏ m, eLpNorm (h m) (aux_slotExp i m) volume)) := by
         gcongr
     _ = _ := by ring
 
@@ -1108,7 +1110,8 @@ lemma aux_loc_bound (α β : ℝ) (hβ : β ≠ 0) (ω : ℝ → ℝ) (hω : aux
           (fun x => (θ 1 (x - q) : ℂ) * F 1 x) (fun x => (θ 2 (x - q) : ℂ) * F 2 x)‖ₑ
         ≤ ∫⁻ q, C * (eLpNorm (g q j) 2 volume ^ 2 + eLpNorm (g q k) 2 volume ^ 2) :=
           lintegral_mono hloc
-      _ = C * (volume B * eLpNorm (f' j) 2 volume ^ 2 + volume B * eLpNorm (f' k) 2 volume ^ 2) := by
+      _ = C * (volume B * eLpNorm (f' j) 2 volume ^ 2 +
+          volume B * eLpNorm (f' k) 2 volume ^ 2) := by
           have mj : Measurable (fun q => eLpNorm (g q j) 2 volume ^ 2) := hsqj.1
           have mk : Measurable (fun q => eLpNorm (g q k) 2 volume ^ 2) := hsqk.1
           have ij : ∫⁻ q, eLpNorm (g q j) 2 volume ^ 2 =
@@ -1321,7 +1324,7 @@ lemma aux_glob_scaleR_norm (h : ℝ² → ℂ) {R : ℝ} (hR : 0 < R) :
     ∫ x, ‖scaleR R h x‖ = ∫ x, ‖h x‖ := by
   rw [← aux_glob_int_comp_smul (fun x => ‖h x‖) hR]
   congr 1; funext x
-  simp [scaleR, norm_mul]
+  simp [scaleR]
 
 /-- Auxiliary for `ann:global` (`Auto.ann_global`): the presentation of `ofDensity k` for
 integrable `k`. -/
@@ -1345,7 +1348,7 @@ lemma aux_glob_ofDensity_conv {k : ℝ² → ℂ} (hk : Integrable k) (f : ℝ²
 /-- Auxiliary for `ann:global` (`Auto.ann_global`): `‖σ * κ‖_TV ≤ ‖κ‖_TV` for the presentations. -/
 lemma aux_glob_tv_sigma_conv (κ : FCMeasure) : (FCMeasure.sigma.conv κ).tv ≤ κ.tv := by
   unfold FCMeasure.tv
-  show ∫⁻ z : Ang × κ.Z, ‖(1 : ℂ) * κ.w z.2‖ₑ ∂(σ.prod κ.m) ≤ _
+  change ∫⁻ z : Ang × κ.Z, ‖(1 : ℂ) * κ.w z.2‖ₑ ∂(σ.prod κ.m) ≤ _
   simp only [one_mul]
   rw [lintegral_prod (fun z : Ang × κ.Z => ‖κ.w z.2‖ₑ)
     (κ.integrable_w.1.enorm.comp_quasiMeasurePreserving Measure.quasiMeasurePreserving_snd)]
@@ -1407,7 +1410,7 @@ lemma aux_glob_var_tendsto {h : ℝ² → ℂ} (hh : Integrable h) :
     have hk : Integrable k := aux_glob_scaleR_int hh hR.ne'
     have hm : MeasurableSet {y : ℝ² | 1 < ‖y‖} := measurableSet_lt measurable_const measurable_norm
     unfold FCMeasure.varOn
-    show ∫⁻ z in (fun p : Ang × ℝ² => u p.1 + p.2) ⁻¹' {u | 2 < ‖u‖},
+    change ∫⁻ z in (fun p : Ang × ℝ² => u p.1 + p.2) ⁻¹' {u | 2 < ‖u‖},
         ‖(1 : ℂ) * (FCMeasure.ofDensity k).w z.2‖ₑ ∂(σ.prod volume) ≤ _
     rw [aux_glob_ofDensity_w hk]
     calc ∫⁻ z in (fun p : Ang × ℝ² => u p.1 + p.2) ⁻¹' {u | 2 < ‖u‖},
@@ -1446,7 +1449,7 @@ lemma aux_glob_var_tendsto {h : ℝ² → ℂ} (hh : Integrable h) :
           · have : R < ‖R • y‖ := by rw [hn]; nlinarith
             rw [Set.indicator_of_mem (show y ∈ {y : ℝ² | 1 < ‖y‖} from hy),
               Set.indicator_of_mem (show R • y ∈ {y : ℝ² | R < ‖y‖} from this)]
-            simp [hkdef, scaleR, norm_mul]
+            simp [hkdef, scaleR]
           · have : ¬ R < ‖R • y‖ := by rw [hn]; push Not at hy ⊢; nlinarith
             rw [Set.indicator_of_notMem (show y ∉ {y : ℝ² | 1 < ‖y‖} from hy),
               Set.indicator_of_notMem (show R • y ∉ {y : ℝ² | R < ‖y‖} from this), mul_zero]
@@ -1486,8 +1489,9 @@ lemma aux_glob_transl (g : ℝ² → ℂ) (Lg : ℝ≥0) (hg : LipschitzWith Lg 
       · have h1 : g u = 0 := hs u (by simpa [B] using hu)
         have h2 : g (u + v) = 0 := hs _ (by simpa [B] using huv)
         rw [h1, h2, sub_self, norm_zero]
-        exact mul_nonneg (by positivity) (add_nonneg (Set.indicator_nonneg (fun _ _ => zero_le_one) _)
-          (Set.indicator_nonneg (fun _ _ => zero_le_one) _))
+        exact mul_nonneg (by positivity)
+          (add_nonneg (Set.indicator_nonneg (fun _ _ => zero_le_one) _)
+            (Set.indicator_nonneg (fun _ _ => zero_le_one) _))
   have hBm : MeasurableSet B := measurableSet_closedBall
   have hBi : Integrable (B.indicator (1 : ℝ² → ℝ)) :=
     (integrableOn_const (C := (1 : ℝ)) measure_closedBall_lt_top.ne).integrable_indicator hBm
@@ -1663,7 +1667,8 @@ lemma aux_glob_hloc (α β : ℝ) (hβ : β ≠ 0) (Ψ : ℝ² → ℂ) (hΨ : I
     set Px := (FCMeasure.ofDensity k).convFun (f j) x
     set Py := (FCMeasure.ofDensity k).convFun (f j) y
     have hPy : ‖Py‖ ≤ G1 := hkn ▸ (aux_glob_conv_bdd_lip hk (hf j) (hfae j) y y).1
-    have e : h j x - h j y = (c⁻¹ : ℂ) * ((χ j x : ℂ) * (Px - Py) + ((χ j x - χ j y : ℝ) : ℂ) * Py) := by
+    have e : h j x - h j y =
+        (c⁻¹ : ℂ) * ((χ j x : ℂ) * (Px - Py) + ((χ j x - χ j y : ℝ) : ℂ) * Py) := by
       simp only [hh]; push_cast; ring
     rw [e, norm_mul, norm_inv, Complex.norm_real, Real.norm_of_nonneg hc0.le]
     have hmain : ‖(χ j x : ℂ) * (Px - Py) + ((χ j x - χ j y : ℝ) : ℂ) * Py‖ ≤
@@ -1687,7 +1692,7 @@ lemma aux_glob_hloc (α β : ℝ) (hβ : β ≠ 0) (Ψ : ℝ² → ℂ) (hΨ : I
     intro j; funext x
     have : (c : ℂ) ≠ 0 := by exact_mod_cast hc0.ne'
     simp only [hh]; rw [mul_inv_cancel_left₀ this]
-  show ‖form α β (FCMeasure.sigma.conv (FCMeasure.ofDensity (scaleR R Ψ)))
+  change ‖form α β (FCMeasure.sigma.conv (FCMeasure.ofDensity (scaleR R Ψ)))
       (fun x => (χ 0 x : ℂ) * (FCMeasure.ofDensity k).convFun (f 0) x)
       (fun x => (χ 1 x : ℂ) * (FCMeasure.ofDensity k).convFun (f 1) x)
       (fun x => (χ 2 x : ℂ) * (FCMeasure.ofDensity k).convFun (f 2) x)‖ₑ ≤ _
@@ -1695,7 +1700,7 @@ lemma aux_glob_hloc (α β : ℝ) (hβ : β ≠ 0) (Ψ : ℝ² → ℂ) (hΨ : I
   have hcc : ‖(c : ℂ) * c * c‖ₑ = ENNReal.ofReal c ^ 3 := by
     rw [← ofReal_norm, norm_mul, norm_mul, Complex.norm_real, Real.norm_of_nonneg hc0.le,
       ← ENNReal.ofReal_pow hc0.le]; ring_nf
-  show ‖(c : ℂ) * c * c‖ₑ * _ ≤ _
+  change ‖(c : ℂ) * c * c‖ₑ * _ ≤ _
   rw [hcc]
   gcongr
   exact le_iSup_of_le h (le_iSup_of_le hH1 (le_iSup_of_le hH2 le_rfl))
@@ -1732,7 +1737,7 @@ lemma aux_glob_p (C₀ : ℝ) (hC₀ : 0 < C₀) :
   set bS : 𝓢(ℝ², ℂ) := hbc.toSchwartzMap hb
   refine ⟨𝓕⁻ bS, fun ξ hξ => ?_⟩
   rw [← SchwartzMap.fourier_coe, FourierTransform.fourier_fourierInv_eq]
-  show (b ξ : ℂ) = 1
+  change (b ξ : ℂ) = 1
   rw [b.one_of_mem_closedBall (by simpa using hξ.le)]; simp
 
 /-- Auxiliary for `ann:global` (`Auto.ann_global`): the dilation `p_R` of a Schwartz function is a
@@ -1927,7 +1932,8 @@ lemma aux_glob_replace (α β : ℝ) (hβ : β ≠ 0) (ψ : ℝ² → ℂ) (hΨ 
   have hsplit : ∀ y, kp y = kg y + kd y := fun y => by simp only [kp, kg, kd, scaleR]; ring
   set B : Fin 3 → ℝ² → ℂ := fun j => (FCMeasure.ofDensity kg).convFun (F j) with hBdef
   set D : Fin 3 → ℝ² → ℂ := fun j => (FCMeasure.ofDensity kd).convFun (F j) with hDdef
-  have hBL : ∀ j, MemLp (B j) (aux_slotExp i j) volume ∧ eLpNorm (B j) (aux_slotExp i j) volume ≤ Mb :=
+  have hBL : ∀ j, MemLp (B j) (aux_slotExp i j) volume ∧
+      eLpNorm (B j) (aux_slotExp i j) volume ≤ Mb :=
     fun j => by
       have h := aux_loc_conv_memLp (FCMeasure.ofDensity kg) (aux_loc_slotExp_cases i j) (hFL j)
       refine ⟨h.1, h.2.trans ?_⟩
@@ -1960,7 +1966,7 @@ lemma aux_glob_replace (α β : ℝ) (hβ : β ≠ 0) (ψ : ℝ² → ℂ) (hΨ 
     rw [aux_glob_ofDensity_w hkd] at hx2
     change F j x = _ at hx
     rw [hx]
-    show _ = (FCMeasure.ofDensity kg).convFun (F j) x + (FCMeasure.ofDensity kd).convFun (F j) x
+    change _ = (FCMeasure.ofDensity kg).convFun (F j) x + (FCMeasure.ofDensity kd).convFun (F j) x
     have hx1' : Integrable (fun y => F j (x - y) * kg y) := hx1
     have hx2' : Integrable (fun y => F j (x - y) * kd y) := hx2
     rw [aux_glob_ofDensity_conv hkp, aux_glob_ofDensity_conv hkg, aux_glob_ofDensity_conv hkd,
@@ -2000,7 +2006,7 @@ lemma aux_glob_replace (α β : ℝ) (hβ : β ≠ 0) (ψ : ℝ² → ℂ) (hΨ 
     (by intro j; fin_cases j <;> simp [(hBL 0).2, (hBL 1).2, (hDL 2).2])
   simp only [Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two, Matrix.head_cons,
     Matrix.tail_cons] at t1 t2 t3
-  show ‖form α β K (F 0) (F 1) (F 2)‖ₑ ≤ _
+  change ‖form α β K (F 0) (F 1) (F 2)‖ₑ ≤ _
   rw [htele]
   calc _ ≤ ‖form α β K (B 0) (B 1) (B 2)‖ₑ + ‖form α β K (D 0) (F 1) (F 2)‖ₑ +
         ‖form α β K (B 0) (D 1) (F 2)‖ₑ + ‖form α β K (B 0) (B 1) (D 2)‖ₑ :=

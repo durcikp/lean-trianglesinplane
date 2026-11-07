@@ -422,6 +422,8 @@ theorem aux_kerOp_compact (k : Lp ℂ 2 (μ.prod ν)) : IsCompactOperator (aux_k
 end Compact
 end KernelOp
 
+-- The hypotheses hX, hY belong to the manuscript statement but are not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `ext:compact-facts`** (2, Hilbert–Schmidt integral operators).  The integral operator
 `f ↦ ∫_Y k(·, y) f(y) dy` with `k ∈ L²(X × Y)` is (represented by) a compact operator
 `L²(Y) → L²(X)`.
@@ -532,6 +534,8 @@ theorem ext_ttstar (T : H →L[ℂ] H')
 
 /-! ### A gap for a nonnegative compact perturbation (`ext:compact-gap`) -/
 
+-- The hypotheses hsa, hB belong to the manuscript statement but are not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `ext:compact-gap`** (finite-dimensional kernel).
 Let $K$ be a compact self-adjoint operator on a Hilbert space, and suppose $B=I+K$ is
 nonnegative.  Then $\ker B$ is finite dimensional, and there is $\gamma>0$ such that
@@ -772,10 +776,6 @@ def aux_pair (g : α → ℂ) (hg : MemLp g ⊤ μ) : Lp ℂ 1 μ →L[ℂ] ℂ 
       filter_upwards [aux_ae_norm_le_top hg] with x hx
       rw [norm_mul]
       exact mul_le_mul_of_nonneg_right hx (norm_nonneg _))
-
-/-- Unfolding lemma for `aux_pair` (helper for `Auto.ext_weakstar_plane_countable`). -/
-theorem aux_pair_apply (g : α → ℂ) (hg : MemLp g ⊤ μ) (ψ : Lp ℂ 1 μ) :
-    aux_pair g hg ψ = ∫ x, g x * ψ x ∂μ := rfl
 
 /-- Norm bound `‖aux_pair g‖ ≤ ‖g‖_∞` (helper for `Auto.ext_weakstar_plane_countable`). -/
 theorem aux_pair_norm (g : α → ℂ) (hg : MemLp g ⊤ μ) :
@@ -1074,7 +1074,7 @@ theorem aux_weakstar_countable [MeasurableSpace.CountablyGenerated α] [SigmaFin
   have hψ1 : MemLp ψ 1 μ := memLp_one_iff_integrable.2 hψ
   have := hL i (hψ1.toLp ψ)
   rw [hrep] at this
-  simp only [aux_pair_apply] at this
+  simp only [aux_pair, LinearMap.mkContinuous_apply, LinearMap.coe_mk, AddHom.coe_mk] at this
   have e1 : ∀ n, ∫ x, f i (φ n) x * (hψ1.toLp ψ) x ∂μ = ∫ x, f i (φ n) x * ψ x ∂μ := by
     intro n
     refine integral_congr_ae ?_

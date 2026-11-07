@@ -282,7 +282,8 @@ def upperBanachDensity (E : Set ℝ²) : ℝ≥0∞ :=
   limsup (fun L : ℝ => ⨆ z : ℝ², volume (E ∩ squareAt z L) / ENNReal.ofReal (L ^ 2)) atTop
 
 /-- The triangle count (`\label{den:definitions}`)
-$$D_s(f)=\Lambda_{\sigma_s}(f,f,f)=\int_{\mathbb T}\int_{\R^2}f(x)f(x+su_\theta)f(x+sMu_\theta)\,dx\,d\sigma(\theta)$$
+$$D_s(f)=\Lambda_{\sigma_s}(f,f,f)=
+\int_{\mathbb T}\int_{\R^2}f(x)f(x+su_\theta)f(x+sMu_\theta)\,dx\,d\sigma(\theta)$$
 for a bounded, compactly supported, nonnegative function $f$. -/
 def triangleCount (α β : ℝ) (s : ℝ) (f : ℝ² → ℝ) : ℝ :=
   ∫ θ, ∫ x, f x * f (x + s • u θ) * f (x + s • M α β (u θ)) ∂volume ∂σ
@@ -316,6 +317,8 @@ theorem aux_volume_squareAt (z : ℝ²) (L : ℝ) (hL : 0 ≤ L) :
       measurableSet_Icc.nullMeasurableSet, Real.volume_Icc_pi]
   simp [sq, ENNReal.ofReal_mul hL]
 
+-- The hypothesis hδ belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `den:dense-squares`** (dense squares). If $0<\delta<d^*(E)$, there are squares $Q$ of
 arbitrarily large side length for which $|E\cap Q|\ge\delta|Q|$. -/
 theorem den_dense_squares_exists (E : Set ℝ²) (δ : ℝ) (hδ : 0 < δ)
@@ -355,6 +358,8 @@ theorem den_dense_squares_missed (α β : ℝ) (E A : Set ℝ²) (hA : A ⊆ E) 
     · simp [h1]
   simp [triangleCount, h0]
 
+-- The hypothesis hA belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `den:dense-squares`** (exact copies). If $D_s(\mathbf 1_A)>0$, then $A$, and hence
 $E$, contains a translate of a rotation of $s\{0,e_1,Me_1\}$. -/
 theorem den_dense_squares_copy (α β : ℝ) (A : Set ℝ²) (hA : MeasurableSet A) (s : ℝ)
@@ -714,6 +719,8 @@ theorem aux_den_pointwise (α β : ℝ) (δ : ℝ) (hδ0 : 0 < δ) (n : ℕ)
     _ ≤ _ := hvolG
     _ = _ := hsum
 
+-- The hypothesis hδ1 belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `den:weighted-lower`**. Let $0<\delta\le1$ and choose $n\ge H_3(\delta/4)$ from
 Theorem `cj:dhj3` (here: $n$ is such that every subset of $[3]^n$ of density at least $\delta/4$
 contains a combinatorial line). Let $\lambda_1,\ldots,\lambda_n>0$ and put
@@ -785,6 +792,8 @@ theorem aux_den_fast_seq (S : Set ℝ) (hSu : ¬ BddAbove S) (η : ℝ) (hη : 0
     rw [← hsucc, div_lt_iff₀ hη] at h
     linarith
 
+-- The hypothesis hn belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `den:select-scales`**. Let $\mathcal S\subset(0,\infty)$ be unbounded. Given $n\ge1$
 and $\tau>0$, one can choose $\lambda_1<\cdots<\lambda_n$ in $\mathcal S$ such that, for every
 nonempty $J\subset[n]$ and $k=\max J$, $\|\Lambda_{\sigma_{s_J}-\sigma_{\lambda_k}}\|<\tau$. -/
@@ -794,7 +803,6 @@ theorem den_select_scales (α β : ℝ) (hβ : β ≠ 0) (S : Set ℝ) (hS : S �
       ∀ (J : Finset (Fin n)) (hJ : J.Nonempty),
         formNorm α β ((FCMeasure.sigma.dil (∑ j ∈ J, lam j)).sub
           (FCMeasure.sigma.dil (lam (J.max' hJ)))) < ENNReal.ofReal τ := by
-  clear hn
   have hc := den_continuity α β hβ 2
   have hev : ∀ᶠ r in 𝓝 (1 : ℝ),
       endNorm α β ((FCMeasure.sigma.dil r).sub FCMeasure.sigma) 2 < ENNReal.ofReal τ :=
@@ -911,7 +919,11 @@ theorem aux_den_form_ind_le (α β : ℝ) (ν : FCMeasure) (A : Set ℝ²) (hA :
         ← ENNReal.ofReal_mul (by positivity), ← Real.sqrt_eq_rpow, inv_mul_cancel₀ (by positivity),
         ENNReal.ofReal_one]
     have hle := aux_den_form_le_endNorm α β ν 2 ![fun x => c * g x, fun x => c * g x, g]
-      (fun j => by fin_cases j <;> simp <;> first | exact hgm | exact hgm.const_mul c)
+      (fun j => by
+        fin_cases j <;>
+          simp only [Fin.zero_eta, Fin.isValue, Matrix.cons_val_zero, Fin.mk_one,
+            Matrix.cons_val_one, Fin.reduceFinMk, Matrix.cons_val] <;>
+          first | exact hgm | exact hgm.const_mul c)
       (by simpa using hinf)
       (fun j hj => by fin_cases j <;> simp_all)
     simp only [Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,

@@ -854,6 +854,8 @@ theorem aux_tv_unif_delta_sq {k r n : ℕ} (hk : 1 ≤ k) (hrn : r ≤ n) (hn : 
         rw [hB]; linarith
     _ = (r : ℝ) ^ 2 * R / (4 * n) := by field_simp
 
+-- The hypothesis hr belongs to the manuscript statement but is not needed by the proof.
+set_option linter.unusedVariables false in
 /-- **Lemma `cj:transfer-uniform`** (Inserting a fixed number of letters into uniform
 background).
 Fix $k\in\{2,3\}$, $r\ge1$, and $\zeta>0$.  There is $N=N(k,r,\zeta)\ge r$ such that the
@@ -1319,10 +1321,6 @@ $|s-t|$ coordinates and $2$ elsewhere: the word $z$ of the proof of `cj:binary-p
 def aux_chainTer (m s t : ℕ) : Fin m → Fin 3 :=
   fun j => if (j : ℕ) < min s t then 0 else if (j : ℕ) < max s t then 2 else 1
 
-/-- Collapsing commutes with permuting coordinates (auxiliary for `cj_binary_pairs_bound`). -/
-theorem aux_collapse_comp {m : ℕ} (i : Fin 2) (x : Fin m → Fin 3) (σ : Equiv.Perm (Fin m)) :
-    collapse i (x ∘ σ) = collapse i x ∘ σ := rfl
-
 /-- The two collapses of the ternary chain word are the binary chain words $u_{\min(s,t)}$ and
 $u_{\max(s,t)}$ (auxiliary for `cj_binary_pairs_bound`). -/
 theorem aux_collapse_chainTer {m : ℕ} (s t : ℕ) :
@@ -1411,8 +1409,9 @@ theorem cj_binary_pairs_bound {m : ℕ} (B : Finset (Fin m → Fin 2)) :
     have hmem : aux_chainTer m s t ∘ σ ∈ C ↔
         aux_chainBin m s ∘ σ ∈ B ∧ aux_chainBin m t ∘ σ ∈ B := by
       obtain ⟨c1, c0⟩ := aux_collapse_chainTer (m := m) s t
-      simp only [hC, collapseBoth, collapseSet, mem_inter, mem_filter, mem_univ, true_and,
-        aux_collapse_comp, c1, c0]
+      simp only [hC, collapseBoth, collapseSet, mem_inter, mem_filter, mem_univ, true_and]
+      change collapse 0 (aux_chainTer m s t) ∘ σ ∈ B ∧ collapse 1 (aux_chainTer m s t) ∘ σ ∈ B ↔ _
+      rw [c1, c0]
       rcases le_total s t with h | h
       · simp [min_eq_left h, max_eq_right h, and_comm]
       · simp [min_eq_right h, max_eq_left h]
@@ -1677,12 +1676,6 @@ theorem aux_unifDensity_le_one {k n : ℕ} (A : Finset (Fin n → Fin k)) : unif
 (auxiliary for `cj:density-increment`, `cj_density_increment`). -/
 theorem aux_unifDensity_nonneg {k n : ℕ} (A : Finset (Fin n → Fin k)) : 0 ≤ unifDensity A := by
   unfold unifDensity; positivity
-
-/-- Equal-slices probabilities are nonnegative
-(auxiliary for `cj:density-increment`, `cj_density_increment`). -/
-theorem aux_equalSlices_nonneg {X : Type*} [Fintype X] [DecidableEq X] {k : ℕ}
-    (A : Finset (X → Fin k)) : 0 ≤ equalSlices k A := by
-  rw [aux_equalSlices_eq_sum]; exact sum_nonneg fun x _ => aux_equalSlices_atom_nonneg x
 
 /-- Monotonicity of the equal-slices probability
 (auxiliary for `cj:density-increment`, `cj_density_increment`). -/
