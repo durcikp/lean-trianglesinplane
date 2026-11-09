@@ -228,3 +228,42 @@ The removals also made the following `aux_` helpers' hypotheses unused, so those
 They are not blueprint statements: `aux_binary_multi_step` (`hα1`), `aux_ann_ineq_ae`,
 `aux_ann_ineq_all`, `aux_ann_cs_all` (`hQ`), `aux_loc_Phi_ae`, `aux_loc_Phi_add`, `aux_loc_scaled`,
 `aux_loc_core`, `aux_loc_bound`, `aux_glob_tele`, `aux_glob_replace` (`hβ`).
+
+## Palomar preparation: Lean/Mathlib v4.35.0 and the module system (user request P52, 2026-11-09T13:35:46-08:00)
+
+Palomar requires a toolchain no older than `v4.35.0-rc2` and every `.lean` file to use the module
+system. On the `palomar` branch the project was therefore moved from Lean/Mathlib `v4.33.0-rc2`
+to the `v4.35.0` release, and every file now starts with `module`, uses `public import`, and
+wraps its contents in `@[expose] public noncomputable section`. No blueprint statement, no
+definition in `Definitions.lean`, and neither main theorem changed. Proof repairs follow Mathlib API
+changes (renamed lemmas, changed argument orders, `MemLp` now being `eLpNorm f p μ < ∞`).
+
+In the new Mathlib, `eLpNorm` of a function that is not a.e. strongly measurable is `∞`, so the
+following auxiliary (non-blueprint) helpers gained a measurability hypothesis; all call sites
+supply it:
+
+- `aux_eLpNorm_two` (CompactnessFactsCircleOperators): `(hg : AEStronglyMeasurable g μ)`.
+- `aux_s2a_eLpNorm_two_sq` (GeometryFormsElementaryEstimates): `[TopologicalSpace E]` and
+  `(hf : AEStronglyMeasurable f μ)`.
+- `aux_lw_eLpNorm_two` (GeometryFormsElementaryEstimates): `(hf : AEStronglyMeasurable f μ)`.
+- `aux_cc_small_H` (GeometryFormsElementaryEstimates): `(hW : Measurable (Function.uncurry W))`;
+  the blueprint lemma `lem_circle_compact_small` already assumes this.
+- `aux_cc_rem`, `aux_gop_eLpNorm_le` (GeometryFormsElementaryEstimates):
+  `(hK : Measurable (Function.uncurry K))`.
+
+Conversely, measurability hypotheses that the new Mathlib no longer needs were removed from
+`aux_tail_eLpNorm_le_sub_add` (`ha`, `hb`; SummationFrequencyAnnuli) and `aux_den_adm_memLp`
+(`hf`; FromSmoothingTriangles). A helper `aux_convFun_aestronglyMeasurable`
+(FourierAnalysisRequiredForm) was added.
+
+For the Comparator check, `Challenge.lean` restates `Auto.triangles_in_the_plane` together with
+copies of `Auto.squareAt`, `Auto.upperBanachDensity`, `Auto.J`, `Auto.simil` and `Auto.rot`. Lean
+abstracts proofs inside definition bodies into auxiliary declarations (`Auto.J._proof_1`, …) whose
+names and number depend on the elaboration context and are shared between identical proofs in a
+module. To make these identical in Challenge and Solution, `Definitions.lean` now imports exactly
+the same Mathlib modules as `Challenge.lean` (adding `Mathlib.LinearAlgebra.AffineSpace.
+FiniteDimensional`, which provides `Collinear`), uses the same `open` commands, and starts with
+`squareAt`, `upperBanachDensity`, `J`, `simil` and `rot` in the same order as `Challenge.lean`
+(moved up from later in the file; `M` now follows `rot`). Comparator requires every constant
+reachable from the statement, including these auxiliary proofs, to be identical in Challenge and
+Solution. No definition or statement changed.
