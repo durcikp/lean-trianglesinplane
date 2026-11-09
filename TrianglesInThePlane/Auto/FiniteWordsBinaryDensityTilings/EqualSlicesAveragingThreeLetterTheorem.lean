@@ -7,7 +7,7 @@ import Mathlib.Algebra.Order.Chebyshev
 import Mathlib.Analysis.Normed.Field.Basic
 import Mathlib.Data.Fintype.CardEmbedding
 import Mathlib.Data.Nat.Choose.Multinomial
-import Auto.FiniteWordsBinaryDensityTilings.FiniteWordsBinaryDensityTilings
+import TrianglesInThePlane.Auto.FiniteWordsBinaryDensityTilings.FiniteWordsBinaryDensityTilings
 
 /-!
 # Equal-slices averaging and the three-letter theorem
@@ -18,9 +18,9 @@ Hales–Jewett theorem for three letters).
 
 ## Conventions of the formalization
 
-* As in `Auto.FiniteWordsBinaryDensityTilings.FiniteWordsBinaryDensityTilings`, the alphabet
-  `[k]` is `Fin k` (letters shifted by one), words are functions into `Fin k`, and the letter
-  `3` of `[3]` is `(2 : Fin 3)`.
+* As in `TrianglesInThePlane.Auto.FiniteWordsBinaryDensityTilings.FiniteWordsBinaryDensityTilings`,
+  the alphabet `[k]` is `Fin k` (letters shifted by one), words are functions into `Fin k`, and the
+  letter `3` of `[3]` is `(2 : Fin 3)`.
 * Probabilities on a finite set `X` are functions `P : X → ℝ` with nonnegative values summing to
   one (`aux_IsProb`); `P(E) = ∑_{x ∈ E} P x` and `𝔼_P h = ∑_x P x * h x`.
 * The equal-slices probability is defined for words indexed by an arbitrary finite coordinate

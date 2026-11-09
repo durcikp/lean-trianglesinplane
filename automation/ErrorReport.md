@@ -6,8 +6,8 @@ formalization from the blueprint. Each entry records the date/time and the bluep
 
 ## Deviations
 
-- (2026-11-06T12:53-08:00, recording time) Scope: the formalization targets Theorems A (`intro:density`) and B
-  (`intro:smoothing`) and their prerequisites. Section `sec:inverse` (tex lines 4084–4179) is not
+- (2026-11-06T12:53-08:00, recording time) Scope: the formalization targets Theorems A (`triangles_in_the_plane`) and B
+  (`smoothing`) and their prerequisites. Section `sec:inverse` (tex lines 4084–4179) is not
   used by either theorem and is out of scope.
 - (2026-11-06T12:53-08:00, recording time) `def:form` (tex line 1917): a finite complex Borel measure is represented by a
   presentation `ν = φ_*(w·m)` (`Auto.FCMeasure`); its total variation is that of the presentation,
@@ -144,7 +144,7 @@ removed, so each Lean theorem below is *stronger* than the blueprint statement: 
 the listed assumption. Line numbers refer to `blueprint/blueprint.tex`. "Standing assumption" means
 the hypothesis is not written in the lemma itself but is fixed by an earlier definition that the lemma
 relies on. Each affected docstring now ends with a note naming the omitted hypothesis. Theorems A and B
-(`intro_density`, `intro_smoothing`) are unchanged: they use all of their hypotheses.
+(`triangles_in_the_plane`, `smoothing`) are unchanged: they use all of their hypotheses.
 
 Section 2 (Analytic prerequisites):
 - `ext_reproduction_L2`, `ext_reproduction_bounded` (`ext:reproduction`, line 391): removed

@@ -10,7 +10,7 @@ formalization in this repository. User's instructions given in the chat may over
 - Treat the manuscript's terms *theorem*, *lemma*, and *proposition* as
   synonymous.  Every corresponding Lean result must be declared with
   `theorem`.
-- Your work must be placed in the ../Auto/ folder. You cannot modify any Lean files not contained in this folder.
+- Your work must be placed in the TrianglesInThePlane/Auto/ folder. You cannot modify any Lean files not contained in this folder.
 - Formalize the top-level sections in their respective subfolders, each named after the section title converted to CamelCase.
   Only sections get a folder, do not create further subfolders for subsections.
 - Work through each subsection in turn, creating one Lean file per leaf sub(sub)section in the corresponding folder, each

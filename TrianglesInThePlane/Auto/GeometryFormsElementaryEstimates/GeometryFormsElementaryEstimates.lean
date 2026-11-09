@@ -8,7 +8,7 @@ import Mathlib.LinearAlgebra.AffineSpace.FiniteDimensional
 import Mathlib.RingTheory.Etale.Weakly
 import Mathlib.RingTheory.Flat.TorsionFree
 import Mathlib.RingTheory.TotallySplit
-import Auto.AnalyticPrerequisitesProofs.LocalMatrixGroupsAnalyticZeroSets
+import TrianglesInThePlane.Auto.AnalyticPrerequisitesProofs.LocalMatrixGroupsAnalyticZeroSets
 
 /-!
 # Geometry, forms, and elementary estimates

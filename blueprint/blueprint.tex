@@ -75,14 +75,27 @@ For a measurable set $E\subset\R^2$, write
 Here and throughout, $|\cdot|$ denotes Lebesgue measure when applied
 to a measurable subset of Euclidean space.
 
-\begin{maintheorem}[Geometric conclusion]\label{intro:density}
-\lean{Auto.intro_density}
+\begin{maintheorem}[Geometric conclusion]\label{triangles_in_the_plane}
+\lean{Auto.triangles_in_the_plane}
 \leanok
 Let $\Delta\subset\R^2$ consist of three noncollinear points.  If
 $E\subset\R^2$ is measurable and $d^*(E)>0$, there is $\lambda_0>0$
 such that, for every $\lambda\ge\lambda_0$, the set $E$ contains a
 translate of a rotation of $\lambda\Delta$.
 \end{maintheorem}
+
+Furstenberg, Katznelson, and Weiss \cite[Theorem~B]{FKW} proved that,
+for all sufficiently large $\lambda$, every positive-radius neighborhood
+of $E$ contains a congruent copy of $\lambda\Delta$. Ziegler \cite{Ziegler}
+extended this neighborhood result to arbitrary finite configurations.
+Bourgain's theorem for nondegenerate simplices \cite{Bourgain} gives
+exact copies of large triangles in ambient dimension at least three.
+Falconer, Kova\v{c}, and Yavicoli \cite[Theorem~1.4]{FKY} obtained
+the planar conclusion when $d^*(E)>1/2$. Castro-Silva
+\cite[Conjecture~1]{CS} conjectured the conclusion up to congruence
+for sets of positive upper density in squares centered at the origin.
+Theorem~\ref{triangles_in_the_plane} gives orientation-preserving copies under
+the upper Banach density hypothesis.
 
 The analytic assertion used to prove this is as follows.  Let
 $J(x_1,x_2)=(-x_2,x_1)$ and $M=\alpha I+\beta J$ with $\beta\ne0$.
@@ -96,8 +109,8 @@ Write $\nu_s$ for the pushforward of $\nu$ under $u\mapsto su$,
 and write $\|\Lambda_\nu\|$ for the
 $L^2\times L^2\times L^\infty$ operator norm.
 
-\begin{maintheorem}[Uniform smoothing]\label{intro:smoothing}
-\lean{Auto.intro_smoothing}
+\begin{maintheorem}[Uniform smoothing]\label{smoothing}
+\lean{Auto.smoothing}
 \leanok
 For every nonnegative $\rho\in L^1(\R^2)$ with $\int\rho=1$, put
 $\rho_\varepsilon(u)=\varepsilon^{-2}\rho(u/\varepsilon)$.  Then
@@ -114,6 +127,11 @@ their prerequisites.  The analytic proof has three main parts: a rigidity
 theorem for measurable stationary frequency fields; a compactness argument
 for cancellation on a single frequency annulus; and a positive
 telescoping estimate that sums the annuli without a decay rate.
+Stationary equations play a similar role in the trilinear estimates of
+Christ \cite{Christ,ChristSub} and Christ, Durcik, and Roos \cite{CDR}.
+Here their exact form forces the displacement frequency to vanish almost
+everywhere on a set where measurable frequency fields satisfy them
+(Theorem~\ref{rig:exact}).
 
 \subsection*{Foundations and the scope of self-containment}
 
@@ -2209,6 +2227,10 @@ The same lemma makes their operator-norm limit $TT^*$ compact.
 Lemma~\ref{ext:ttstar} now gives compactness of $T$.
 \end{proof}
 
+When $M$ is a rotation, Greenleaf, Iosevich, Krause, and Liu \cite{GIKL}
+proved a restricted strong-type estimate at the $L^2\times L^2\to L^2$
+endpoint for the corresponding bilinear average.
+
 \begin{lemma}[The trilinear $L^2$ estimate]\label{lem:triple-l2}
 \lean{Auto.lem_triple_l2,Auto.lem_triple_l2_sigma}
 \leanok
@@ -4264,7 +4286,63 @@ by $\ell$.  This proves the second assertion and the
 introductory geometric conclusion.
 \end{proof}
 
-\begin{thebibliography}{9}
+\begin{thebibliography}{99}
+\bibitem{Christ}
+M. Christ,
+\emph{On certain trilinear oscillatory integral inequalities},
+Adv. Nonlinear Stud. \textbf{25} (2025), 502--553.
+\href{https://doi.org/10.1515/ans-2023-0181}{doi:10.1515/ans-2023-0181}.
+
+\bibitem{ChristSub}
+M. Christ,
+\emph{A three term sublevel set inequality},
+arXiv:2204.04346 (2022).
+\href{https://arxiv.org/abs/2204.04346}{arXiv:2204.04346}.
+
+\bibitem{CDR}
+M. Christ, P. Durcik, and J. Roos,
+\emph{Trilinear smoothing inequalities and a variant of the triangular Hilbert transform},
+Adv. Math. \textbf{390} (2021), 107863.
+\href{https://doi.org/10.1016/j.aim.2021.107863}{doi:10.1016/j.aim.2021.107863}.
+
+\bibitem{GIKL}
+A. Greenleaf, A. Iosevich, B. Krause, and A. Liu,
+\emph{$L^p$ estimates for bilinear generalized Radon transforms in the plane},
+in \emph{Combinatorial and Additive Number Theory V}, Springer Proc. Math. Stat. \textbf{395},
+Springer, Cham, 2022, 179--198.
+\href{https://doi.org/10.1007/978-3-031-10796-2_9}{doi:10.1007/978-3-031-10796-2\_9}.
+
+\bibitem{FKW}
+H. Furstenberg, Y. Katznelson, and B. Weiss,
+\emph{Ergodic theory and configurations in sets of positive density},
+in \emph{Mathematics of Ramsey Theory}, Algorithms Combin. \textbf{5},
+Springer, Berlin, 1990, 184--198.
+\href{https://doi.org/10.1007/978-3-642-72905-8_13}{doi:10.1007/978-3-642-72905-8\_13}.
+
+\bibitem{Ziegler}
+T. Ziegler,
+\emph{Nilfactors of $\R^m$-actions and configurations in sets of positive upper density in $\R^m$},
+J. Anal. Math. \textbf{99} (2006), 249--266.
+\href{https://doi.org/10.1007/BF02789447}{doi:10.1007/BF02789447}.
+
+\bibitem{Bourgain}
+J. Bourgain,
+\emph{A Szemer\'edi type theorem for sets of positive density in $\R^k$},
+Israel J. Math. \textbf{54} (1986), 307--316.
+\href{https://doi.org/10.1007/BF02764959}{doi:10.1007/BF02764959}.
+
+\bibitem{FKY}
+K. Falconer, V. Kova\v{c}, and A. Yavicoli,
+\emph{The density of sets containing large similar copies of finite sets},
+J. Anal. Math. \textbf{148} (2022), 339--359.
+\href{https://doi.org/10.1007/s11854-022-0231-6}{doi:10.1007/s11854-022-0231-6}.
+
+\bibitem{CS}
+D. Castro-Silva,
+\emph{Geometrical sets with forbidden configurations},
+Forum Math. Sigma \textbf{11} (2023), e44.
+\href{https://doi.org/10.1017/fms.2023.43}{doi:10.1017/fms.2023.43}.
+
 \bibitem{FK}
 H. Furstenberg and Y. Katznelson,
 \emph{A density version of the Hales--Jewett theorem},

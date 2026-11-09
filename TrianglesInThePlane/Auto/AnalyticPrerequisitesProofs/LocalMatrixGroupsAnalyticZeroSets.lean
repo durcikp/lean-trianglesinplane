@@ -6,7 +6,7 @@ import Mathlib.AlgebraicTopology.FundamentalGroupoid.SimplyConnected
 import Mathlib.Analysis.Convex.Contractible
 import Mathlib.Analysis.Normed.Algebra.MatrixExponential
 import Mathlib.LinearAlgebra.Matrix.FiniteDimensional
-import Auto.AnalyticPrerequisitesProofs.SpectralMeasuresCorrelationFunctions
+import TrianglesInThePlane.Auto.AnalyticPrerequisitesProofs.SpectralMeasuresCorrelationFunctions
 
 /-!
 # Local matrix groups and analytic zero sets

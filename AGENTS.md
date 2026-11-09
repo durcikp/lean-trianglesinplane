@@ -16,7 +16,7 @@ Codex agents follow `.codex/skills/autoformalize/SKILL.md` when present, otherwi
 The user's current explicit instructions take precedence over all repository guidance. Local automation
 instructions supersede conflicting skill guidance.
 
-All generated Lean code lives in the repository-root `Auto/` folder (one subfolder per blueprint section), in
-the namespace `Auto`; `Auto.lean` imports every non-scratch file. Check files with
-`lake env lean Auto/<Folder>/<File>.lean`, build with `lake build`. When a status in `automation/Status.md`
-changes, update the matching `\lean{}`/`\leanok` metadata in `blueprint/blueprint.tex` as well.
+All generated Lean code lives in the `TrianglesInThePlane/Auto/` folder (one subfolder per blueprint
+section), in the namespace `Auto`; the root module `TrianglesInThePlane.lean` imports every non-scratch
+file. Check files with `lake env lean TrianglesInThePlane/Auto/<Folder>/<File>.lean`, build with
+`lake build`. When a status in `automation/Status.md` changes, update the matching `\lean{}`/`\leanok` metadata in `blueprint/blueprint.tex` as well.

@@ -6,7 +6,7 @@ import Mathlib.MeasureTheory.Measure.Prokhorov
 import Mathlib.MeasureTheory.Measure.TightNormed
 import Mathlib.Probability.Independence.Basic
 import Mathlib.Probability.Kernel.Composition.IntegralCompProd
-import Auto.AnalyticPrerequisitesProofs.CompactnessFactsCircleOperators
+import TrianglesInThePlane.Auto.AnalyticPrerequisitesProofs.CompactnessFactsCircleOperators
 
 /-!
 # Spectral measures of the correlation functions

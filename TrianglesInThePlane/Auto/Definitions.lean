@@ -14,12 +14,12 @@ import Mathlib.Topology.UniformSpace.Uniformizable
 # Definitions needed to state Theorems A and B
 
 This file collects all definitions needed to state the two main theorems of the blueprint,
-Theorem A (`intro:density`) and Theorem B (`intro:smoothing`), whose statements are recorded in
-`Auto.Theorems` (as `intro_density` and `intro_smoothing`).
+Theorem A (`triangles_in_the_plane`) and Theorem B (`smoothing`), whose statements are recorded in
+`TrianglesInThePlane.Auto.Theorems` (as `triangles_in_the_plane` and `smoothing`).
 
 The section files of the formalization (starting with
-`Auto.AnalyticPrerequisitesProofs.FourierAnalysisRequiredForm`) import this file.  The
-declarations are grouped by the blueprint (sub)section where they originate.
+`TrianglesInThePlane.Auto.AnalyticPrerequisitesProofs.FourierAnalysisRequiredForm`) import this
+file.  The declarations are grouped by the blueprint (sub)section where they originate.
 -/
 
 open MeasureTheory Real Set Filter Topology

@@ -2,23 +2,23 @@
 
 ## Introduction and foundations
 
-Lean file: Auto/Theorems.lean
+Lean file: TrianglesInThePlane/Auto/Theorems.lean
 
 #### Definitions
 
 
 #### Theorems
 
-\label{intro:density}: [Proof completed] (Lean: Auto.intro_density) (2026-11-06T19:34:54-08:00)
-\label{intro:smoothing}: [Proof completed] (Lean: Auto.intro_smoothing) (2026-11-06T19:34:54-08:00)
+\label{triangles_in_the_plane}: [Proof completed] (Lean: Auto.triangles_in_the_plane) (2026-11-08T12:00:57-08:00)
+\label{smoothing}: [Proof completed] (Lean: Auto.smoothing) (2026-11-08T12:00:57-08:00)
 
 ## Analytic prerequisites with proofs
 
-Lean file: Auto/AnalyticPrerequisitesProofs/
+Lean file: TrianglesInThePlane/Auto/AnalyticPrerequisitesProofs/
 
 ### Fourier analysis in the required form
 
-Lean file: Auto/AnalyticPrerequisitesProofs/FourierAnalysisRequiredForm.lean
+Lean file: TrianglesInThePlane/Auto/AnalyticPrerequisitesProofs/FourierAnalysisRequiredForm.lean
 
 #### Definitions
 
@@ -36,7 +36,7 @@ Lean file: Auto/AnalyticPrerequisitesProofs/FourierAnalysisRequiredForm.lean
 
 ### The compactness facts used for circle operators
 
-Lean file: Auto/AnalyticPrerequisitesProofs/CompactnessFactsCircleOperators.lean
+Lean file: TrianglesInThePlane/Auto/AnalyticPrerequisitesProofs/CompactnessFactsCircleOperators.lean
 
 #### Definitions
 
@@ -51,7 +51,7 @@ Lean file: Auto/AnalyticPrerequisitesProofs/CompactnessFactsCircleOperators.lean
 
 ### Spectral measures of the correlation functions
 
-Lean file: Auto/AnalyticPrerequisitesProofs/SpectralMeasuresCorrelationFunctions.lean
+Lean file: TrianglesInThePlane/Auto/AnalyticPrerequisitesProofs/SpectralMeasuresCorrelationFunctions.lean
 
 #### Definitions
 
@@ -68,7 +68,7 @@ Lean file: Auto/AnalyticPrerequisitesProofs/SpectralMeasuresCorrelationFunctions
 
 ### Local matrix groups and analytic zero sets
 
-Lean file: Auto/AnalyticPrerequisitesProofs/LocalMatrixGroupsAnalyticZeroSets.lean
+Lean file: TrianglesInThePlane/Auto/AnalyticPrerequisitesProofs/LocalMatrixGroupsAnalyticZeroSets.lean
 
 #### Definitions
 
@@ -80,7 +80,7 @@ Lean file: Auto/AnalyticPrerequisitesProofs/LocalMatrixGroupsAnalyticZeroSets.le
 
 ## Finite words, binary density, and tilings
 
-Lean file: Auto/FiniteWordsBinaryDensityTilings/FiniteWordsBinaryDensityTilings.lean
+Lean file: TrianglesInThePlane/Auto/FiniteWordsBinaryDensityTilings/FiniteWordsBinaryDensityTilings.lean
 
 #### Definitions
 
@@ -100,7 +100,7 @@ Lean file: Auto/FiniteWordsBinaryDensityTilings/FiniteWordsBinaryDensityTilings.
 
 ### Equal-slices averaging and the three-letter theorem
 
-Lean file: Auto/FiniteWordsBinaryDensityTilings/EqualSlicesAveragingThreeLetterTheorem.lean
+Lean file: TrianglesInThePlane/Auto/FiniteWordsBinaryDensityTilings/EqualSlicesAveragingThreeLetterTheorem.lean
 
 #### Definitions
 
@@ -119,7 +119,7 @@ Lean file: Auto/FiniteWordsBinaryDensityTilings/EqualSlicesAveragingThreeLetterT
 
 ## Geometry, forms, and elementary estimates
 
-Lean file: Auto/GeometryFormsElementaryEstimates/GeometryFormsElementaryEstimates.lean
+Lean file: TrianglesInThePlane/Auto/GeometryFormsElementaryEstimates/GeometryFormsElementaryEstimates.lean
 
 #### Definitions
 
@@ -140,7 +140,7 @@ Lean file: Auto/GeometryFormsElementaryEstimates/GeometryFormsElementaryEstimate
 
 ## Finite-dimensional scalar kernels
 
-Lean file: Auto/FiniteDimensionalScalarKernels/FiniteDimensionalScalarKernels.lean
+Lean file: TrianglesInThePlane/Auto/FiniteDimensionalScalarKernels/FiniteDimensionalScalarKernels.lean
 
 #### Definitions
 
@@ -157,7 +157,7 @@ Lean file: Auto/FiniteDimensionalScalarKernels/FiniteDimensionalScalarKernels.le
 
 ## Analytic pieces and measurable rigidity
 
-Lean file: Auto/AnalyticPiecesMeasurableRigidity/AnalyticPiecesMeasurableRigidity.lean
+Lean file: TrianglesInThePlane/Auto/AnalyticPiecesMeasurableRigidity/AnalyticPiecesMeasurableRigidity.lean
 
 #### Definitions
 
@@ -172,7 +172,7 @@ Lean file: Auto/AnalyticPiecesMeasurableRigidity/AnalyticPiecesMeasurableRigidit
 
 ## Translation correlations and local cancellation
 
-Lean file: Auto/TranslationCorrelationsLocalCancellation/TranslationCorrelationsLocalCancellation.lean
+Lean file: TrianglesInThePlane/Auto/TranslationCorrelationsLocalCancellation/TranslationCorrelationsLocalCancellation.lean
 
 #### Definitions
 
@@ -194,7 +194,7 @@ Lean file: Auto/TranslationCorrelationsLocalCancellation/TranslationCorrelations
 
 ## Localization and a global annular estimate
 
-Lean file: Auto/LocalizationGlobalAnnularEstimate/LocalizationGlobalAnnularEstimate.lean
+Lean file: TrianglesInThePlane/Auto/LocalizationGlobalAnnularEstimate/LocalizationGlobalAnnularEstimate.lean
 
 #### Definitions
 
@@ -206,7 +206,7 @@ Lean file: Auto/LocalizationGlobalAnnularEstimate/LocalizationGlobalAnnularEstim
 
 ## Summation over frequency annuli
 
-Lean file: Auto/SummationFrequencyAnnuli/SummationFrequencyAnnuli.lean
+Lean file: TrianglesInThePlane/Auto/SummationFrequencyAnnuli/SummationFrequencyAnnuli.lean
 
 #### Definitions
 
@@ -227,7 +227,7 @@ Lean file: Auto/SummationFrequencyAnnuli/SummationFrequencyAnnuli.lean
 
 ## Approximation of the counting form
 
-Lean file: Auto/ApproximationCountingForm/ApproximationCountingForm.lean
+Lean file: TrianglesInThePlane/Auto/ApproximationCountingForm/ApproximationCountingForm.lean
 
 #### Definitions
 
@@ -241,7 +241,7 @@ Lean file: Auto/ApproximationCountingForm/ApproximationCountingForm.lean
 
 ## From smoothing to triangles
 
-Lean file: Auto/FromSmoothingTriangles/FromSmoothingTriangles.lean
+Lean file: TrianglesInThePlane/Auto/FromSmoothingTriangles/FromSmoothingTriangles.lean
 
 #### Definitions
 

@@ -7,7 +7,7 @@ import Mathlib.MeasureTheory.Function.LpSpace.ContinuousCompMeasurePreserving
 import Mathlib.MeasureTheory.Function.SpecialFunctions.Inner
 import Mathlib.MeasureTheory.Measure.CharacteristicFunction.Basic
 import Mathlib.RingTheory.SimpleRing.Principal
-import Auto.Definitions
+import TrianglesInThePlane.Auto.Definitions
 
 /-!
 # Fourier analysis in the required form
@@ -18,7 +18,7 @@ Formalization of Subsection "Fourier analysis in the required form" of Section `
 The plane `ℝ²` is `EuclideanSpace ℝ (Fin 2)`.  Finite complex Borel measures on `ℝ²` are
 represented by presentations `FCMeasure` (see its docstring); the plane notation, the
 structure `FCMeasure` and its constructors needed for Theorems A and B live in
-`Auto.Definitions`.
+`TrianglesInThePlane.Auto.Definitions`.
 -/
 
 open MeasureTheory Real Set Filter Topology
