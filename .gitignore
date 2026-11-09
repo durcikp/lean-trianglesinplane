@@ -46,3 +46,6 @@ lake-packages/
 *.pyg
 _minted*/
 automation/raw.md
+
+# macOS Finder metadata
+.DS_Store

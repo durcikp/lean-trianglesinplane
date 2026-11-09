@@ -17,9 +17,7 @@ classification:
   msc2020: ["42B20", "05D10"]
 sources:
   - title: "Triangles in the plane: a self-contained proof blueprint"
-    # TODO: replace with a commit-pinned GitHub URL of blueprint/blueprint.tex once the
-    # submission commit exists (the file is in this repository at blueprint/blueprint.tex).
-    id: "blueprint/blueprint.tex (this repository)"
+    id: "https://github.com/durcikp/lean-trianglesinplane/blob/5c1e1ba7873addbccbe2837ca57693075d07c76a/blueprint/blueprint.tex"
     type: "other"
     location: >-
       Theorem A (introduction) and Theorem 11.8; the analytic input is
