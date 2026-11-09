@@ -2,10 +2,17 @@
 
 This is a Lean 4 formalization of the following theorem:
 
+
 Let $`\Delta\subset\mathbb{R}^2`$ consist of three noncollinear points, and let
-$`E\subset\mathbb{R}^2`$ be measurable with $`d^*(E)>0`$. There exists
-$`\lambda_0>0`$ such that for every $`\lambda\ge\lambda_0`$ the set $`E`$
+$`E\subset\mathbb{R}^2`$ be measurable with $`d^*(E)>0`$, where
+
+```math
+d^*(E)=\limsup_{L\to\infty}\sup_{z\in\mathbb{R}^2}\frac{|E\cap(z+[0,L]^2)|}{L^2}.
+```
+
+There exists $`\lambda_0>0`$ such that for every $`\lambda\ge\lambda_0`$ the set $`E`$
 contains a translate of a rotation of $`\lambda\Delta`$.
+
 
 ### AI statement
 
